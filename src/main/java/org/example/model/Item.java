@@ -8,6 +8,8 @@ public abstract class Item extends Entity {
     protected double startingPrice;
     protected double bidIncrement;
     private static int itemCount = 0;
+    private double currentPrice;
+    private String currentWinnerId;
 
     public Item(String name, String type,String describe, double startingPrice, double bidIncrement )
     {
@@ -50,7 +52,13 @@ public abstract class Item extends Entity {
         this.bidIncrement = bidIncrement;
     }
 
-    public String getID()
+    public void setCurrentPrice(double currentPrice){ this.currentPrice = currentPrice;}
+
+    public void setCurrentWinnerId(String currentWinnerId){
+        this.currentWinnerId = currentWinnerId;
+    }
+
+    public String getId()
     {
         return this.id;
     }
@@ -76,7 +84,17 @@ public abstract class Item extends Entity {
     }
 
     public double getBidIncrement() {
-        return bidIncrement;
+        return this.bidIncrement;
+    }
+
+    public double getCurrentPrice()
+    {
+        return this.currentPrice;
+    }
+
+    public String getCurrentWinnerId()
+    {
+        return this.currentWinnerId;
     }
 
 }
