@@ -1,6 +1,6 @@
-package org.example.model;
+package org.example.model.user;
 
-public class Seller extends User{
+public class Seller extends User {
     public Seller(String id, String Username, String Password){
         super(id, Username, Password);
     }

@@ -1,4 +1,6 @@
-package org.example.model;
+package org.example.model.item;
+
+import org.example.model.user.Entity;
 
 public abstract class Item extends Entity {
     protected final String id;
