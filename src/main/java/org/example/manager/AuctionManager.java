@@ -1,5 +1,5 @@
 package org.example.manager;
-import org.example.model.Item;
+import org.example.model.item.Item;
 import java.util.ArrayList;
 import java.util.List;
 

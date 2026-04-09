@@ -1,6 +1,6 @@
-package org.example.model;
+package org.example.model.user;
 
-public abstract class User extends Entity{
+public abstract class User extends Entity {
     protected String Username;
     protected String Password;
 

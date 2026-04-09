@@ -1,4 +1,4 @@
-package org.example.model;
+package org.example.model.item;
 
 public class Vehicle extends Item {
     public Vehicle(String name, String type, String describe, double startingPrice, double bidIncrement) {

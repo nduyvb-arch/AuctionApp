@@ -1,6 +1,4 @@
-package org.example.model;
-
-import java.sql.SQLOutput;
+package org.example.model.user;
 
 public class Bidder extends User {
     protected Double balance;

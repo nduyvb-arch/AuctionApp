@@ -1,7 +1,6 @@
-package org.example.model;
+package org.example.model.user;
 import java.io.Serializable;
 public abstract class Entity implements Serializable{
-
     protected String id;
 
     public String getId(){

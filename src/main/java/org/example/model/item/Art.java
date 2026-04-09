@@ -1,4 +1,4 @@
-package org.example.model;
+package org.example.model.item;
 
 public class Art extends Item {
     public Art(String name, String type, String describe, double startingPrice, double bidIncrement) {

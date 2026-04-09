@@ -1,4 +1,4 @@
-package org.example.model;
+package org.example.model.item;
 
 public class ItemFactory {
     public static Item createItem(String category, String name, String type, String description, double startingPrice, double bidIncrement)

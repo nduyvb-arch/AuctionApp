@@ -1,6 +1,6 @@
-package org.example.model;
+package org.example.model.item;
 
-public class Electronic extends Item{
+public class Electronic extends Item {
     public Electronic(String name, String type, String describe, double startingPrice, double bidIncrement) {
         super(name, type, describe, startingPrice, bidIncrement);
     }
