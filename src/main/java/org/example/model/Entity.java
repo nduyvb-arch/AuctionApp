@@ -1,6 +1,6 @@
 package org.example.model;
-
-public abstract class Entity {
+import java.io.Serializable;
+public abstract class Entity implements Serializable{
 
     protected String id;
 
