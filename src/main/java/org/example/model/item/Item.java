@@ -1,6 +1,7 @@
 package org.example.model.item;
 
 import org.example.model.user.Entity;
+import java.time.LocalDateTime;
 
 public abstract class Item extends Entity {
     protected final String id;
@@ -12,6 +13,8 @@ public abstract class Item extends Entity {
     private static int itemCount = 0;
     private double currentPrice;
     private String currentWinnerId;
+    private AuctionStatus status = AuctionStatus.PENDING; // mặc định là trạng thái chờ
+    private LocalDateTime endTime;
 
     public Item(String name, String type,String describe, double startingPrice, double bidIncrement )
     {
@@ -60,6 +63,16 @@ public abstract class Item extends Entity {
         this.currentWinnerId = currentWinnerId;
     }
 
+    public void setStatus(AuctionStatus status)
+    {
+        this.status = status;
+    }
+
+    public void setEndTime(LocalDateTime endTime)
+    {
+        this.endTime = endTime;
+    }
+
     public String getId()
     {
         return this.id;
@@ -97,6 +110,16 @@ public abstract class Item extends Entity {
     public String getCurrentWinnerId()
     {
         return this.currentWinnerId;
+    }
+
+    public AuctionStatus getStatus()
+    {
+        return this.status;
+    }
+
+    public LocalDateTime getEndTime()
+    {
+        return this.endTime;
     }
 
 }
