@@ -14,6 +14,6 @@ public class LoginController implements Initializable {
 
     @FXML
     public void onLoginButtonClicked() {
-        System.out.println("login");
+        System.out.println("Sign in ...");
     }
 }

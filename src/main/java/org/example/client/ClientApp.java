@@ -14,7 +14,7 @@ public class ClientApp extends Application {
         Scene scene = new Scene(loader.load(), 320, 400);
         stage.setScene(scene);
         stage.show();
-        stage.setTitle("Hello");
+        stage.setTitle("Giao diện đăng nhập");
     }
 
     public static void main(String[] args) {
