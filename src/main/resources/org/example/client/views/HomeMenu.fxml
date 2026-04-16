@@ -1,5 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane prefHeight="500.0" prefWidth="700.0" style="-fx-background-color: #f5f5f5;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.LoginController">
+   <children>
+      <!-- Title -->
+      <Label layoutX="50.0" layoutY="50.0" text="AUCTION SYSTEM" textFill="#1976d2">
+         <font>
+            <Font name="System Bold" size="28.0" />
+         </font>
+      </Label>
+
+      <!-- Subtitle -->
+      <Label layoutX="50.0" layoutY="90.0" text="Hệ Thống Đấu Giá Trực Tuyến" textFill="#666666">
+         <font>
+            <Font size="14.0" />
+         </font>
+      </Label>
+
+      <!-- Login Form Container -->
+      <VBox layoutX="150.0" layoutY="150.0" prefHeight="280.0" prefWidth="400.0" spacing="15.0" style="-fx-padding: 30; -fx-background-color: white; -fx-border-radius: 5; -fx-border-color: #dddddd; -fx-border-width: 1;">
+
+         <!-- Username -->
+         <Label text="Tên Đăng Nhập:" textFill="#333333">
+            <font>
+               <Font size="12.0" />
+            </font>
+         </Label>
+         <TextField fx:id="usernameField" prefHeight="35.0" prefWidth="340.0" promptText="Nhập tên đăng nhập" />
+
+         <!-- Password -->
+         <Label text="Mật Khẩu:" textFill="#333333">
+            <font>
+               <Font size="12.0" />
+            </font>
+         </Label>
+         <PasswordField fx:id="passwordField" prefHeight="35.0" prefWidth="340.0" promptText="Nhập mật khẩu" />
+
+         <!-- Error Message -->
+         <Label fx:id="errorLabel" prefHeight="20.0" textFill="#d32f2f" />
+
+         <!-- Buttons -->
+         <Button onMouseClicked="#onLoginButtonClicked" prefHeight="40.0" prefWidth="340.0" style="-fx-font-size: 13; -fx-background-color: #1976d2; -fx-text-fill: white;" text="ĐĂNG NHẬP" />
+         <Button onMouseClicked="#onSignUpButtonClicked" prefHeight="40.0" prefWidth="340.0" style="-fx-font-size: 13; -fx-background-color: #f5f5f5; -fx-text-fill: #333333; -fx-border-color: #cccccc;" text="ĐĂNG KÝ" />
+      </VBox>
+   </children>
+</AnchorPane><?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane prefHeight="500.0" prefWidth="700.0" style="-fx-background-color: #f5f5f5;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.LoginController">
+   <children>
+      <!-- Title -->
+      <Label layoutX="50.0" layoutY="50.0" text="AUCTION SYSTEM" textFill="#1976d2">
+         <font>
+            <Font name="System Bold" size="28.0" />
+         </font>
+      </Label>
+
+      <!-- Subtitle -->
+      <Label layoutX="50.0" layoutY="90.0" text="Hệ Thống Đấu Giá Trực Tuyến" textFill="#666666">
+         <font>
+            <Font size="14.0" />
+         </font>
+      </Label>
+
+      <!-- Login Form Container -->
+      <VBox layoutX="150.0" layoutY="150.0" prefHeight="280.0" prefWidth="400.0" spacing="15.0" style="-fx-padding: 30; -fx-background-color: white; -fx-border-radius: 5; -fx-border-color: #dddddd; -fx-border-width: 1;">
+
+         <!-- Username -->
+         <Label text="Tên Đăng Nhập:" textFill="#333333">
+            <font>
+               <Font size="12.0" />
+            </font>
+         </Label>
+         <TextField fx:id="usernameField" prefHeight="35.0" prefWidth="340.0" promptText="Nhập tên đăng nhập" />
+
+         <!-- Password -->
+         <Label text="Mật Khẩu:" textFill="#333333">
+            <font>
+               <Font size="12.0" />
+            </font>
+         </Label>
+         <PasswordField fx:id="passwordField" prefHeight="35.0" prefWidth="340.0" promptText="Nhập mật khẩu" />
+
+         <!-- Error Message -->
+         <Label fx:id="errorLabel" prefHeight="20.0" textFill="#d32f2f" />
+
+         <!-- Buttons -->
+         <Button onMouseClicked="#onLoginButtonClicked" prefHeight="40.0" prefWidth="340.0" style="-fx-font-size: 13; -fx-background-color: #1976d2; -fx-text-fill: white;" text="ĐĂNG NHẬP" />
+         <Button onMouseClicked="#onSignUpButtonClicked" prefHeight="40.0" prefWidth="340.0" style="-fx-font-size: 13; -fx-background-color: #f5f5f5; -fx-text-fill: #333333; -fx-border-color: #cccccc;" text="ĐĂNG KÝ" />
+      </VBox>
+   </children>
+</AnchorPane><?xml version="1.0" encoding="UTF-8"?>
+
 <?import java.lang.*?>
 <?import java.util.*?>
 <?import javafx.scene.*?>

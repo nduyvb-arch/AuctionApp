@@ -1,14 +1,131 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+<?import javafx.geometry.Insets?>
 
-<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.LoginController">
+<AnchorPane prefHeight="700.0" prefWidth="1000.0" style="-fx-background-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.LoginController">
    <children>
-      <Button layoutX="141.0" layoutY="305.0" mnemonicParsing="false" onMouseClicked="#onLoginButtonClicked" text="Sign in" />
-      <Button layoutX="379.0" layoutY="305.0" mnemonicParsing="false" text="Sign up" />
-      <TextField layoutX="141.0" layoutY="207.0" prefHeight="27.0" prefWidth="298.0" />
-      <TextField layoutX="143.0" layoutY="127.0" prefHeight="27.0" prefWidth="298.0" />
+      <!-- Left Side - Branding -->
+      <VBox layoutX="0.0" layoutY="0.0" prefHeight="700.0" prefWidth="400.0" spacing="30.0" alignment="CENTER" style="-fx-padding: 40;">
+         <Label text="🔨" textFill="white">
+            <font>
+               <Font size="60.0" />
+            </font>
+         </Label>
+         <Label text="AUCTION SYSTEM" textFill="white">
+            <font>
+               <Font name="System Bold" size="36.0" />
+            </font>
+         </Label>
+         <Label text="Hệ Thống Đấu Giá Trực Tuyến" textFill="#ffffff" wrapText="true">
+            <font>
+               <Font size="16.0" />
+            </font>
+         </Label>
+         <Label text="Mua bán và đấu giá những vật phẩm quý giá một cách công khai và minh bạch" textFill="#e0e0e0" wrapText="true" style="-fx-line-spacing: 5;">
+            <font>
+               <Font size="13.0" />
+            </font>
+         </Label>
+      </VBox>
+
+      <!-- Right Side - Login Form -->
+      <VBox layoutX="450.0" layoutY="60.0" prefHeight="580.0" prefWidth="480.0" spacing="0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 15, 0, 0, 5);">
+
+         <!-- Header -->
+         <VBox prefHeight="80.0" spacing="10.0" style="-fx-padding: 30; -fx-border-color: #f0f0f0; -fx-border-width: 0 0 1 0;">
+            <Label text="Đăng Nhập" textFill="#667eea">
+               <font>
+                  <Font name="System Bold" size="24.0" />
+               </font>
+            </Label>
+            <Label text="Vui lòng nhập thông tin để tiếp tục" textFill="#999999">
+               <font>
+                  <Font size="12.0" />
+               </font>
+            </Label>
+         </VBox>
+
+         <!-- Form Content -->
+         <VBox prefHeight="380.0" spacing="18.0" style="-fx-padding: 30;">
+
+            <!-- Username Field -->
+            <VBox spacing="8.0">
+               <Label text="👤 Tên Đăng Nhập" textFill="#333333">
+                  <font>
+                     <Font size="12.0" />
+                  </font>
+               </Label>
+               <TextField fx:id="usernameField" prefHeight="45.0" style="-fx-padding: 12; -fx-font-size: 13; -fx-border-radius: 5; -fx-border-color: #e0e0e0; -fx-background-radius: 5;" promptText="Nhập tên đăng nhập hoặc email" />
+            </VBox>
+
+            <!-- Password Field -->
+            <VBox spacing="8.0">
+               <Label text="🔒 Mật Khẩu" textFill="#333333">
+                  <font>
+                     <Font size="12.0" />
+                  </font>
+               </Label>
+               <PasswordField fx:id="passwordField" prefHeight="45.0" style="-fx-padding: 12; -fx-font-size: 13; -fx-border-radius: 5; -fx-border-color: #e0e0e0; -fx-background-radius: 5;" promptText="Nhập mật khẩu" />
+            </VBox>
+
+            <!-- Remember Me & Forgot Password -->
+            <HBox prefHeight="20.0" spacing="0">
+               <CheckBox fx:id="rememberCheckbox" text="Nhớ mật khẩu" textFill="#666666">
+                  <font>
+                     <Font size="12.0" />
+                  </font>
+               </CheckBox>
+               <Region prefHeight="20.0" prefWidth="150.0" />
+               <Hyperlink text="Quên mật khẩu?" onMouseClicked="#onForgotPasswordClicked" style="-fx-text-fill: #667eea; -fx-font-size: 12;" underline="false" />
+            </HBox>
+
+            <!-- Error Message -->
+            <Label fx:id="errorLabel" prefHeight="25.0" textFill="#d32f2f" wrapText="true" style="-fx-font-size: 12;" />
+
+            <!-- Login Button -->
+            <Button onMouseClicked="#onLoginButtonClicked" prefHeight="50.0" prefWidth="420.0" style="-fx-font-size: 14; -fx-font-weight: bold; -fx-background-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -fx-text-fill: white; -fx-border-radius: 5; -fx-padding: 0; -fx-cursor: hand;" text="ĐĂNG NHẬP" />
+
+            <!-- Divider -->
+            <HBox prefHeight="15.0" spacing="10.0" alignment="CENTER">
+               <Separator prefWidth="160.0" />
+               <Label text="Hoặc" textFill="#999999">
+                  <font>
+                     <Font size="11.0" />
+                  </font>
+               </Label>
+               <Separator prefWidth="160.0" />
+            </HBox>
+
+            <!-- Sign Up Link -->
+            <HBox prefHeight="40.0" spacing="0" alignment="CENTER">
+               <Label text="Bạn chưa có tài khoản? " textFill="#666666">
+                  <font>
+                     <Font size="12.0" />
+                  </font>
+               </Label>
+               <Hyperlink text="Đăng ký ngay" onMouseClicked="#onSignUpButtonClicked" style="-fx-text-fill: #667eea; -fx-font-weight: bold; -fx-font-size: 12; -fx-padding: 0;" underline="false" />
+            </HBox>
+         </VBox>
+
+         <!-- Footer -->
+         <VBox prefHeight="60.0" spacing="10.0" style="-fx-padding: 20; -fx-border-color: #f0f0f0; -fx-border-width: 1 0 0 0; -fx-alignment: center;">
+            <Label text="© 2024 Auction System. All rights reserved." textFill="#cccccc">
+               <font>
+                  <Font size="10.0" />
+               </font>
+            </Label>
+         </VBox>
+      </VBox>
    </children>
 </AnchorPane>
