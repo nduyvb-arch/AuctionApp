@@ -1,9 +1,9 @@
 package org.example.model.user;
 
 public class Bidder extends User {
-    protected Double balance;
-    public Bidder(String id, String Username, String Password, Double balance){
-        super(id, Username, Password);
+    private double balance;
+    public Bidder(String id, String username, String password, double balance){
+        super(id, username, password);
         this.balance = balance;
     }
 
@@ -14,5 +14,15 @@ public class Bidder extends User {
 
     public void placeBid(double amount) {
         System.out.println(this.getUsername()+ " đang đặt giá: " + amount);
+    }
+
+    public void setBalance(double newBalance)
+    {
+        this.balance = newBalance;
+    }
+
+    public double getBalance()
+    {
+        return this.balance;
     }
 }
