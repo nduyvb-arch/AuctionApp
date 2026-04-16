@@ -3,12 +3,13 @@ package org.example.manager;
 import org.example.data.StorageManager;
 import org.example.model.user.*;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 public class UserManager {
-    private static final String USERS_FILE = "users.dat";
+    private static final String USER_DATA_DIR = "user_data";
     private static volatile UserManager instance;
     private List<User> users;
 
@@ -24,32 +25,32 @@ public class UserManager {
     }
 
     /**
-     * Tải danh sách users từ file
+     * Tải danh sách users từ các file riêng lẻ
      */
     @SuppressWarnings("unchecked")
     private void loadUsers() {
-        Object data = StorageManager.loadData(USERS_FILE);
-        if (data instanceof List) {
-            users = (List<User>) data;
-            System.out.println("📂 Đã tải " + users.size() + " tài khoản từ file");
-        } else {
-            users = new ArrayList<>();
-            System.out.println("🆕 Khởi tạo danh sách users mới");
+        users = new ArrayList<>();
+        File dir = new File(USER_DATA_DIR);
+        if (!dir.exists()) {
+            dir.mkdirs();
+            System.out.println("🆕 Tạo thư mục user_data");
+            return;
         }
+
+        File[] files = dir.listFiles((d, name) -> name.endsWith(".dat"));
+        if (files != null) {
+            for (File file : files) {
+                Object data = StorageManager.loadData(USER_DATA_DIR + File.separator + file.getName());
+                if (data instanceof User) {
+                    users.add((User) data);
+                }
+            }
+        }
+        System.out.println("📂 Đã tải " + users.size() + " tài khoản từ file");
     }
 
     /**
-     * Lưu danh sách users vào file
-     */
-    private void saveUsers() {
-        boolean success = StorageManager.saveData(users, USERS_FILE);
-        if (success) {
-            System.out.println("💾 Đã lưu " + users.size() + " tài khoản");
-        }
-    }
-
-    /**
-     * Tạo tài khoản mới
+     * Tạo tài khoản mới và lưu vào file riêng
      */
     public synchronized String createAccount(String username, String password, String role) {
         // Kiểm tra username đã tồn tại
@@ -83,10 +84,14 @@ public class UserManager {
                 return "❌ Loại tài khoản không hợp lệ";
         }
 
-        users.add(newUser);
-        saveUsers();
+        // Lưu user vào file riêng
+        boolean success = StorageManager.saveData(newUser, USER_DATA_DIR + File.separator + username + ".dat");
+        if (!success) {
+            return "❌ Lỗi khi lưu dữ liệu";
+        }
 
-        System.out.println("✅ Đã tạo tài khoản: " + username + " (" + role + ")");
+        users.add(newUser);
+        System.out.println("✅ Đã tạo tài khoản: " + username + " (" + role + ") và lưu vào file riêng");
         return "✅ Tạo tài khoản thành công!";
     }
 
@@ -141,8 +146,9 @@ public class UserManager {
         for (int i = 0; i < users.size(); i++) {
             if (users.get(i).getId().equals(updatedUser.getId())) {
                 users.set(i, updatedUser);
-                saveUsers();
-                return true;
+                // Lưu lại vào file
+                boolean success = StorageManager.saveData(updatedUser, USER_DATA_DIR + File.separator + updatedUser.getUsername() + ".dat");
+                return success;
             }
         }
         return false;
