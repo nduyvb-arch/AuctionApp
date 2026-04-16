@@ -41,6 +41,15 @@ public class AuctionSession {
             lock.unlock(); // Giải phóng khóa trong khối finally để tránh deadlock [cite: 75]
         }
     }
+    // Hàm này để testValidBid lấy giá về so sánh
+    public double getCurrentPrice() {
+        return currentPrice;
+    }
+
+    // Hàm này để testAuctionClosedException đóng phiên đấu giá
+    public void finishAuction() {
+        this.isFinished = true;
+    }
 
     // Các Getter và Setter cần thiết khác...
 }
