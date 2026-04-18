@@ -8,6 +8,9 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.animation.PauseTransition;
 import javafx.util.Duration;
+import org.example.client.ClientApp;
+import org.example.manager.UserManager;
+import org.example.model.user.User;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -69,17 +72,31 @@ public class LoginController implements Initializable {
             return;
         }
 
-        System.out.println("✓ Đang đăng nhập: " + username);
-        System.out.println("✓ Nhớ mật khẩu: " + rememberCheckbox.isSelected());
-
-        // TODO: Gọi authentication service ở đây
-        showSuccess("Đang xác thực...");
+        // Attempt login
+        User user = UserManager.getInstance().login(username, password);
+        if (user != null) {
+            ClientApp.currentUser = user;
+            System.out.println("✅ Đăng nhập thành công: " + username);
+            try {
+                ClientApp.switchToHome();
+            } catch (Exception e) {
+                System.err.println("Error switching to home: " + e.getMessage());
+            }
+        } else {
+            showError("❌ Tên đăng nhập hoặc mật khẩu không đúng");
+        }
     }
 
     @FXML
     public void onSignUpButtonClicked() {
-        System.out.println("Chuyển đến trang đăng ký...");
-        // TODO: Load cảnh đăng ký hoặc chuyển hướng
+        System.out.println("Attempting to switch to sign up menu...");
+        try {
+            ClientApp.switchToSignUp();
+            System.out.println("Switched to sign up menu successfully.");
+        } catch (Exception e) {
+            System.err.println("Error switching to sign up: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @FXML
