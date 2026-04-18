@@ -4,17 +4,17 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class AuctionSever {
+public class AuctionServer {
     private int port;
     private AuctionNotifier notifier;
 
-    public AuctionSever(int port)
+    public AuctionServer(int port)
     {
         this.port = port;
         this.notifier = new AuctionNotifier();
     }
 
-    public void startSever()
+    public void startServer()
     {
         try (ServerSocket serverSocket = new ServerSocket(port))
         {
@@ -24,14 +24,15 @@ public class AuctionSever {
             while (true)
             {
                 Socket clientSocket = serverSocket.accept();
-
                 System.out.println("Có kết nối từ IP: " + clientSocket.getInetAddress());
-                // TODO: Tạo một luồng (Thread) mới để phục vụ Client này,
-                // giúp Server không bị "đứng hình" khi có nhiều người cùng kết nối.
+
+                ClientHandler handler = new ClientHandler(clientSocket, notifier);
+                notifier.registerObserver(handler);
+                new Thread(handler).start();
             }
         }
         catch (IOException e) {
-            System.out.println("lỗi khi khởi động Server: " + e.getMessage());
+            System.out.println("Lỗi khi khởi động Server: " + e.getMessage());
             e.printStackTrace();
         }
     }
