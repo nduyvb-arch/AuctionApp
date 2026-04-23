@@ -2,7 +2,7 @@ package org.example.network;
 
 // Giả lập một người dùng mạng đang chờ thông báo
 class MockClient implements Observer {
-    private String name;
+    private final String name;
 
     public MockClient(String name) {
         this.name = name;

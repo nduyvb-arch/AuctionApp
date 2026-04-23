@@ -1,28 +1,59 @@
 package org.example.model.user;
 
+/**
+ * Lớp đại diện cho người dùng tham gia đấu giá (Bidder).
+ */
 public class Bidder extends User {
+    /**
+     * Số dư tài khoản của người tham gia đấu giá.
+     */
     private double balance;
-    public Bidder(String id, String username, String password, double balance){
+
+    /**
+     * Khởi tạo một đối tượng Bidder mới.
+     *
+     * @param id       Mã định danh của người đấu giá.
+     * @param username Tên đăng nhập của người đấu giá.
+     * @param password Mật khẩu của người đấu giá.
+     * @param balance  Số dư ban đầu trong tài khoản.
+     */
+    public Bidder(final String id, final String username, final String password, final double balance) {
         super(id, username, password);
         this.balance = balance;
     }
 
+    /**
+     * Hiển thị vai trò và tên đăng nhập của người đấu giá.
+     */
     @Override
-    public void displayRole(){
+    public final void displayRole() {
         System.out.println("Role: Bidder - Tài khoản : " + this.getUsername());
     }
 
-    public void placeBid(double amount) {
-        System.out.println(this.getUsername()+ " đang đặt giá: " + amount);
+    /**
+     * Thực hiện hành động đặt giá cho một sản phẩm.
+     *
+     * @param amount Số tiền đặt giá.
+     */
+    public final void placeBid(final double amount) {
+        System.out.println(this.getUsername() + " đang đặt giá: " + amount);
     }
 
-    public void setBalance(double newBalance)
-    {
+    /**
+     * Cập nhật số dư mới cho tài khoản.
+     *
+     * @param newBalance Số dư mới.
+     */
+    public void setBalance(final double newBalance) {
         this.balance = newBalance;
     }
 
-    public double getBalance()
-    {
+    /**
+     * Lấy số dư hiện tại của tài khoản.
+     *
+     * @return Số dư hiện tại.
+     */
+    public double getBalance() {
         return this.balance;
     }
 }

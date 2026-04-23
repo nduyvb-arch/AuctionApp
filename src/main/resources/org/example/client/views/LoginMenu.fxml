@@ -8,6 +8,17 @@
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
+<<<<<<< HEAD
+<AnchorPane xmlns:fx="http://javafx.com/fxml/1" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/25"
+            fx:controller="org.example.client.controllers.LoginController">
+    <children>
+        <Button layoutX="141.0" layoutY="305.0" mnemonicParsing="false" onMouseClicked="#onLoginButtonClicked"
+                text="Sign in"/>
+        <Button layoutX="379.0" layoutY="305.0" mnemonicParsing="false" text="Sign up"/>
+        <TextField layoutX="141.0" layoutY="207.0" prefHeight="27.0" prefWidth="298.0"/>
+        <TextField layoutX="143.0" layoutY="127.0" prefHeight="27.0" prefWidth="298.0"/>
+    </children>
+=======
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
@@ -129,4 +140,5 @@
          </VBox>
       </VBox>
    </children>
+>>>>>>> 9ad92cf923a6855210ae38ddb8d085d1d09ad107
 </AnchorPane>

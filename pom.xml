@@ -80,7 +80,10 @@
                 <version>${maven.checkstyle.plugin.version}</version>
                 <configuration>
                     <configLocation>checkstyle.xml</configLocation>
+<<<<<<< HEAD
                     <encoding>UTF-8</encoding>
+=======
+>>>>>>> d688cdcd330146c6d9feaa4526710d6fced9a9d3
                     <consoleOutput>true</consoleOutput>
                     <failsOnError>true</failsOnError>
                     <linkXRef>false</linkXRef>
@@ -115,4 +118,8 @@
             </plugin>
         </plugins>
     </reporting>
+<<<<<<< HEAD
 </project>
+=======
+</project>
+>>>>>>> d688cdcd330146c6d9feaa4526710d6fced9a9d3

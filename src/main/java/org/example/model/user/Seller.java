@@ -1,16 +1,35 @@
 package org.example.model.user;
 
+/**
+ * Lớp đại diện cho người bán hàng trong hệ thống đấu giá (Seller).
+ */
 public class Seller extends User {
-    public Seller(String id, String Username, String Password){
-        super(id, Username, Password);
+
+    /**
+     * Khởi tạo một đối tượng Seller mới.
+     *
+     * @param id       Mã định danh của người bán.
+     * @param username Tên đăng nhập của người bán.
+     * @param password Mật khẩu của người bán.
+     */
+    public Seller(final String id, final String username, final String password) {
+        super(id, username, password);
     }
 
+    /**
+     * Hiển thị vai trò và tên đăng nhập của người bán.
+     */
     @Override
-    public void displayRole(){
+    public final void displayRole() {
         System.out.println("Role: Seller - Tai khoan: " + this.getUsername());
     }
 
-    public void putItem(String itemName){
-        System.out.println(this.Username + " đã đăng sản phẩm: " + itemName);
+    /**
+     * Thực hiện hành động đăng một sản phẩm mới lên sàn đấu giá.
+     *
+     * @param itemName Tên của sản phẩm cần đăng.
+     */
+    public final void putItem(final String itemName) {
+        System.out.println(this.username + " đã đăng sản phẩm: " + itemName);
     }
 }
