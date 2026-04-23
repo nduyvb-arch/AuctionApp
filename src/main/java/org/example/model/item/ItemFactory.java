@@ -1,15 +1,12 @@
 package org.example.model.item;
 
 public class ItemFactory {
-    public static Item createItem(String category, String name, String type, String description, double startingPrice, double bidIncrement)
-    {
-        if (category == null)
-        {
+    public static Item createItem(String category, String name, String type, String description, double startingPrice, double bidIncrement) {
+        if (category == null) {
             throw new IllegalArgumentException("Category can't be null");
         }
 
-        switch (category.toLowerCase().trim())
-        {
+        switch (category.toLowerCase().trim()) {
             case "electronic":
                 return new Electronic(name, type, description, startingPrice, bidIncrement);
 

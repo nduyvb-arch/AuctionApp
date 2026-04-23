@@ -5,7 +5,7 @@ import java.util.List;
 
 public class AuctionNotifier implements Subject {
     // Danh sách lưu trữ những ai đang theo dõi phiên đấu giá
-    private List<Observer> observers = new ArrayList<>();
+    private final List<Observer> observers = new ArrayList<>();
 
     @Override
     public void registerObserver(Observer o) {

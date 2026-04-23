@@ -16,7 +16,6 @@
 
 <AnchorPane prefHeight="700.0" prefWidth="1000.0" style="-fx-background-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.LoginController">
    <children>
-      <!-- Left Side - Branding -->
       <VBox layoutX="0.0" layoutY="0.0" prefHeight="700.0" prefWidth="400.0" spacing="30.0" alignment="CENTER" style="-fx-padding: 40;">
          <Label text="🔨" textFill="white">
             <font>
@@ -40,10 +39,8 @@
          </Label>
       </VBox>
 
-      <!-- Right Side - Login Form -->
       <VBox layoutX="450.0" layoutY="60.0" prefHeight="580.0" prefWidth="480.0" spacing="0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 15, 0, 0, 5);">
 
-         <!-- Header -->
          <VBox prefHeight="80.0" spacing="10.0" style="-fx-padding: 30; -fx-border-color: #f0f0f0; -fx-border-width: 0 0 1 0;">
             <Label text="Đăng Nhập" textFill="#667eea">
                <font>
@@ -57,10 +54,8 @@
             </Label>
          </VBox>
 
-         <!-- Form Content -->
          <VBox prefHeight="380.0" spacing="18.0" style="-fx-padding: 30;">
 
-            <!-- Username Field -->
             <VBox spacing="8.0">
                <Label text="👤 Tên Đăng Nhập" textFill="#333333">
                   <font>
@@ -70,7 +65,6 @@
                <TextField fx:id="usernameField" prefHeight="45.0" style="-fx-padding: 12; -fx-font-size: 13; -fx-border-radius: 5; -fx-border-color: #e0e0e0; -fx-background-radius: 5;" promptText="Nhập tên đăng nhập hoặc email" />
             </VBox>
 
-            <!-- Password Field -->
             <VBox spacing="8.0">
                <Label text="🔒 Mật Khẩu" textFill="#333333">
                   <font>
@@ -80,7 +74,6 @@
                <PasswordField fx:id="passwordField" prefHeight="45.0" style="-fx-padding: 12; -fx-font-size: 13; -fx-border-radius: 5; -fx-border-color: #e0e0e0; -fx-background-radius: 5;" promptText="Nhập mật khẩu" />
             </VBox>
 
-            <!-- Remember Me & Forgot Password -->
             <HBox prefHeight="20.0" spacing="0">
                <CheckBox fx:id="rememberCheckbox" text="Nhớ mật khẩu" textFill="#666666">
                   <font>
@@ -91,13 +84,10 @@
                <Hyperlink text="Quên mật khẩu?" onMouseClicked="#onForgotPasswordClicked" style="-fx-text-fill: #667eea; -fx-font-size: 12;" underline="false" />
             </HBox>
 
-            <!-- Error Message -->
             <Label fx:id="errorLabel" prefHeight="25.0" textFill="#d32f2f" wrapText="true" style="-fx-font-size: 12;" />
 
-            <!-- Login Button -->
             <Button onMouseClicked="#onLoginButtonClicked" prefHeight="50.0" prefWidth="420.0" style="-fx-font-size: 14; -fx-font-weight: bold; -fx-background-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -fx-text-fill: white; -fx-border-radius: 5; -fx-padding: 0; -fx-cursor: hand;" text="ĐĂNG NHẬP" />
 
-            <!-- Divider -->
             <HBox prefHeight="15.0" spacing="10.0" alignment="CENTER">
                <Separator prefWidth="160.0" />
                <Label text="Hoặc" textFill="#999999">
@@ -108,7 +98,6 @@
                <Separator prefWidth="160.0" />
             </HBox>
 
-            <!-- Sign Up Link -->
             <HBox prefHeight="40.0" spacing="0" alignment="CENTER">
                <Label text="Bạn chưa có tài khoản? " textFill="#666666">
                   <font>
@@ -119,7 +108,6 @@
             </HBox>
          </VBox>
 
-         <!-- Footer -->
          <VBox prefHeight="60.0" spacing="10.0" style="-fx-padding: 20; -fx-border-color: #f0f0f0; -fx-border-width: 1 0 0 0; -fx-alignment: center;">
             <Label text="© 2024 Auction System. All rights reserved." textFill="#cccccc">
                <font>

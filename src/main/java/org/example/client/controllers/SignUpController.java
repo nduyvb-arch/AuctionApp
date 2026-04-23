@@ -2,6 +2,7 @@ package org.example.client.controllers;
 
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
@@ -62,9 +63,16 @@ public class SignUpController implements Initializable {
         // Create account
         String result = UserManager.getInstance().createAccount(username, password, role);
         if (result.startsWith("✅")) {
+            // Show success notification
+            Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+            successAlert.setTitle("✅ Thành công");
+            successAlert.setHeaderText("Tài khoản đã tạo thành công!");
+            successAlert.setContentText("Chào mừng " + username + "!\nBạn sẽ được chuyển đến trang đăng nhập...");
+            successAlert.showAndWait();
+
             showSuccess(result);
             // Switch to login after success
-            PauseTransition pause = new PauseTransition(Duration.seconds(2));
+            PauseTransition pause = new PauseTransition(Duration.seconds(1));
             pause.setOnFinished(event -> {
                 try {
                     ClientApp.switchToLogin();
