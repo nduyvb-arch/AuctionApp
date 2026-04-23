@@ -4,10 +4,13 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.stage.Screen;
 import javafx.stage.Stage;
 
 public class ClientApp extends Application {
+
+    public static void main(String[] args) {
+        launch(args);
+    }
 
     @Override
     public void start(Stage stage) throws Exception {
@@ -22,9 +25,5 @@ public class ClientApp extends Application {
         stage.setResizable(false); // Để giao diện đăng nhập bị kéo giãn làm xô lệch các nút
         stage.show();
         stage.setTitle("Giao diện đăng nhập");
-    }
-
-    public static void main(String[] args) {
-        launch(args);
     }
 }

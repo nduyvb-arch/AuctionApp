@@ -4,7 +4,9 @@ import org.example.exception.AuctionClosedException;
 import org.example.exception.InvalidBidException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class AuctionSessionTest {
     private AuctionSession session;

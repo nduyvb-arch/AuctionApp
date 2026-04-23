@@ -2,16 +2,16 @@ package org.example.model;
 
 import org.example.exception.AuctionClosedException;
 import org.example.exception.InvalidBidException;
+
 import java.util.concurrent.locks.ReentrantLock;
 
 public class AuctionSession {
-    private String itemId;
+    // Khóa ReentrantLock để đảm bảo tính đồng bộ khi nhiều người cùng bid [cite: 75]
+    private final ReentrantLock lock = new ReentrantLock();
+    private final String itemId;
     private double currentPrice;
     private String winnerName;
     private boolean isFinished;
-
-    // Khóa ReentrantLock để đảm bảo tính đồng bộ khi nhiều người cùng bid [cite: 75]
-    private final ReentrantLock lock = new ReentrantLock();
 
     public AuctionSession(String itemId, double startingPrice) {
         this.itemId = itemId;
@@ -41,6 +41,7 @@ public class AuctionSession {
             lock.unlock(); // Giải phóng khóa trong khối finally để tránh deadlock [cite: 75]
         }
     }
+
     // Hàm này để testValidBid lấy giá về so sánh
     public double getCurrentPrice() {
         return currentPrice;

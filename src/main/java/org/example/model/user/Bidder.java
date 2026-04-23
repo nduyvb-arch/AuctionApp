@@ -1,18 +1,41 @@
 package org.example.model.user;
 
+/**
+ * Lớp đại diện cho người dùng tham gia đấu giá (Bidder).
+ */
 public class Bidder extends User {
+    /**
+     * Số dư tài khoản của người tham gia đấu giá.
+     */
     protected Double balance;
-    public Bidder(String id, String Username, String Password, Double balance){
-        super(id, Username, Password);
+
+    /**
+     * Khởi tạo một đối tượng Bidder mới.
+     *
+     * @param id       Mã định danh của người đấu giá.
+     * @param username Tên đăng nhập của người đấu giá.
+     * @param password Mật khẩu của người đấu giá.
+     * @param balance  Số dư ban đầu trong tài khoản.
+     */
+    public Bidder(final String id, final String username, final String password, final Double balance) {
+        super(id, username, password);
         this.balance = balance;
     }
 
+    /**
+     * Hiển thị vai trò và tên đăng nhập của người đấu giá.
+     */
     @Override
-    public void displayRole(){
+    public final void displayRole() {
         System.out.println("Role: Bidder - Tài khoản : " + this.getUsername());
     }
 
-    public void placeBid(double amount) {
-        System.out.println(this.getUsername()+ " đang đặt giá: " + amount);
+    /**
+     * Thực hiện hành động đặt giá cho một sản phẩm.
+     *
+     * @param amount Số tiền đặt giá.
+     */
+    public final void placeBid(final double amount) {
+        System.out.println(this.getUsername() + " đang đặt giá: " + amount);
     }
 }
