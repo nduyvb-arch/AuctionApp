@@ -5,25 +5,85 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import org.example.manager.UserManager;
+import org.example.model.user.User;
 
+/**
+ * Lớp chính điều khiển ứng dụng Client sử dụng JavaFX.
+ */
 public class ClientApp extends Application {
 
-    public static void main(String[] args) {
-        launch(args);
+    /** Stage chính của ứng dụng. */
+    private static Stage primaryStage;
+
+    /** Người dùng hiện tại đang đăng nhập vào hệ thống. */
+    private static User currentUser;
+
+    /**
+     * Điểm bắt đầu của ứng dụng JavaFX.
+     * @param stage Stage chính.
+     * @throws Exception nếu không tải được FXML.
+     */
+    @Override
+    public void start(final Stage stage) throws Exception {
+        primaryStage = stage;
+        switchToLogin();
+        stage.setResizable(false);
+
+        // Đóng kết nối database khi đóng ứng dụng
+        stage.setOnCloseRequest(event -> {
+            UserManager.getInstance().closeConnection();
+            System.out.println("✅ Ứng dụng đóng lại");
+        });
+
+        stage.show();
     }
 
     @Override
-    public void start(Stage stage) throws Exception {
-        // Chỉ định đường dẫn tới file fxml
+    public void stop() throws Exception {
+        UserManager.getInstance().closeConnection();
+        super.stop();
+    }
+
+    /** Chuyển giao diện sang màn hình đăng nhập. */
+    public static void switchToLogin() throws Exception {
         FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/LoginMenu.fxml"));
-        // Tải file lên và gán vào biến root
         Parent root = loader.load();
-        // Đưa root vào Scene
         Scene scene = new Scene(root);
-        // Thiết lập stage (Cửa sổ)
-        stage.setScene(scene);
-        stage.setResizable(false); // Để giao diện đăng nhập bị kéo giãn làm xô lệch các nút
-        stage.show();
-        stage.setTitle("Giao diện đăng nhập");
+        primaryStage.setTitle("Hệ thống đấu giá - Đăng nhập");
+        primaryStage.setScene(scene);
+    }
+
+    /** Chuyển giao diện sang màn hình đăng ký. */
+    public static void switchToSignUp() throws Exception {
+        System.out.println("Loading SignUpMenu.fxml...");
+        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/SignUpMenu.fxml"));
+        if (loader.getLocation() == null) {
+            throw new Exception("SignUpMenu.fxml not found");
+        }
+        Parent root = loader.load();
+        Scene scene = new Scene(root);
+        primaryStage.setTitle("Hệ thống đấu giá - Đăng ký");
+        primaryStage.setScene(scene);
+        System.out.println("SignUpMenu loaded successfully.");
+    }
+
+    /** Chuyển giao diện sang trang chủ. */
+    public static void switchToHome() throws Exception {
+        System.out.println("Loading HomeMenu.fxml...");
+        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/HomeMenu.fxml"));
+        Parent root = loader.load();
+        Scene scene = new Scene(root);
+        primaryStage.setTitle("Hệ thống đấu giá - Trang chủ");
+        primaryStage.setScene(scene);
+        System.out.println("HomeMenu loaded successfully.");
+    }
+
+    /**
+     * Hàm main để khởi chạy ứng dụng.
+     * @param args tham số dòng lệnh.
+     */
+    public static void main(final String[] args) {
+        launch(args);
     }
 }

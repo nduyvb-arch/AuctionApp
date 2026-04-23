@@ -7,7 +7,7 @@ public class Bidder extends User {
     /**
      * Số dư tài khoản của người tham gia đấu giá.
      */
-    protected Double balance;
+    private double balance;
 
     /**
      * Khởi tạo một đối tượng Bidder mới.
@@ -17,7 +17,7 @@ public class Bidder extends User {
      * @param password Mật khẩu của người đấu giá.
      * @param balance  Số dư ban đầu trong tài khoản.
      */
-    public Bidder(final String id, final String username, final String password, final Double balance) {
+    public Bidder(final String id, final String username, final String password, final double balance) {
         super(id, username, password);
         this.balance = balance;
     }
@@ -37,5 +37,23 @@ public class Bidder extends User {
      */
     public final void placeBid(final double amount) {
         System.out.println(this.getUsername() + " đang đặt giá: " + amount);
+    }
+
+    /**
+     * Cập nhật số dư mới cho tài khoản.
+     *
+     * @param newBalance Số dư mới.
+     */
+    public void setBalance(final double newBalance) {
+        this.balance = newBalance;
+    }
+
+    /**
+     * Lấy số dư hiện tại của tài khoản.
+     *
+     * @return Số dư hiện tại.
+     */
+    public double getBalance() {
+        return this.balance;
     }
 }
