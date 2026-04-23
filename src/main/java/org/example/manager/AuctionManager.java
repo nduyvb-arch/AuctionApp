@@ -108,4 +108,31 @@ public class AuctionManager {
 
         return "Đã bắt đầu 1 phiên đấu giá cho sản phầm: (" + targetItem.getItemName() + "). Thời gian đấu giá: " + durationInMinutes + " phút";
     }
+
+    public synchronized List<String> checkAndCloseExpiredAuctions
+    {
+        List<String> notifications = new ArrayList<>();
+
+        for (Item item : auctionItems)
+        {
+            if (item.getStatus() == AuctionStatus.ACTIVE && item.getEndTime() != null && LocalDateTime.now().isAfter(item.getEndTime()))
+            {
+                item.setStatus(AuctionStatus.CLOSED);
+
+                String msg;
+
+                if (item.getCurrentWinnerId() != null)
+                {
+                    msg = "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] đã thuộc về " + item.getCurrentWinnerId() + " với giá " + item.getCurrentPrice();
+                }
+                else {
+                    msg = "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] không có ai đặt giá";
+                }
+
+                notifications.add(msg);
+            }
+        }
+
+        return notifications;
+    }
 }
