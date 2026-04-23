@@ -5,6 +5,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import org.example.manager.UserManager;
 import org.example.model.user.User;
 
 public class ClientApp extends Application {
@@ -17,7 +18,20 @@ public class ClientApp extends Application {
         primaryStage = stage;
         switchToLogin();
         stage.setResizable(false);
+
+        // Đóng kết nối database khi đóng ứng dụng
+        stage.setOnCloseRequest(event -> {
+            UserManager.getInstance().closeConnection();
+            System.out.println("✅ Ứng dụng đóng lại");
+        });
+
         stage.show();
+    }
+
+    @Override
+    public void stop() throws Exception {
+        UserManager.getInstance().closeConnection();
+        super.stop();
     }
 
     public static void switchToLogin() throws Exception {
