@@ -1,19 +1,21 @@
 package org.example.manager;
 
-import org.example.data.StorageManager;
 import org.example.model.user.*;
 
-import java.io.File;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 public class UserManager {
-    private static final String USER_DATA_DIR = "user_data";
+    private static final String DB_URL = "jdbc:h2:./auction_db";
+    private static final String DB_USER = "sa";
+    private static final String DB_PASSWORD = "";
     private static volatile UserManager instance;
     private List<User> users;
 
     private UserManager() {
+        initializeDatabase();
         loadUsers();
     }
 
@@ -24,33 +26,71 @@ public class UserManager {
         return instance;
     }
 
-    /**
-     * Tải danh sách users từ các file riêng lẻ
-     */
-    @SuppressWarnings("unchecked")
-    private void loadUsers() {
-        users = new ArrayList<>();
-        File dir = new File(USER_DATA_DIR);
-        if (!dir.exists()) {
-            dir.mkdirs();
-            System.out.println("🆕 Tạo thư mục user_data");
+    private void initializeDatabase() {
+        try {
+            Class.forName("org.h2.Driver");
+        } catch (ClassNotFoundException e) {
+            System.err.println("H2 Driver not found: " + e.getMessage());
             return;
         }
-
-        File[] files = dir.listFiles((d, name) -> name.endsWith(".dat"));
-        if (files != null) {
-            for (File file : files) {
-                Object data = StorageManager.loadData(USER_DATA_DIR + File.separator + file.getName());
-                if (data instanceof User) {
-                    users.add((User) data);
-                }
-            }
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+             Statement stmt = conn.createStatement()) {
+            String sql = "CREATE TABLE IF NOT EXISTS users (" +
+                    "id VARCHAR(36) PRIMARY KEY," +
+                    "username VARCHAR(255) UNIQUE NOT NULL," +
+                    "password VARCHAR(255) NOT NULL," +
+                    "role VARCHAR(50) NOT NULL," +
+                    "balance DOUBLE DEFAULT 0.0" +
+                    ")";
+            stmt.execute(sql);
+            System.out.println("Database initialized.");
+        } catch (SQLException e) {
+            System.err.println("Error initializing database: " + e.getMessage());
+            e.printStackTrace();
         }
-        System.out.println("📂 Đã tải " + users.size() + " tài khoản từ file");
     }
 
     /**
-     * Tạo tài khoản mới và lưu vào file riêng
+     * Tải danh sách users từ database
+     */
+    private void loadUsers() {
+        users = new ArrayList<>();
+        String sql = "SELECT * FROM users";
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                String id = rs.getString("id");
+                String username = rs.getString("username");
+                String password = rs.getString("password");
+                String role = rs.getString("role");
+                double balance = rs.getDouble("balance");
+
+                User user;
+                switch (role.toLowerCase()) {
+                    case "bidder":
+                        user = new Bidder(id, username, password, balance);
+                        break;
+                    case "seller":
+                        user = new Seller(id, username, password);
+                        break;
+                    case "admin":
+                        user = new Admin(id, username, password);
+                        break;
+                    default:
+                        continue;
+                }
+                users.add(user);
+            }
+            System.out.println("📂 Đã tải " + users.size() + " tài khoản từ database");
+        } catch (SQLException e) {
+            System.err.println("Error loading users: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Tạo tài khoản mới và lưu vào database
      */
     public synchronized String createAccount(String username, String password, String role) {
         // Kiểm tra username đã tồn tại
@@ -72,7 +112,7 @@ public class UserManager {
         User newUser;
         switch (role.toLowerCase()) {
             case "bidder":
-                newUser = new Bidder(id, username, password, 0.0); // Số dư ban đầu = 0
+                newUser = new Bidder(id, username, password, 0.0);
                 break;
             case "seller":
                 newUser = new Seller(id, username, password);
@@ -84,38 +124,79 @@ public class UserManager {
                 return "❌ Loại tài khoản không hợp lệ";
         }
 
-        // Lưu user vào file riêng
-        boolean success = StorageManager.saveData(newUser, USER_DATA_DIR + File.separator + username + ".dat");
-        if (!success) {
+        // Lưu vào database
+        String sql = "INSERT INTO users (id, username, password, role, balance) VALUES (?, ?, ?, ?, ?)";
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, id);
+            pstmt.setString(2, username);
+            pstmt.setString(3, password);
+            pstmt.setString(4, role);
+            pstmt.setDouble(5, role.equalsIgnoreCase("bidder") ? 0.0 : 0.0); // Balance only for bidder
+            pstmt.executeUpdate();
+            users.add(newUser);
+            System.out.println("✅ Đã tạo tài khoản: " + username + " (" + role + ") và lưu vào database");
+            return "✅ Tạo tài khoản thành công!";
+        } catch (SQLException e) {
+            System.err.println("Error creating account: " + e.getMessage());
+            e.printStackTrace();
             return "❌ Lỗi khi lưu dữ liệu";
         }
-
-        users.add(newUser);
-        System.out.println("✅ Đã tạo tài khoản: " + username + " (" + role + ") và lưu vào file riêng");
-        return "✅ Tạo tài khoản thành công!";
     }
 
     /**
      * Đăng nhập
      */
     public synchronized User login(String username, String password) {
-        for (User user : users) {
-            if (user.getUsername().equals(username) && user.getPassword().equals(password)) {
+        String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            pstmt.setString(2, password);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                String id = rs.getString("id");
+                String role = rs.getString("role");
+                double balance = rs.getDouble("balance");
+                User user;
+                switch (role.toLowerCase()) {
+                    case "bidder":
+                        user = new Bidder(id, username, password, balance);
+                        break;
+                    case "seller":
+                        user = new Seller(id, username, password);
+                        break;
+                    case "admin":
+                        user = new Admin(id, username, password);
+                        break;
+                    default:
+                        return null;
+                }
                 System.out.println("✅ Đăng nhập thành công: " + username);
                 return user;
             }
+        } catch (SQLException e) {
+            System.err.println("Error logging in: " + e.getMessage());
+            e.printStackTrace();
         }
-        return null; // Đăng nhập thất bại
+        return null;
     }
 
     /**
      * Kiểm tra username đã tồn tại
      */
     private boolean isUsernameExists(String username) {
-        for (User user : users) {
-            if (user.getUsername().equals(username)) {
-                return true;
+        String sql = "SELECT COUNT(*) FROM users WHERE username = ?";
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
             }
+        } catch (SQLException e) {
+            System.err.println("Error checking username: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -143,13 +224,30 @@ public class UserManager {
      * Cập nhật thông tin user
      */
     public synchronized boolean updateUser(User updatedUser) {
-        for (int i = 0; i < users.size(); i++) {
-            if (users.get(i).getId().equals(updatedUser.getId())) {
-                users.set(i, updatedUser);
-                // Lưu lại vào file
-                boolean success = StorageManager.saveData(updatedUser, USER_DATA_DIR + File.separator + updatedUser.getUsername() + ".dat");
-                return success;
+        String sql = "UPDATE users SET username = ?, password = ?, balance = ? WHERE id = ?";
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, updatedUser.getUsername());
+            pstmt.setString(2, updatedUser.getPassword());
+            if (updatedUser instanceof Bidder) {
+                pstmt.setDouble(3, ((Bidder) updatedUser).getBalance());
+            } else {
+                pstmt.setDouble(3, 0.0);
             }
+            pstmt.setString(4, updatedUser.getId());
+            int rows = pstmt.executeUpdate();
+            if (rows > 0) {
+                // Update in memory
+                for (int i = 0; i < users.size(); i++) {
+                    if (users.get(i).getId().equals(updatedUser.getId())) {
+                        users.set(i, updatedUser);
+                        return true;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error updating user: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
