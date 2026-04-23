@@ -31,6 +31,14 @@ public class Bidder extends User {
     }
 
     /**
+     * Lấy vai trò của người dùng.
+     */
+    @Override
+    public String getRole() {
+        return "bidder";
+    }
+
+    /**
      * Thực hiện hành động đặt giá cho một sản phẩm.
      *
      * @param amount Số tiền đặt giá.

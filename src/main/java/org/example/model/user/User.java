@@ -68,4 +68,11 @@ public abstract class User extends Entity {
      * Phương thức trừu tượng để hiển thị vai trò cụ thể của từng loại người dùng.
      */
     public abstract void displayRole();
+
+    /**
+     * Lấy vai trò của người dùng.
+     *
+     * @return vai trò (bidder, seller, admin)
+     */
+    public abstract String getRole();
 }

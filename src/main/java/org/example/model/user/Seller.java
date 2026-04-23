@@ -25,6 +25,14 @@ public class Seller extends User {
     }
 
     /**
+     * Lấy vai trò của người dùng.
+     */
+    @Override
+    public String getRole() {
+        return "seller";
+    }
+
+    /**
      * Thực hiện hành động đăng một sản phẩm mới lên sàn đấu giá.
      *
      * @param itemName Tên của sản phẩm cần đăng.

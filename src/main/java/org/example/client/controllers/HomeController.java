@@ -23,7 +23,7 @@ public class HomeController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        User currentUser = ClientApp.currentUser;
+        User currentUser = ClientApp.getCurrentUser();
         if (currentUser != null) {
             welcomeLabel.setText("Chào mừng, " + currentUser.getUsername() + "!");
             userInfoLabel.setText("Vai trò: " + currentUser.getClass().getSimpleName() + " | ID: " + currentUser.getId());
@@ -34,7 +34,7 @@ public class HomeController implements Initializable {
 
     @FXML
     public void onLogoutClicked() {
-        ClientApp.currentUser = null;
+        ClientApp.setCurrentUser(null);
         try {
             ClientApp.switchToLogin();
         } catch (Exception e) {

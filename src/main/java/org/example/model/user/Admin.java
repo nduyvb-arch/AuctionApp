@@ -25,6 +25,14 @@ public class Admin extends User {
     }
 
     /**
+     * Lấy vai trò của người dùng.
+     */
+    @Override
+    public String getRole() {
+        return "admin";
+    }
+
+    /**
      * Thực hiện hành động khóa tài khoản người dùng khác.
      *
      * @param user Đối tượng người dùng cần bị khóa.

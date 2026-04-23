@@ -6,13 +6,20 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DatabaseManager {
-    private static final String DB_URL = "jdbc:sqlite:auction.db";  // File database sẽ tạo ở thư mục gốc dự án
+    private static final String DB_URL = "jdbc:h2:./auction_db";  // File database sẽ tạo ở thư mục gốc dự án
     private static Connection connection;
 
     public static Connection getConnection() throws SQLException {
         if (connection == null || connection.isClosed()) {
-            connection = DriverManager.getConnection(DB_URL);
-            System.out.println("📂 Kết nối database thành công: " + DB_URL);
+            try {
+                // Load H2 driver
+                Class.forName("org.h2.Driver");
+                connection = DriverManager.getConnection(DB_URL);
+                System.out.println("📂 Kết nối database thành công: " + DB_URL);
+            } catch (ClassNotFoundException e) {
+                System.err.println("❌ Lỗi không tìm thấy driver H2: " + e.getMessage());
+                throw new SQLException("Driver not found", e);
+            }
         }
         return connection;
     }

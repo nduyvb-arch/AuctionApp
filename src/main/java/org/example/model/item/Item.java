@@ -3,10 +3,11 @@ package org.example.model.item;
 import org.example.model.user.Entity;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public abstract class Item extends Entity {
-    private static int itemCount = 0;
-    protected final String id;
+    // SỬA Ở ĐÂY: Đổi tên 'id' thành 'itemId'
+    protected String id;
     protected String itemName;
     protected String type;
     protected String describe;
@@ -18,13 +19,16 @@ public abstract class Item extends Entity {
     private LocalDateTime endTime;
 
     public Item(String name, String type, String describe, double startingPrice, double bidIncrement) {
-        this.id = "I" + itemCount;
+        // SỬA Ở ĐÂY: Cập nhật lại tên biến thành itemId
+        this.id = "I-" + UUID.randomUUID().toString().substring(0, 8);
         this.itemName = name;
         this.type = type;
         this.describe = describe;
         this.startingPrice = startingPrice;
         this.bidIncrement = bidIncrement;
-        itemCount++;
+
+        // Giá hiện tại ban đầu phải bằng giá khởi điểm
+        this.currentPrice = startingPrice;
     }
 
     public Item(String name, String type, double startingPrice, double bidIncrement) {
@@ -35,9 +39,6 @@ public abstract class Item extends Entity {
         this.itemName = newName;
     }
 
-    public String getId() {
-        return this.id;
-    }
 
     public String getType() {
         return this.type;
@@ -106,5 +107,4 @@ public abstract class Item extends Entity {
     public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
     }
-
 }

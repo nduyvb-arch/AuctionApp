@@ -75,7 +75,7 @@ public class LoginController implements Initializable {
         // Attempt login
         User user = UserManager.getInstance().login(username, password);
         if (user != null) {
-            ClientApp.currentUser = user;
+            ClientApp.setCurrentUser(user);
             System.out.println("✅ Đăng nhập thành công: " + username);
             try {
                 ClientApp.switchToHome();

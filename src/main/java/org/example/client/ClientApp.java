@@ -27,6 +27,10 @@ public class ClientApp extends Application {
     @Override
     public void start(final Stage stage) throws Exception {
         primaryStage = stage;
+
+        // Hiển thị danh sách tài khoản khi ứng dụng khởi động
+        UserManager.getInstance().printAllUsers();
+
         switchToLogin();
         stage.setResizable(false);
 
@@ -77,6 +81,22 @@ public class ClientApp extends Application {
         primaryStage.setTitle("Hệ thống đấu giá - Trang chủ");
         primaryStage.setScene(scene);
         System.out.println("HomeMenu loaded successfully.");
+    }
+
+    /**
+     * Lấy người dùng hiện tại.
+     * @return người dùng hiện tại.
+     */
+    public static User getCurrentUser() {
+        return currentUser;
+    }
+
+    /**
+     * Thiết lập người dùng hiện tại.
+     * @param user người dùng mới.
+     */
+    public static void setCurrentUser(User user) {
+        currentUser = user;
     }
 
     /**

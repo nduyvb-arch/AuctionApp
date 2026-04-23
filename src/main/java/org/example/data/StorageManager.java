@@ -1,5 +1,10 @@
 package org.example.data;
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 public class StorageManager {
     /**
      * Hàm lưu mọi loại dữ liệu (Object) xuống ổ cứng
