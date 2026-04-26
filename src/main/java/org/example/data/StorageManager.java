@@ -12,10 +12,10 @@ public class StorageManager {
     public static boolean saveData(Object data, String filePath) {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filePath))) {
             oos.writeObject(data);
-            System.out.println("💾 Đã lưu dữ liệu an toàn vào: " + filePath);
+            System.out.println("Đã lưu dữ liệu an toàn vào: " + filePath);
             return true;
         } catch (IOException e) {
-            System.out.println("🔴 Lỗi khi lưu dữ liệu: " + e.getMessage());
+            System.out.println("Lỗi khi lưu dữ liệu: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -27,16 +27,16 @@ public class StorageManager {
         File file = new File(filePath);
         // Nếu Server vừa cài đặt, chưa có file dữ liệu cũ thì báo không tìm thấy
         if (!file.exists()) {
-            System.out.println("⚠️ Không tìm thấy file dữ liệu cũ. Sẽ khởi tạo hệ thống trắng...");
+            System.out.println("⚠Không tìm thấy file dữ liệu cũ. Sẽ khởi tạo hệ thống trắng...");
             return null;
         }
 
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filePath))) {
             Object data = ois.readObject();
-            System.out.println("📂 Đã khôi phục dữ liệu thành công từ: " + filePath);
+            System.out.println("Đã khôi phục dữ liệu thành công từ: " + filePath);
             return data;
         } catch (IOException | ClassNotFoundException e) {
-            System.out.println("🔴 Lỗi khi đọc file dữ liệu: " + e.getMessage());
+            System.out.println("Lỗi khi đọc file dữ liệu: " + e.getMessage());
             e.printStackTrace();
             return null;
         }

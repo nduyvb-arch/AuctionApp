@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AuctionManager {
-    private static final String DB_URL = "jdbc:h2:./auction_db";
+    private static final String DB_URL = "jdbc:sqlite:auction.db";
     private static volatile AuctionManager instance;
     private final List<Item> auctionItems;
     private Connection connection;
@@ -28,14 +28,11 @@ public class AuctionManager {
         auctionItems = new ArrayList<>();
         try {
             // Load H2 driver
-            Class.forName("org.h2.Driver");
             connection = DriverManager.getConnection(DB_URL);
             createTables();
             loadItemsFromDB();
         } catch (SQLException e) {
             System.err.println("❌ Lỗi kết nối database trong AuctionManager: " + e.getMessage());
-        } catch (ClassNotFoundException e) {
-            System.err.println("❌ Lỗi không tìm thấy driver H2: " + e.getMessage());
         }
     }
 
@@ -249,30 +246,24 @@ public class AuctionManager {
         return "✅ Đặt giá thành công! Bạn đang dẫn đầu với mức giá " + bidAmount + " cho sản phẩm " + targetItem.getItemName();
     }
 
-    public synchronized List<String> checkAndCloseExpiredAuctions
-    {
+    public synchronized List<String> checkAndCloseExpiredAuctions() {
         List<String> notifications = new ArrayList<>();
 
-        for (Item item : auctionItems)
-        {
-            if (item.getStatus() == AuctionStatus.ACTIVE && item.getEndTime() != null && LocalDateTime.now().isAfter(item.getEndTime()))
-            {
+        for (Item item : auctionItems) {
+            if (item.getStatus() == AuctionStatus.ACTIVE && item.getEndTime() != null && LocalDateTime.now().isAfter(item.getEndTime())) {
                 item.setStatus(AuctionStatus.CLOSED);
+                updateItemDB(item);
 
                 String msg;
 
-                if (item.getCurrentWinnerId() != null)
-                {
+                if (item.getCurrentWinnerId() != null) {
                     msg = "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] đã thuộc về " + item.getCurrentWinnerId() + " với giá " + item.getCurrentPrice();
-                }
-                else {
+                } else {
                     msg = "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] không có ai đặt giá";
                 }
-
                 notifications.add(msg);
             }
         }
-
         return notifications;
     }
 }

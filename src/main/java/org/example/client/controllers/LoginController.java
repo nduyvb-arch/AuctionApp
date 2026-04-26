@@ -58,17 +58,17 @@ public class LoginController implements Initializable {
         String password = passwordField.getText();
 
         if (username.isEmpty() || password.isEmpty()) {
-            showError("⚠️ Vui lòng nhập tên đăng nhập và mật khẩu");
+            showError("Vui lòng nhập tên đăng nhập và mật khẩu");
             return;
         }
 
         if (username.length() < 3) {
-            showError("⚠️ Tên đăng nhập phải có ít nhất 3 ký tự");
+            showError("Tên đăng nhập phải có ít nhất 3 ký tự");
             return;
         }
 
         if (password.length() < 6) {
-            showError("⚠️ Mật khẩu phải có ít nhất 6 ký tự");
+            showError("Mật khẩu phải có ít nhất 6 ký tự");
             return;
         }
 
@@ -76,7 +76,7 @@ public class LoginController implements Initializable {
         User user = UserManager.getInstance().login(username, password);
         if (user != null) {
             ClientApp.setCurrentUser(user);
-            System.out.println("✅ Đăng nhập thành công: " + username);
+            System.out.println("Đăng nhập thành công: " + username);
             try {
                 ClientApp.switchToHome();
             } catch (Exception e) {
