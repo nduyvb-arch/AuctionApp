@@ -1,40 +1,28 @@
 package org.example.manager;
 
-import org.example.model.user.Admin;
-import org.example.model.user.Bidder;
-import org.example.model.user.Seller;
-import org.example.model.user.User;
+import org.example.model.user.*;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 public class UserManager {
-    private static final String DB_URL = "jdbc:h2:./auction_db";
+    private static final String DB_URL = "jdbc:sqlite:auction.db";
     private static volatile UserManager instance;
     private List<User> users;
     private Connection connection;
 
     private UserManager() {
         try {
-            // Load H2 driver
-            Class.forName("org.h2.Driver");
             // Kết nối đến database
             connection = DriverManager.getConnection(DB_URL);
             createTables();
             loadUsersFromDB();
-            System.out.println("✅ Kết nối database thành công");
+            System.out.println("Kết nối database thành công");
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi kết nối database: " + e.getMessage());
+            System.err.println("Lỗi kết nối database: " + e.getMessage());
             e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            System.err.println("❌ Lỗi không tìm thấy driver H2: " + e.getMessage());
         }
     }
 
@@ -59,7 +47,7 @@ public class UserManager {
 
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(sql);
-            System.out.println("📊 Bảng users đã sẵn sàng");
+            System.out.println("Bảng users đã sẵn sàng");
         }
     }
 
@@ -96,9 +84,9 @@ public class UserManager {
                 }
                 users.add(user);
             }
-            System.out.println("📂 Đã tải " + users.size() + " tài khoản từ database");
+            System.out.println("Đã tải " + users.size() + " tài khoản từ database");
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi khi tải dữ liệu: " + e.getMessage());
+            System.err.println("Lỗi khi tải dữ liệu: " + e.getMessage());
         }
     }
 
@@ -108,15 +96,15 @@ public class UserManager {
     public synchronized String createAccount(String username, String password, String role) {
         // Kiểm tra username đã tồn tại
         if (isUsernameExists(username)) {
-            return "❌ Tên đăng nhập đã tồn tại";
+            return "Tên đăng nhập đã tồn tại";
         }
 
         // Validate input
         if (username.length() < 3) {
-            return "❌ Tên đăng nhập phải có ít nhất 3 ký tự";
+            return "Tên đăng nhập phải có ít nhất 3 ký tự";
         }
         if (password.length() < 6) {
-            return "❌ Mật khẩu phải có ít nhất 6 ký tự";
+            return "Mật khẩu phải có ít nhất 6 ký tự";
         }
 
         // Tạo ID duy nhất
@@ -146,13 +134,13 @@ public class UserManager {
                     newUser = new Admin(id, username, password);
                     break;
                 default:
-                    return "❌ Loại tài khoản không hợp lệ";
+                    return "Loại tài khoản không hợp lệ";
             }
             users.add(newUser);
-            System.out.println("✅ Đã tạo tài khoản: " + username + " (" + role + ") và lưu vào database");
+            System.out.println("Đã tạo tài khoản: " + username + " (" + role + ") và lưu vào database");
             return "✅ Tạo tài khoản thành công!";
         } catch (SQLException e) {
-            return "❌ Lỗi khi lưu dữ liệu: " + e.getMessage();
+            return "Lỗi khi lưu dữ liệu: " + e.getMessage();
         }
     }
 
@@ -186,12 +174,12 @@ public class UserManager {
                         default:
                             return null;
                     }
-                    System.out.println("✅ Đăng nhập thành công: " + username);
+                    System.out.println("Đăng nhập thành công: " + username);
                     return user;
                 }
             }
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi khi đăng nhập: " + e.getMessage());
+            System.err.println("Lỗi khi đăng nhập: " + e.getMessage());
         }
         return null;
     }
@@ -208,7 +196,7 @@ public class UserManager {
                 return rs.next();
             }
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi khi kiểm tra username: " + e.getMessage());
+            System.err.println("Lỗi khi kiểm tra username: " + e.getMessage());
         }
         return false;
     }
@@ -248,7 +236,7 @@ public class UserManager {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi khi tìm user: " + e.getMessage());
+            System.err.println("Lỗi khi tìm user: " + e.getMessage());
         }
         return null;
     }
@@ -276,35 +264,15 @@ public class UserManager {
             for (int i = 0; i < users.size(); i++) {
                 if (users.get(i).getId().equals(updatedUser.getId())) {
                     users.set(i, updatedUser);
-                    System.out.println("✅ Cập nhật user: " + updatedUser.getUsername());
+                    System.out.println("Cập nhật user: " + updatedUser.getUsername());
                     return true;
                 }
             }
             return true;
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi khi cập nhật user: " + e.getMessage());
+            System.err.println("Lỗi khi cập nhật user: " + e.getMessage());
             return false;
         }
-    }
-
-    /**
-     * Hiển thị toàn bộ tài khoản trong database
-     */
-    public void printAllUsers() {
-        System.out.println("\n========== DANH SÁCH TÀI KHOẢN ==========");
-        if (users.isEmpty()) {
-            System.out.println("❌ Không có tài khoản nào trong database\n");
-            return;
-        }
-
-        System.out.println("✅ Tổng cộng: " + users.size() + " tài khoản\n");
-        for (int i = 0; i < users.size(); i++) {
-            User user = users.get(i);
-            System.out.println((i + 1) + ". Username: " + user.getUsername() +
-                    " | Role: " + user.getRole() +
-                    " | ID: " + user.getId());
-        }
-        System.out.println("========================================\n");
     }
 
     /**
@@ -317,7 +285,7 @@ public class UserManager {
                 System.out.println("✅ Đóng kết nối database");
             }
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi khi đóng kết nối: " + e.getMessage());
+            System.err.println("Lỗi khi đóng kết nối: " + e.getMessage());
         }
     }
 }

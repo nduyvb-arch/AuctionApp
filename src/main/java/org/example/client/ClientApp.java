@@ -29,7 +29,7 @@ public class ClientApp extends Application {
         primaryStage = stage;
 
         // Hiển thị danh sách tài khoản khi ứng dụng khởi động
-        UserManager.getInstance().printAllUsers();
+        //UserManager.getInstance().printAllUsers();
 
         switchToLogin();
         stage.setResizable(false);
