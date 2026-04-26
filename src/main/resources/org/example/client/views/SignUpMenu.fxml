@@ -11,7 +11,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="700.0" prefWidth="1000.0" style="-fx-background-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.SignUpController">
+<AnchorPane prefHeight="700.0" prefWidth="1000.0" style="-fx-background-color: linear-gradient(to bottom right, #667eea 0%, #764ba2 100%);" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.SignUpController">
    <children>
       <VBox layoutX="0.0" layoutY="0.0" prefHeight="700.0" prefWidth="400.0" spacing="30.0" alignment="CENTER" style="-fx-padding: 40;">
          <Label text="🔨" textFill="white">
