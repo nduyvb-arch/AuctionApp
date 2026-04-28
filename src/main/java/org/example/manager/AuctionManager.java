@@ -19,7 +19,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AuctionManager {
-    private static final String DB_URL = "jdbc:sqlite:auction.db";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/auction_db";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "duyananhluong";
     private static volatile AuctionManager instance;
     private final List<Item> auctionItems;
     private Connection connection;
@@ -27,12 +29,11 @@ public class AuctionManager {
     private AuctionManager() {
         auctionItems = new ArrayList<>();
         try {
-            // Load H2 driver
-            connection = DriverManager.getConnection(DB_URL);
+            connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
             createTables();
             loadItemsFromDB();
         } catch (SQLException e) {
-            System.err.println("Lỗi kết nối database trong AuctionManager: " + e.getMessage());
+            System.err.println("Lỗi kết nối database: " + e.getMessage());
         }
     }
 
