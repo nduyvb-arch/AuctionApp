@@ -138,7 +138,7 @@ public class UserManager {
             }
             users.add(newUser);
             System.out.println("Đã tạo tài khoản: " + username + " (" + role + ") và lưu vào database");
-            return "✅ Tạo tài khoản thành công!";
+            return "Tạo tài khoản thành công!";
         } catch (SQLException e) {
             return "Lỗi khi lưu dữ liệu: " + e.getMessage();
         }
@@ -282,7 +282,7 @@ public class UserManager {
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
-                System.out.println("✅ Đóng kết nối database");
+                System.out.println("Đóng kết nối database");
             }
         } catch (SQLException e) {
             System.err.println("Lỗi khi đóng kết nối: " + e.getMessage());

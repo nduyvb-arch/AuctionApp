@@ -32,7 +32,7 @@ public class AuctionManager {
             createTables();
             loadItemsFromDB();
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi kết nối database trong AuctionManager: " + e.getMessage());
+            System.err.println("Lỗi kết nối database trong AuctionManager: " + e.getMessage());
         }
     }
 
@@ -111,9 +111,9 @@ public class AuctionManager {
 
                 auctionItems.add(item);
             }
-            System.out.println("📂 Đã tải " + auctionItems.size() + " vật phẩm từ database");
+            System.out.println("Đã tải " + auctionItems.size() + " vật phẩm từ database");
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi khi tải item: " + e.getMessage());
+            System.err.println("Lỗi khi tải item: " + e.getMessage());
         }
     }
 
@@ -137,9 +137,9 @@ public class AuctionManager {
             pstmt.setDouble(7, item.getCurrentPrice());
             pstmt.setString(8, item.getStatus().name());
             pstmt.executeUpdate();
-            System.out.println("✅ Đã thêm sản phẩm " + item.getItemName() + " vào DB.");
+            System.out.println("Đã thêm sản phẩm " + item.getItemName() + " vào DB.");
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi lưu item vào DB: " + e.getMessage());
+            System.err.println("Lỗi lưu item vào DB: " + e.getMessage());
         }
     }
 
@@ -160,7 +160,7 @@ public class AuctionManager {
             pstmt.setString(5, item.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi cập nhật item vào DB: " + e.getMessage());
+            System.err.println("Lỗi cập nhật item vào DB: " + e.getMessage());
         }
     }
 
@@ -173,10 +173,10 @@ public class AuctionManager {
                 .findFirst().orElse(null);
 
         if (targetItem == null) {
-            return "❌ Lỗi: Sản phẩm không tồn tại.";
+            return "Lỗi: Sản phẩm không tồn tại.";
         }
         if (targetItem.getStatus() != AuctionStatus.PENDING) {
-            return "❌ Lỗi: Sản phẩm đang mở ở phiên khác hoặc đã đóng.";
+            return "Lỗi: Sản phẩm đang mở ở phiên khác hoặc đã đóng.";
         }
 
         targetItem.setStatus(AuctionStatus.ACTIVE);
@@ -185,7 +185,7 @@ public class AuctionManager {
         // Cập nhật lên Database
         updateItemDB(targetItem);
 
-        return "✅ Đã bắt đầu phiên đấu giá cho: " + targetItem.getItemName() + ". Thời gian: " + durationInMinutes + " phút.";
+        return "Đã bắt đầu phiên đấu giá cho: " + targetItem.getItemName() + ". Thời gian: " + durationInMinutes + " phút.";
     }
 
     /**
@@ -197,17 +197,17 @@ public class AuctionManager {
                 .findFirst().orElse(null);
 
         if (targetItem == null) {
-            return "❌ Lỗi: Sản phẩm cần tìm không tồn tại.";
+            return "Lỗi: Sản phẩm cần tìm không tồn tại.";
         }
         if (targetItem.getStatus() != AuctionStatus.ACTIVE) {
-            return "❌ Lỗi: Phiên đấu giá chưa bắt đầu hoặc đã kết thúc.";
+            return "Lỗi: Phiên đấu giá chưa bắt đầu hoặc đã kết thúc.";
         }
 
         if (targetItem.getEndTime() != null && LocalDateTime.now().isAfter(targetItem.getEndTime())) {
             // SỬA Ở ĐÂY: Đổi COMPLETED thành ENDED (hoặc trạng thái tương ứng có sẵn trong file AuctionStatus của bạn).
             targetItem.setStatus(AuctionStatus.CLOSED);
             updateItemDB(targetItem);
-            return "❌ Lỗi: Phiên đấu giá đã kết thúc.";
+            return "Lỗi: Phiên đấu giá đã kết thúc.";
         }
 
         // TÌM NGƯỜI DÙNG & KIỂM TRA SỐ DƯ (BALANCE)
@@ -216,12 +216,12 @@ public class AuctionManager {
                 .findFirst().orElse(null);
 
         if (bidder == null || !(bidder instanceof Bidder)) {
-            return "❌ Lỗi: Không tìm thấy tài khoản người đấu giá hợp lệ.";
+            return "Lỗi: Không tìm thấy tài khoản người đấu giá hợp lệ.";
         }
 
         double userBalance = ((Bidder) bidder).getBalance();
         if (userBalance < bidAmount) {
-            return "❌ Lỗi: Số dư của bạn (" + userBalance + ") không đủ để đặt mức giá này.";
+            return "Lỗi: Số dư của bạn (" + userBalance + ") không đủ để đặt mức giá này.";
         }
 
         // Kiểm tra xem đã có ai đặt giá chưa
@@ -233,7 +233,7 @@ public class AuctionManager {
         }
 
         if (bidAmount < minRequiredBid) {
-            return "❌ Lỗi: Giá thấp nhất có thể đặt hiện tại là: " + minRequiredBid;
+            return "Lỗi: Giá thấp nhất có thể đặt hiện tại là: " + minRequiredBid;
         }
 
         // Cập nhật phiên đấu giá nếu hợp lệ
@@ -243,7 +243,7 @@ public class AuctionManager {
         // Lưu vào DB
         updateItemDB(targetItem);
 
-        return "✅ Đặt giá thành công! Bạn đang dẫn đầu với mức giá " + bidAmount + " cho sản phẩm " + targetItem.getItemName();
+        return "Đặt giá thành công! Bạn đang dẫn đầu với mức giá " + bidAmount + " cho sản phẩm " + targetItem.getItemName();
     }
 
     public synchronized List<String> checkAndCloseExpiredAuctions() {
