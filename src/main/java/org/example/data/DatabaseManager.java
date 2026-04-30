@@ -39,11 +39,12 @@ public class DatabaseManager {
     private static void autoCreateTables() {
         try (Statement stmt = connection.createStatement()) {
 
-            // 1. Bảng Users (Đã nâng cấp thêm Ví tiền)
+            // 1. Bảng Users (Đã nâng cấp thêm Ví tiền và Role)
             String sqlUsers = "CREATE TABLE IF NOT EXISTS users ("
                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
                     + "username VARCHAR(50) NOT NULL UNIQUE, "
                     + "password VARCHAR(255) NOT NULL, "
+                    + "role VARCHAR(50) NOT NULL DEFAULT 'bidder', " // Thêm cột role với giá trị mặc định
                     + "balance DECIMAL(15,2) DEFAULT 0.00" // Tiền nạp vào ví
                     + ")";
             stmt.execute(sqlUsers);
