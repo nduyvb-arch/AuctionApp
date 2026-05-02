@@ -28,38 +28,16 @@ public abstract class User extends Entity {
         this.password = password;
     }
 
-    /**
-     * Lấy tên đăng nhập của người dùng.
-     *
-     * @return Tên đăng nhập hiện tại.
-     */
     public final String getUsername() {
         return username;
     }
-
-    /**
-     * Cập nhật tên đăng nhập cho người dùng.
-     *
-     * @param username Tên đăng nhập mới.
-     */
     public final void setUsername(final String username) {
         this.username = username;
     }
 
-    /**
-     * Lấy mật khẩu của người dùng.
-     *
-     * @return Mật khẩu hiện tại.
-     */
     public final String getPassword() {
         return password;
     }
-
-    /**
-     * Cập nhật mật khẩu cho người dùng.
-     *
-     * @param password Mật khẩu mới.
-     */
     public final void setPassword(final String password) {
         this.password = password;
     }

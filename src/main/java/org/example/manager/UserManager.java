@@ -37,7 +37,6 @@ public class UserManager {
                 String id = rs.getString("id");
                 String username = rs.getString("username");
                 String password = rs.getString("password");
-                // Giả sử bảng users có cột 'role', nếu không bạn cần điều chỉnh
                 String role = rs.getString("role");
                 double balance = rs.getDouble("balance");
 

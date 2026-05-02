@@ -26,9 +26,6 @@ public class ClientHandler implements Runnable, Observer {
             out = new ObjectOutputStream(clientSocket.getOutputStream());
             in = new ObjectInputStream(clientSocket.getInputStream());
 
-            // Gửi lời chào khi Client vừa vào
-            out.writeObject(new Message("INFO", "Chào mừng bạn đã kết nối vào sàn đấu giá Hệ Thống Mới!"));
-
             Message inputMessage;
             // Liên tục đón lõng các gói hàng Message từ Client gửi lên
             while ((inputMessage = (Message) in.readObject()) != null) {
