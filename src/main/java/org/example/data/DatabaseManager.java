@@ -1,17 +1,48 @@
 package org.example.data;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
 
 public class DatabaseManager {
 
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/auction_db?useSSL=false&serverTimezone=UTC";
-    private static final String USER = "root";
-    private static final String PASSWORD = "duyananhluong";
+    // Khai báo biến, nhưng KHÔNG điền giá trị trực tiếp ở đây nữa
+    private static String DB_URL;
+    private static String USER;
+    private static String PASSWORD;
 
     private static Connection connection;
+
+    // Khối code này tự động cào dữ liệu từ file .env khi Server khởi động
+    static {
+        Map<String, String> env = new HashMap<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(".env"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                // Bỏ qua dòng trống hoặc comment
+                if (line.trim().isEmpty() || line.startsWith("#")) continue;
+
+                String[] parts = line.split("=", 2);
+                if (parts.length == 2) {
+                    env.put(parts[0].trim(), parts[1].trim());
+                }
+            }
+
+            // Lấy dữ liệu gán vào biến
+            DB_URL = env.get("DB_URL");
+            USER = env.get("DB_USER");
+            PASSWORD = env.get("DB_PASSWORD");
+
+        } catch (Exception e) {
+            System.err.println("Báo động: Không tìm thấy hoặc đọc lỗi file .env! Đảm bảo bạn đã tạo file .env ở thư mục gốc.");
+            e.printStackTrace();
+        }
+    }
 
     public static Connection getConnection() throws SQLException {
         if (connection == null || connection.isClosed()) {
@@ -19,9 +50,11 @@ public class DatabaseManager {
                 // Tải driver của MySQL
                 Class.forName("com.mysql.cj.jdbc.Driver");
 
-                // Mở kết nối với đầy đủ User/Password
+                // Mở kết nối với dữ liệu đã đọc từ file .env
                 connection = DriverManager.getConnection(DB_URL, USER, PASSWORD);
                 System.out.println("Kết nối MySQL thành công: " + DB_URL);
+
+                // Tự động dựng bảng nếu chưa có
                 autoCreateTables();
 
             } catch (ClassNotFoundException e) {
@@ -35,7 +68,7 @@ public class DatabaseManager {
         return connection;
     }
 
-    // Hàm tự động dựng bộ khung Database Đấu Giá
+    // Hàm tự động dựng bộ khung Database Đấu Giá (Giữ nguyên của sếp)
     private static void autoCreateTables() {
         try (Statement stmt = connection.createStatement()) {
 
@@ -44,8 +77,8 @@ public class DatabaseManager {
                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
                     + "username VARCHAR(50) NOT NULL UNIQUE, "
                     + "password VARCHAR(255) NOT NULL, "
-                    + "role VARCHAR(50) NOT NULL DEFAULT 'bidder', " // Thêm cột role với giá trị mặc định
-                    + "balance DECIMAL(15,2) DEFAULT 0.00" // Tiền nạp vào ví
+                    + "role VARCHAR(50) NOT NULL DEFAULT 'bidder', "
+                    + "balance DECIMAL(15,2) DEFAULT 0.00"
                     + ")";
             stmt.execute(sqlUsers);
 
@@ -58,7 +91,7 @@ public class DatabaseManager {
                     + "current_price DECIMAL(15,2) NOT NULL, "
                     + "seller_id INT, "
                     + "end_time DATETIME, "
-                    + "FOREIGN KEY (seller_id) REFERENCES users(id)" // Trỏ về người bán
+                    + "FOREIGN KEY (seller_id) REFERENCES users(id)"
                     + ")";
             stmt.execute(sqlItems);
 
@@ -69,8 +102,8 @@ public class DatabaseManager {
                     + "user_id INT, "
                     + "bid_amount DECIMAL(15,2) NOT NULL, "
                     + "bid_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
-                    + "FOREIGN KEY (item_id) REFERENCES items(id), " // Trỏ về món đồ
-                    + "FOREIGN KEY (user_id) REFERENCES users(id)"   // Trỏ về người mua
+                    + "FOREIGN KEY (item_id) REFERENCES items(id), "
+                    + "FOREIGN KEY (user_id) REFERENCES users(id)"
                     + ")";
             stmt.execute(sqlBids);
 
