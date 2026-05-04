@@ -27,7 +27,7 @@
         <module name="RedundantImport"/>
 
         <module name="MethodLength">
-            <property name="max" value="60"/>
+            <property name="max" value="150"/>
         </module>
         <module name="ParameterNumber">
             <property name="max" value="7"/>

@@ -1,18 +1,15 @@
 package org.example.client.controllers;
 
+import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import javafx.animation.PauseTransition;
 import javafx.util.Duration;
 import org.example.client.ClientApp;
-import org.example.manager.UserManager;
-//import org.example.network.Message;
-import javafx.application.Platform;
-import javafx.scene.control.Alert;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -43,9 +40,9 @@ public class SignUpController implements Initializable {
         String confirmPassword = confirmPasswordField.getText();
         String role = "bidder";
 
-        // 1. Dàn code Validate cực xịn của sếp (Giữ nguyên)
+        // 1. Code validate (giữ nguyên)
         if (username.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
-            showError("⚠Vui lòng điền đầy đủ thông tin");
+            showError("Vui lòng điền đầy đủ thông tin");
             return;
         }
         if (username.length() < 3) {
@@ -61,17 +58,17 @@ public class SignUpController implements Initializable {
             return;
         }
 
-        // 2. Tạm thời vô hiệu hóa nút bấm và báo đang xử lý để tránh spam click
+        // 2. Tạm thời vô hiệu hóa nút và hiển thị đang xử lý để tránh spam click
         errorLabel.setStyle("-fx-text-fill: #1976d2; -fx-font-size: 12;");
         errorLabel.setText("Đang kết nối đến máy chủ...");
 
-        // 3. Mở luồng chạy ngầm gửi dữ liệu qua Socket
+        // 3. Mở luồng nền gửi dữ liệu qua Socket
         new Thread(() -> {
             try (java.net.Socket socket = new java.net.Socket("localhost", 8080);
                  java.io.ObjectOutputStream out = new java.io.ObjectOutputStream(socket.getOutputStream());
                  java.io.ObjectInputStream in = new java.io.ObjectInputStream(socket.getInputStream())) {
 
-                // (Tùy chọn) Đọc tin nhắn chào mừng từ Server nếu sếp có cài đặt
+                // (Tùy chọn) Đọc tin nhắn chào mừng từ Server nếu có cài đặt
                 // org.example.shared.Message welcomeMsg = (org.example.shared.Message) in.readObject();
 
                 // Đóng gói dữ liệu gửi đi
@@ -81,16 +78,16 @@ public class SignUpController implements Initializable {
                 out.writeObject(regMsg);
                 out.flush();
 
-                // Chờ Server (ClientHandler) trả lời
+                // Chờ phản hồi từ Server (ClientHandler)
                 org.example.network.Message responseMsg = (org.example.network.Message) in.readObject();
 
-                // Cập nhật Giao Diện (Bắt buộc phải dùng Platform.runLater)
+                // Cập nhật giao diện (phải dùng Platform.runLater)
                 Platform.runLater(() -> {
                     if ("REGISTER_RESPONSE".equals(responseMsg.getAction())) {
                         String result = (String) responseMsg.getPayload();
 
                         if (result.contains("thành công") || result.startsWith("✅")) {
-                            // Gọi lại dàn code báo thành công và chuyển trang của sếp
+                            // Gọi code thông báo thành công và chuyển trang
                             Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
                             successAlert.setTitle("Thành công");
                             successAlert.setHeaderText("Tài khoản đã tạo thành công!");
@@ -109,7 +106,7 @@ public class SignUpController implements Initializable {
                             });
                             pause.play();
                         } else {
-                            // Server báo lỗi (VD: Trùng username)
+                            // Server báo lỗi (VD: trùng username)
                             showError("Lỗi: " + result);
                         }
                     }

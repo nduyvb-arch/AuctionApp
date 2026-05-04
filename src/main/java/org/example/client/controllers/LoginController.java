@@ -83,7 +83,7 @@ public class LoginController implements Initializable {
                 System.err.println("Error switching to home: " + e.getMessage());
             }
         } else {
-            showError("❌ Tên đăng nhập hoặc mật khẩu không đúng");
+            showError(" Tên đăng nhập hoặc mật khẩu không đúng");
         }
     }
 

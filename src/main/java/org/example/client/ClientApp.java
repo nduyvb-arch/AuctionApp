@@ -39,7 +39,7 @@ public class ClientApp extends Application {
         // Đóng kết nối database khi đóng ứng dụng
         stage.setOnCloseRequest(event -> {
             UserManager.getInstance().closeConnection();
-            System.out.println("✅ Ứng dụng đóng lại");
+            System.out.println("Ứng dụng đóng lại");
         });
 
         stage.show();

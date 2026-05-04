@@ -24,7 +24,7 @@ public class ItemDAO {
                 pstmt.setString(3, item.getId());
 
                 pstmt.executeUpdate();
-                System.out.println("💾 [Database] Đã cập nhật giá mới cho sản phẩm: " + item.getId());
+                System.out.println("[Database] Đã cập nhật giá mới cho sản phẩm: " + item.getId());
             }
         } catch (SQLException e) {
             System.out.println("[Database] Lỗi khi cập nhật giá: " + e.getMessage());

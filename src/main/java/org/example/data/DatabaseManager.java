@@ -25,7 +25,9 @@ public class DatabaseManager {
             String line;
             while ((line = br.readLine()) != null) {
                 // Bỏ qua dòng trống hoặc comment
-                if (line.trim().isEmpty() || line.startsWith("#")) continue;
+                if (line.trim().isEmpty() || line.startsWith("#")) {
+                    continue;
+                }
 
                 String[] parts = line.split("=", 2);
                 if (parts.length == 2) {
