@@ -95,7 +95,6 @@ public class LoginController implements Initializable {
             System.out.println("Switched to sign up menu successfully.");
         } catch (Exception e) {
             System.err.println("Error switching to sign up: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 

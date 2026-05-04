@@ -92,7 +92,7 @@ public class SignUpController implements Initializable {
                             successAlert.setTitle("Thành công");
                             successAlert.setHeaderText("Tài khoản đã tạo thành công!");
                             successAlert.setContentText("Chào mừng " + username + "!\nBạn sẽ được chuyển đến trang đăng nhập...");
-                            successAlert.showAndWait();
+                            successAlert.show();
 
                             showSuccess(result);
 
@@ -101,7 +101,7 @@ public class SignUpController implements Initializable {
                                 try {
                                     ClientApp.switchToLogin();
                                 } catch (Exception e) {
-                                    e.printStackTrace();
+                                    System.err.println("Lỗi khi chuyển sang màn hình đăng nhập: " + e.getMessage());
                                 }
                             });
                             pause.play();
@@ -114,7 +114,6 @@ public class SignUpController implements Initializable {
 
             } catch (Exception e) {
                 Platform.runLater(() -> showError("Lỗi: Không thể kết nối đến máy chủ!"));
-                e.printStackTrace();
             }
         }).start();
     }

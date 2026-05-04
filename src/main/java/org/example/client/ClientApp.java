@@ -28,7 +28,7 @@ public class ClientApp extends Application {
     public void start(final Stage stage) throws Exception {
         primaryStage = stage;
 
-        Image icon = new Image(getClass().getResourceAsStream("/images/logo.png"));
+        Image icon = new Image(java.util.Objects.requireNonNull(getClass().getResourceAsStream("/images/logo.png")));
         primaryStage.getIcons().add(icon);
         // Hiển thị danh sách tài khoản khi ứng dụng khởi động
         //UserManager.getInstance().printAllUsers();
@@ -38,7 +38,11 @@ public class ClientApp extends Application {
 
         // Đóng kết nối database khi đóng ứng dụng
         stage.setOnCloseRequest(event -> {
-            UserManager.getInstance().closeConnection();
+            try {
+                UserManager.getInstance().closeConnection();
+            } catch (Exception e) {
+                System.err.println("Lỗi khi đóng kết nối: " + e.getMessage());
+            }
             System.out.println("Ứng dụng đóng lại");
         });
 
