@@ -27,7 +27,6 @@ public class AuctionServer {
             }
         } catch (IOException e) {
             System.out.println("Lỗi khi khởi động Server: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 }

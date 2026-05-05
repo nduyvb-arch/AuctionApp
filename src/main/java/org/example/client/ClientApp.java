@@ -41,7 +41,7 @@ public class ClientApp extends Application {
     public void start(final Stage stage) throws Exception {
         primaryStage = stage;
 
-        // --- Thiết lập kết nối mạng ---
+        // --- Thiết lập kết nối mạng và bắt buộc thoát nếu thất bại ---
         try {
             System.out.println("Đang kết nối tới server tại " + SERVER_ADDRESS + ":" + SERVER_PORT + "...");
             socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
@@ -49,7 +49,6 @@ public class ClientApp extends Application {
             inputStream = new ObjectInputStream(socket.getInputStream());
             System.out.println("Kết nối server thành công!");
         } catch (Exception e) {
-            // SỬA LỖI LOGIC: Nếu không kết nối được, phải báo lỗi và thoát
             System.err.println("Không thể kết nối tới server: " + e.getMessage());
             showConnectionErrorAndExit(e.getMessage());
             return; // Dừng thực thi phương thức start
@@ -75,6 +74,7 @@ public class ClientApp extends Application {
      * @param message Nội dung lỗi.
      */
     private void showConnectionErrorAndExit(String message) {
+        // Đảm bảo rằng mã giao diện được chạy trên luồng JavaFX
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Lỗi Kết Nối");
@@ -98,11 +98,6 @@ public class ClientApp extends Application {
     private static void closeConnection() {
         try {
             if (socket != null && !socket.isClosed()) {
-                // Tùy chọn: Gửi một tin nhắn báo ngắt kết nối cho server
-                // if (outputStream != null) {
-                //     outputStream.writeObject(new Message("DISCONNECT", "Client is closing."));
-                //     outputStream.flush();
-                // }
                 if (outputStream != null) outputStream.close();
                 if (inputStream != null) inputStream.close();
                 socket.close();

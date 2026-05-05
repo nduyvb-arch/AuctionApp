@@ -7,7 +7,6 @@ import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 public class UserManager {
 
@@ -64,9 +63,15 @@ public class UserManager {
     }
 
     public synchronized String createAccount(String username, String password, String role) {
-        if (isUsernameExists(username)) return "Tên đăng nhập đã tồn tại";
-        if (username.length() < 3) return "Tên đăng nhập phải có ít nhất 3 ký tự";
-        if (password.length() < 6) return "Mật khẩu phải có ít nhất 6 ký tự";
+        if (isUsernameExists(username)) {
+            return "Tên đăng nhập đã tồn tại";
+        }
+        if (username.length() < 3) {
+            return "Tên đăng nhập phải có ít nhất 3 ký tự";
+        }
+        if (password.length() < 6) {
+            return "Mật khẩu phải có ít nhất 6 ký tự";
+        }
 
         String hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray());
         String sql = "INSERT INTO users (username, password, role, balance) VALUES (?, ?, ?, ?)";
