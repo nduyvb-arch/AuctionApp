@@ -7,7 +7,7 @@ import org.example.model.item.Electronic;
 import org.example.model.item.Vehicle;
 import org.example.model.user.Bidder;
 import org.example.model.user.User;
-import org.example.data.DatabaseManager; // IMPORT class kết nối của sếp vào đây
+import org.example.data.DatabaseManager;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -59,7 +59,7 @@ public class AuctionManager {
                 String statusStr = rs.getString("status");
                 String endTimeStr = rs.getString("end_time");
 
-                // LƯU Ý: Vì Item là Abstract Class, bạn cần khởi tạo các lớp con cụ thể ở đây
+
                 Item item;
                 switch (type.toLowerCase()) {
                     case "art":
