@@ -2,14 +2,18 @@ package org.example.client.controllers;
 
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.util.Duration;
 import org.example.client.ClientApp;
+import org.example.network.Message;
+import java.io.IOException;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -28,6 +32,9 @@ public class SignUpController implements Initializable {
     @FXML
     private Label errorLabel;
 
+    @FXML
+    private Button signUpButton;
+
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         errorLabel.setText("");
@@ -40,7 +47,7 @@ public class SignUpController implements Initializable {
         String confirmPassword = confirmPasswordField.getText();
         String role = "bidder";
 
-        // 1. Code validate (giữ nguyên)
+        // 1. Kiểm tra dữ liệu đầu vào
         if (username.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
             showError("Vui lòng điền đầy đủ thông tin");
             return;
@@ -58,64 +65,71 @@ public class SignUpController implements Initializable {
             return;
         }
 
-        // 2. Tạm thời vô hiệu hóa nút và hiển thị đang xử lý để tránh spam click
-        errorLabel.setStyle("-fx-text-fill: #1976d2; -fx-font-size: 12;");
-        errorLabel.setText("Đang kết nối đến máy chủ...");
+        // 2. Vô hiệu hóa nút và hiển thị trạng thái chờ
+        signUpButton.setDisable(true);
+        signUpButton.setText("Đang xử lý...");
 
-        // 3. Mở luồng nền gửi dữ liệu qua Socket
-        new Thread(() -> {
-            try (java.net.Socket socket = new java.net.Socket("localhost", 8080);
-                 java.io.ObjectOutputStream out = new java.io.ObjectOutputStream(socket.getOutputStream());
-                 java.io.ObjectInputStream in = new java.io.ObjectInputStream(socket.getInputStream())) {
+        // 3. Sử dụng Task để gửi yêu cầu đăng ký trên luồng nền
+        Task<String> signUpTask = new Task<>() {
+            @Override
+            protected String call() throws Exception {
+                // Lấy stream đã được thiết lập sẵn từ ClientApp
+                var out = ClientApp.getOutputStream();
+                var in = ClientApp.getInputStream();
 
-                // (Tùy chọn) Đọc tin nhắn chào mừng từ Server nếu có cài đặt
-                // org.example.shared.Message welcomeMsg = (org.example.shared.Message) in.readObject();
-
-                // Đóng gói dữ liệu gửi đi
+                // Đóng gói dữ liệu và gửi yêu cầu đến server
                 String[] regData = {username, password, role};
-                org.example.network.Message regMsg = new org.example.network.Message("REGISTER", regData);
-
+                Message regMsg = new Message("REGISTER", regData);
                 out.writeObject(regMsg);
                 out.flush();
 
-                // Chờ phản hồi từ Server (ClientHandler)
-                org.example.network.Message responseMsg = (org.example.network.Message) in.readObject();
+                // Chờ và đọc phản hồi từ server
+                Message responseMsg = (Message) in.readObject();
 
-                // Cập nhật giao diện (phải dùng Platform.runLater)
-                Platform.runLater(() -> {
-                    if ("REGISTER_RESPONSE".equals(responseMsg.getAction())) {
-                        String result = (String) responseMsg.getPayload();
+                if (responseMsg != null && "REGISTER_RESPONSE".equals(responseMsg.getAction())) {
+                    return (String) responseMsg.getPayload();
+                } else {
+                    throw new IOException("Phản hồi từ server không hợp lệ.");
+                }
+            }
+        };
 
-                        if (result.contains("thành công") || result.startsWith("✅")) {
-                            // Gọi code thông báo thành công và chuyển trang
-                            Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
-                            successAlert.setTitle("Thành công");
-                            successAlert.setHeaderText("Tài khoản đã tạo thành công!");
-                            successAlert.setContentText("Chào mừng " + username + "!\nBạn sẽ được chuyển đến trang đăng nhập...");
-                            successAlert.show();
+        // Xử lý khi Task thành công
+        signUpTask.setOnSucceeded(event -> {
+            String result = signUpTask.getValue();
+            if (result.contains("thành công")) {
+                Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                successAlert.setTitle("Thành công");
+                successAlert.setHeaderText("Tài khoản đã tạo thành công!");
+                successAlert.setContentText("Chào mừng " + username + "!\nBạn sẽ được chuyển đến trang đăng nhập...");
+                successAlert.show();
 
-                            showSuccess(result);
-
-                            PauseTransition pause = new PauseTransition(Duration.seconds(1));
-                            pause.setOnFinished(event -> {
-                                try {
-                                    ClientApp.switchToLogin();
-                                } catch (Exception e) {
-                                    System.err.println("Lỗi khi chuyển sang màn hình đăng nhập: " + e.getMessage());
-                                }
-                            });
-                            pause.play();
-                        } else {
-                            // Server báo lỗi (VD: trùng username)
-                            showError("Lỗi: " + result);
-                        }
+                PauseTransition pause = new PauseTransition(Duration.seconds(1));
+                pause.setOnFinished(e -> {
+                    try {
+                        ClientApp.switchToLogin();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
                     }
                 });
-
-            } catch (Exception e) {
-                Platform.runLater(() -> showError("Lỗi: Không thể kết nối đến máy chủ!"));
+                pause.play();
+            } else {
+                showError(result); // Hiển thị lỗi từ server (VD: Tên đăng nhập đã tồn tại)
+                signUpButton.setDisable(false);
+                signUpButton.setText("Đăng Ký");
             }
-        }).start();
+        });
+
+        // Xử lý khi Task thất bại
+        signUpTask.setOnFailed(event -> {
+            Throwable exception = signUpTask.getException();
+            showError("Lỗi: " + exception.getMessage());
+            signUpButton.setDisable(false);
+            signUpButton.setText("Đăng Ký");
+        });
+
+        // Bắt đầu chạy Task
+        new Thread(signUpTask).start();
     }
 
     @FXML
@@ -130,15 +144,8 @@ public class SignUpController implements Initializable {
     private void showError(String message) {
         errorLabel.setText(message);
         errorLabel.setStyle("-fx-text-fill: #d32f2f; -fx-font-size: 12;");
-
-        // Tự động xóa thông báo lỗi sau 5 giây
         PauseTransition pause = new PauseTransition(Duration.seconds(5));
         pause.setOnFinished(event -> errorLabel.setText(""));
         pause.play();
-    }
-
-    private void showSuccess(String message) {
-        errorLabel.setText(message);
-        errorLabel.setStyle("-fx-text-fill: #4caf50; -fx-font-size: 12;");
     }
 }
