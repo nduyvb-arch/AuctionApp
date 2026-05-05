@@ -87,11 +87,16 @@ public class DatabaseManager {
                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
                     + "name VARCHAR(100) NOT NULL, "
                     + "description TEXT, "
+                    + "type VARCHAR(50), " // Thêm cột loại sản phẩm
                     + "start_price DECIMAL(15,2) NOT NULL, "
+                    + "bid_increment DECIMAL(15,2) NOT NULL, " // Thêm cột bước giá
                     + "current_price DECIMAL(15,2) NOT NULL, "
                     + "seller_id INT, "
+                    + "current_winner_id INT, " // Thêm cột người thắng hiện tại
+                    + "status VARCHAR(20) NOT NULL DEFAULT 'PENDING', " // Thêm cột trạng thái
                     + "end_time DATETIME, "
-                    + "FOREIGN KEY (seller_id) REFERENCES users(id)"
+                    + "FOREIGN KEY (seller_id) REFERENCES users(id), "
+                    + "FOREIGN KEY (current_winner_id) REFERENCES users(id)"
                     + ")";
             stmt.execute(sqlItems);
 

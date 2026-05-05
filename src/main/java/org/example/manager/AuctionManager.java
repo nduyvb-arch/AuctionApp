@@ -20,8 +20,6 @@ import java.util.List;
 
 public class AuctionManager {
 
-    // ĐÃ XÓA TOÀN BỘ DB_URL, DB_USER, DB_PASSWORD ĐỂ BẢO MẬT
-
     private static volatile AuctionManager instance;
     private final List<Item> auctionItems;
     private Connection connection;
@@ -31,7 +29,6 @@ public class AuctionManager {
         try {
             // SỰ THAY ĐỔI LỚN NHẤT: Trực tiếp lấy kết nối từ DatabaseManager đã cấu hình .env
             connection = DatabaseManager.getConnection();
-            createTables();
             loadItemsFromDB();
         } catch (Exception e) { // Bắt Exception chung vì DatabaseManager throw Exception
             System.err.println("Lỗi kết nối database: " + e.getMessage());
@@ -44,41 +41,18 @@ public class AuctionManager {
         }
         return instance;
     }
-
-    /**
-     * 1. TẠO BẢNG TRONG DATABASE
-     */
-    private void createTables() throws SQLException {
-        String sql = "CREATE TABLE IF NOT EXISTS auction_items (" +
-                "id TEXT PRIMARY KEY, " +
-                "name TEXT NOT NULL, " +
-                "type TEXT, " +
-                "describe TEXT, " + // Lưu ý: describe là từ khóa trong MySQL, có thể gây lỗi sau này, sếp nên cân nhắc đổi thành 'description' nếu có thể.
-                "starting_price REAL, " +
-                "bid_increment REAL, " +
-                "current_price REAL, " +
-                "current_winner_id TEXT, " +
-                "status TEXT, " +
-                "end_time TEXT)";
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute(sql);
-        }
-    }
-
-    /**
-     * 2. TẢI DỮ LIỆU TỪ DATABASE LÊN RAM
-     */
+    
     private void loadItemsFromDB() {
-        String sql = "SELECT * FROM auction_items";
+        String sql = "SELECT * FROM items";
         try (PreparedStatement pstmt = connection.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
-                String id = rs.getString("id");
+                String id = rs.getString("id"); // ID vẫn là String trong model
                 String name = rs.getString("name");
                 String type = rs.getString("type");
-                String describe = rs.getString("describe");
-                double startingPrice = rs.getDouble("starting_price");
+                String describe = rs.getString("description");
+                double startingPrice = rs.getDouble("start_price");
                 double bidIncrement = rs.getDouble("bid_increment");
                 double currentPrice = rs.getDouble("current_price");
                 String currentWinnerId = rs.getString("current_winner_id");
@@ -121,22 +95,37 @@ public class AuctionManager {
     /**
      * 3. THÊM SẢN PHẨM MỚI VÀO CẢ RAM VÀ DB
      */
-    public synchronized void addItem(Item item) {
-        auctionItems.add(item);
-
-        String sql = "INSERT INTO auction_items (id, name, type, describe, starting_price, bid_increment, current_price, status) " +
+    public synchronized void addItem(Item item) { // Item này chưa có ID từ DB
+        // Sửa lại câu SQL cho khớp với bảng `items` và bỏ cột ID vì nó là AUTO_INCREMENT
+        String sql = "INSERT INTO items (name, description, type, start_price, bid_increment, current_price, status, seller_id) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, item.getId());
-            pstmt.setString(2, item.getItemName());
+        try (PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            pstmt.setString(1, item.getItemName());
+            pstmt.setString(2, item.getDescribe());
             pstmt.setString(3, item.getType());
-            pstmt.setString(4, item.getDescribe());
-            pstmt.setDouble(5, item.getStartingPrice());
-            pstmt.setDouble(6, item.getBidIncrement());
-            pstmt.setDouble(7, item.getCurrentPrice());
-            pstmt.setString(8, item.getStatus().name());
-            pstmt.executeUpdate();
-            System.out.println("Đã thêm sản phẩm " + item.getItemName() + " vào DB.");
+            pstmt.setDouble(4, item.getStartingPrice());
+            pstmt.setDouble(5, item.getBidIncrement());
+            pstmt.setDouble(6, item.getCurrentPrice()); // Ban đầu giá hiện tại bằng giá khởi điểm
+            pstmt.setString(7, item.getStatus().name());
+
+            // Cần có sellerId trong model Item của bạn, ví dụ: item.getSellerId()
+            // Tạm thời để là null nếu model chưa có
+            // if (item.getSellerId() != null) {
+            //     pstmt.setInt(8, Integer.parseInt(item.getSellerId()));
+            // } else {
+                 pstmt.setNull(8, java.sql.Types.INTEGER);
+            // }
+
+            int affectedRows = pstmt.executeUpdate();
+            if (affectedRows > 0) {
+                try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        item.setId(String.valueOf(generatedKeys.getLong(1))); // Cập nhật ID cho đối tượng
+                        auctionItems.add(item); // Chỉ thêm vào RAM sau khi đã có ID từ DB
+                        System.out.println("Đã thêm sản phẩm " + item.getItemName() + " vào DB với ID: " + item.getId());
+                    }
+                }
+            }
         } catch (SQLException e) {
             System.err.println("Lỗi lưu item vào DB: " + e.getMessage());
         }
@@ -150,13 +139,20 @@ public class AuctionManager {
      * 4. CẬP NHẬT DATABASE KHI CÓ THAY ĐỔI TRẠNG THÁI HOẶC GIÁ
      */
     private void updateItemDB(Item item) {
-        String sql = "UPDATE auction_items SET current_price = ?, current_winner_id = ?, status = ?, end_time = ? WHERE id = ?";
+        // Sửa lại câu SQL cho khớp với bảng `items`
+        String sql = "UPDATE items SET current_price = ?, current_winner_id = ?, status = ?, end_time = ? WHERE id = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setDouble(1, item.getCurrentPrice());
-            pstmt.setString(2, item.getCurrentWinnerId());
+
+            if (item.getCurrentWinnerId() != null && !item.getCurrentWinnerId().isEmpty()) {
+                pstmt.setInt(2, Integer.parseInt(item.getCurrentWinnerId()));
+            } else {
+                pstmt.setNull(2, java.sql.Types.INTEGER);
+            }
+
             pstmt.setString(3, item.getStatus().name());
             pstmt.setString(4, item.getEndTime() != null ? item.getEndTime().toString() : null);
-            pstmt.setString(5, item.getId());
+            pstmt.setInt(5, Integer.parseInt(item.getId()));
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Lỗi cập nhật item vào DB: " + e.getMessage());

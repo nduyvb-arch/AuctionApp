@@ -1,6 +1,8 @@
 package org.example.model.item;
 
-public class Art extends Item {
+import java.io.Serializable;
+
+public class Art extends Item implements Serializable {
     public Art(String name, String type, String describe, double startingPrice, double bidIncrement) {
         super(name, type, describe, startingPrice, bidIncrement);
     }

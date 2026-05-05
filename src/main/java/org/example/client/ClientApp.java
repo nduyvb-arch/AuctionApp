@@ -1,15 +1,21 @@
 package org.example.client;
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
 import javafx.scene.image.Image;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import org.example.manager.UserManager;
 import org.example.model.user.User;
+
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
 
 /**
  * Lớp chính điều khiển ứng dụng Client sử dụng JavaFX.
+ * Quản lý kết nối mạng tới Server và các màn hình giao diện.
  */
 public class ClientApp extends Application {
 
@@ -18,6 +24,13 @@ public class ClientApp extends Application {
 
     /** Người dùng hiện tại đang đăng nhập vào hệ thống. */
     private static User currentUser;
+
+    // --- Network Components ---
+    private static Socket socket;
+    private static ObjectOutputStream outputStream;
+    private static ObjectInputStream inputStream;
+    private static final String SERVER_ADDRESS = "localhost"; // Hoặc IP của server
+    private static final int SERVER_PORT = 8888; // Phải khớp với cổng của server
 
     /**
      * Điểm bắt đầu của ứng dụng JavaFX.
@@ -28,27 +41,76 @@ public class ClientApp extends Application {
     public void start(final Stage stage) throws Exception {
         primaryStage = stage;
 
+        // --- Thiết lập kết nối mạng ---
+        try {
+            System.out.println("Đang kết nối tới server tại " + SERVER_ADDRESS + ":" + SERVER_PORT + "...");
+            socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
+            outputStream = new ObjectOutputStream(socket.getOutputStream());
+            inputStream = new ObjectInputStream(socket.getInputStream());
+            System.out.println("Kết nối server thành công!");
+        } catch (Exception e) {
+            // SỬA LỖI LOGIC: Nếu không kết nối được, phải báo lỗi và thoát
+            System.err.println("Không thể kết nối tới server: " + e.getMessage());
+            showConnectionErrorAndExit(e.getMessage());
+            return; // Dừng thực thi phương thức start
+        }
+
         Image icon = new Image(getClass().getResourceAsStream("/images/logo.png"));
         primaryStage.getIcons().add(icon);
-        // Hiển thị danh sách tài khoản khi ứng dụng khởi động
-        //UserManager.getInstance().printAllUsers();
 
         switchToLogin();
         stage.setResizable(false);
 
-        // Đóng kết nối database khi đóng ứng dụng
+        // Xử lý khi người dùng đóng ứng dụng
         stage.setOnCloseRequest(event -> {
-            UserManager.getInstance().closeConnection();
-            System.out.println("✅ Ứng dụng đóng lại");
+            closeConnection();
+            System.out.println("✅ Ứng dụng đã đóng.");
         });
 
         stage.show();
     }
 
+    /**
+     * Hiển thị hộp thoại báo lỗi kết nối và đóng ứng dụng.
+     * @param message Nội dung lỗi.
+     */
+    private void showConnectionErrorAndExit(String message) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Lỗi Kết Nối");
+            alert.setHeaderText("Không thể kết nối đến máy chủ.");
+            alert.setContentText("Chi tiết: " + message + "\nVui lòng đảm bảo máy chủ đang chạy và thử lại.");
+            alert.showAndWait();
+            Platform.exit(); // Đóng ứng dụng JavaFX
+        });
+    }
+
+
     @Override
     public void stop() throws Exception {
-        UserManager.getInstance().closeConnection();
+        closeConnection();
         super.stop();
+    }
+
+    /**
+     * Gửi thông báo và đóng kết nối mạng một cách an toàn.
+     */
+    private static void closeConnection() {
+        try {
+            if (socket != null && !socket.isClosed()) {
+                // Tùy chọn: Gửi một tin nhắn báo ngắt kết nối cho server
+                // if (outputStream != null) {
+                //     outputStream.writeObject(new Message("DISCONNECT", "Client is closing."));
+                //     outputStream.flush();
+                // }
+                if (outputStream != null) outputStream.close();
+                if (inputStream != null) inputStream.close();
+                socket.close();
+                System.out.println("Đã ngắt kết nối với server.");
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi khi đóng kết nối: " + e.getMessage());
+        }
     }
 
     /** Chuyển giao diện sang màn hình đăng nhập. */
@@ -99,6 +161,22 @@ public class ClientApp extends Application {
      */
     public static void setCurrentUser(User user) {
         currentUser = user;
+    }
+
+    /**
+     * Cung cấp stream để gửi dữ liệu đến server.
+     * @return ObjectOutputStream.
+     */
+    public static ObjectOutputStream getOutputStream() {
+        return outputStream;
+    }
+
+    /**
+     * Cung cấp stream để nhận dữ liệu từ server.
+     * @return ObjectInputStream.
+     */
+    public static ObjectInputStream getInputStream() {
+        return inputStream;
     }
 
     /**

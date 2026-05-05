@@ -1,10 +1,12 @@
 package org.example.model.user;
 
+import java.io.Serializable;
+
 /**
  * Lớp trừu tượng nền tảng cho tất cả các đối tượng trong hệ thống.
  * Cung cấp thuộc tính định danh (id) chung cho các thực thể.
  */
-public abstract class Entity {
+public abstract class Entity implements Serializable {
     /**
      * Mã định danh duy nhất của thực thể.
      */

@@ -2,10 +2,11 @@ package org.example.model.item;
 
 import org.example.model.user.Entity;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public abstract class Item extends Entity {
+public abstract class Item extends Entity implements Serializable {
     // SỬA Ở ĐÂY: Đổi tên 'id' thành 'itemId'
     protected String id;
     protected String itemName;
