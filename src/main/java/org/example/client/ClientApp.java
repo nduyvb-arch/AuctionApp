@@ -63,7 +63,7 @@ public class ClientApp extends Application {
         // Xử lý khi người dùng đóng ứng dụng
         stage.setOnCloseRequest(event -> {
             closeConnection();
-            System.out.println("✅ Ứng dụng đã đóng.");
+            System.out.println("Ứng dụng đã đóng.");
         });
 
         stage.show();

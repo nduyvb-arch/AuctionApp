@@ -64,7 +64,7 @@ public class SignUpController implements Initializable {
 
         // 3. Mở luồng nền gửi dữ liệu qua Socket
         new Thread(() -> {
-            try (java.net.Socket socket = new java.net.Socket("localhost", 8080);
+            try (java.net.Socket socket = new java.net.Socket("localhost", 8888);
                  java.io.ObjectOutputStream out = new java.io.ObjectOutputStream(socket.getOutputStream());
                  java.io.ObjectInputStream in = new java.io.ObjectInputStream(socket.getInputStream())) {
 
@@ -86,7 +86,7 @@ public class SignUpController implements Initializable {
                     if ("REGISTER_RESPONSE".equals(responseMsg.getAction())) {
                         String result = (String) responseMsg.getPayload();
 
-                        if (result.contains("thành công") || result.startsWith("✅")) {
+                        if (result.contains("thành công") || result.startsWith("")) {
                             // Gọi code thông báo thành công và chuyển trang
                             Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
                             successAlert.setTitle("Thành công");
