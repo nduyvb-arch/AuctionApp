@@ -1,5 +1,9 @@
 package org.example.model.item;
 
+import org.example.common.model.item.Art;
+import org.example.common.model.item.AuctionStatus;
+import org.example.common.model.item.Electronic;
+import org.example.common.model.item.Vehicle;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import java.time.LocalDateTime;
