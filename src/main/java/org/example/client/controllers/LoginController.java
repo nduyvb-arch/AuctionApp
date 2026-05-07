@@ -13,7 +13,9 @@ import javafx.util.Duration;
 import org.example.client.ClientApp;
 import org.example.manager.UserManager;
 import org.example.model.user.User;
+import org.example.network.Message;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 
@@ -56,13 +58,29 @@ public class LoginController implements Initializable {
         Task<User> loginTask = new Task<>() {
             @Override
             protected User call() throws Exception {
-                // SỬA LỖI: Gọi trực tiếp UserManager thay vì kết nối mạng
-                User user = UserManager.getInstance().login(username, password);
-                if (user != null) {
-                    return user; // Trả về đối tượng User nếu thành công
+
+                var out = ClientApp.getOutputStream();
+                var in = ClientApp.getInputStream();
+
+                // Đóng gói dữ liệu gửi lên Server
+                String[] loginData = {username, password};
+                Message loginMsg = new Message("LOGIN", loginData);
+                out.writeObject(loginMsg);
+                out.flush();
+
+                // Chờ Server (ClientHandler) trả lời
+                Message responseMsg = (Message) in.readObject();
+
+                if (responseMsg != null && "LOGIN_RESPONSE".equals(responseMsg.getAction())) {
+                    User user = (User) responseMsg.getPayload(); // Ép kiểu payload về User
+
+                    if (user != null) {
+                        return user; // Đăng nhập thành công
+                    } else {
+                        throw new SecurityException("Tên đăng nhập hoặc mật khẩu không đúng");
+                    }
                 } else {
-                    // Ném Exception để kích hoạt onFailed()
-                    throw new SecurityException("Tên đăng nhập hoặc mật khẩu không đúng");
+                    throw new IOException("Phản hồi từ server không hợp lệ.");
                 }
             }
         };
