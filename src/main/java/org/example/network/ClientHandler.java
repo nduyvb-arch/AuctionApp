@@ -15,7 +15,7 @@ public class ClientHandler implements Runnable, Observer {
     private Socket clientSocket;
     private AuctionNotifier notifier;
 
-    // Nâng cấp lên thành Object Stream để chở class Message
+    // Sử dụng Object Stream để truyền nhận đối tượng Message
     private ObjectOutputStream out;
     private ObjectInputStream in;
 
@@ -27,20 +27,20 @@ public class ClientHandler implements Runnable, Observer {
     @Override
     public void run() {
         try {
-            // Nguyên tắc vàng của Java Socket: Luôn mở OutputStream trước InputStream để tránh kẹt mạng (deadlock)
+            // Mở OutputStream trước InputStream để tránh deadlock
             out = new ObjectOutputStream(clientSocket.getOutputStream());
             in = new ObjectInputStream(clientSocket.getInputStream());
 
             Message inputMessage;
-            // Liên tục đón lõng các gói hàng Message từ Client gửi lên
+            // Lắng nghe các tin nhắn từ Client
             while ((inputMessage = (Message) in.readObject()) != null) {
                 System.out.println("Nhận được lệnh từ Client: " + inputMessage.getAction());
 
-                // Phân luồng xử lý tùy theo thẻ Action sếp gắn trên gói hàng
+                // Xử lý yêu cầu theo action
                 switch (inputMessage.getAction()) {
 
                     case "LOGIN":
-                        // 1. Khui hàng (Client gửi String[] chứa {username, password})
+                        // 1. Lấy dữ liệu (Client gửi String[] chứa {username, password})
                         String[] loginData = (String[]) inputMessage.getPayload();
                         // 2. Nhờ UserManager xác thực
                         User loggedInUser = UserManager.getInstance().login(loginData[0], loginData[1]);
@@ -50,24 +50,24 @@ public class ClientHandler implements Runnable, Observer {
                         break;
 
                     case "REGISTER":
-                        // 1. Khui hàng (Giả sử Client sẽ gửi lên một mảng 3 chữ: username, password, role)
+                        // 1. Lấy dữ liệu (Client gửi String[] chứa {username, password, role})
                         String[] regData = (String[]) inputMessage.getPayload();
 
-                        // 2. Nhờ Quản lý User chọc vào DB để đăng ký
+                        // 2. Gọi UserManager để xử lý đăng ký
                         String regResult = UserManager.getInstance().createAccount(regData[0], regData[1], regData[2]);
 
-                        // 3. Đóng gói kết quả gửi trả lại Giao diện
+                        // 3. Gửi kết quả về cho Client
                         out.writeObject(new Message("REGISTER_RESPONSE", regResult));
                         break;
 
                     case "BID":
-                        // 1. Khui hàng (Client gửi Object[] chứa {itemId, bidAmount, bidderId})
+                        // 1. Lấy dữ liệu (Client gửi Object[] chứa {itemId, bidAmount, bidderId})
                         Object[] bidData = (Object[]) inputMessage.getPayload();
                         String itemId = (String) bidData[0];
                         double bidAmount = (Double) bidData[1];
                         String bidderId = (String) bidData[2];
 
-                        // 2. Nhờ AuctionManager xử lý việc đặt giá
+                        // 2. Xử lý đặt giá thông qua AuctionManager
                         String bidResult = AuctionManager.getInstance().placeBid(itemId, bidAmount, bidderId);
 
                         // 3. Gửi phản hồi về cho client vừa đặt giá
@@ -113,7 +113,7 @@ public class ClientHandler implements Runnable, Observer {
         // Gửi thông báo Broadcast đến Client này
         if (out != null) {
             try {
-                // Đóng gói thông báo ném thẳng xuống Client
+                // Gửi thông báo đến Client
                 // Gửi nguyên message gốc mà notifier đã gửi đi (ví dụ: ITEM_UPDATE)
                 out.writeObject(message);
                 out.flush(); // Đảm bảo dữ liệu được gửi đi ngay lập tức

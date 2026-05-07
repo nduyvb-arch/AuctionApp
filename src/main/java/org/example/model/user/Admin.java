@@ -3,7 +3,7 @@ import java.io.Serializable;
 /**
  * Lớp đại diện cho người dùng có quyền quản trị (Admin).
  */
-public class Admin extends User implements Serializable{
+public class Admin extends User implements Serializable {
 
     /**
      * Khởi tạo một đối tượng Admin mới.

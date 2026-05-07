@@ -18,7 +18,7 @@ public class DatabaseManager {
 
     private static Connection connection;
 
-    // Khối code này tự động cào dữ liệu từ file .env khi Server khởi động
+    // Khối code này tự động lấy dữ liệu từ file .env khi Server khởi động
     static {
         Map<String, String> env = new HashMap<>();
         try (BufferedReader br = new BufferedReader(new FileReader(".env"))) {
@@ -41,7 +41,7 @@ public class DatabaseManager {
             PASSWORD = env.get("DB_PASSWORD");
 
         } catch (Exception e) {
-            System.err.println("Báo động: Không tìm thấy hoặc đọc lỗi file .env! Đảm bảo bạn đã tạo file .env ở thư mục gốc.");
+            System.err.println("Lỗi: Không tìm thấy hoặc đọc lỗi file .env! Đảm bảo bạn đã tạo file .env ở thư mục gốc.");
             e.printStackTrace();
         }
     }
@@ -70,7 +70,7 @@ public class DatabaseManager {
         return connection;
     }
 
-    // Hàm tự động dựng bộ khung Database Đấu Giá (Giữ nguyên của sếp)
+    // Hàm tự động tạo các bảng Database Đấu Giá
     private static void autoCreateTables() {
         try (Statement stmt = connection.createStatement()) {
 

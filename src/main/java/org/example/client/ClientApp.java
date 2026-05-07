@@ -98,8 +98,12 @@ public class ClientApp extends Application {
     private static void closeConnection() {
         try {
             if (socket != null && !socket.isClosed()) {
-                if (outputStream != null) outputStream.close();
-                if (inputStream != null) inputStream.close();
+                if (outputStream != null) {
+                    outputStream.close();
+                }
+                if (inputStream != null) {
+                    inputStream.close();
+                }
                 socket.close();
                 System.out.println("Đã ngắt kết nối với server.");
             }

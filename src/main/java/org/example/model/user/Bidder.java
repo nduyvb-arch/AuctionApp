@@ -3,7 +3,7 @@ import java.io.Serializable;
 /**
  * Lớp đại diện cho người dùng tham gia đấu giá (Bidder).
  */
-public class Bidder extends User implements Serializable{
+public class Bidder extends User implements Serializable {
     /**
      * Số dư tài khoản của người tham gia đấu giá.
      */

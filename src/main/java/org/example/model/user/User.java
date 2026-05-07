@@ -4,7 +4,7 @@ import java.io.Serializable;
  * Lớp trừu tượng đại diện cho một người dùng cơ bản trong hệ thống.
  * Cung cấp các thông tin nền tảng như tên đăng nhập và mật khẩu.
  */
-public abstract class User extends Entity implements Serializable{
+public abstract class User extends Entity implements Serializable {
 
     protected String username;
     protected String password;

@@ -3,7 +3,7 @@ import java.io.Serializable;
 /**
  * Lớp đại diện cho người bán hàng trong hệ thống đấu giá (Seller).
  */
-public class Seller extends User implements Serializable{
+public class Seller extends User implements Serializable {
 
     /**
      * Khởi tạo một đối tượng Seller mới.
