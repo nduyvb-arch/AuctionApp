@@ -5,7 +5,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import org.example.client.ClientApp;
-import org.example.model.user.User;
+import org.example.common.model.user.User;
 
 import java.net.URL;
 import java.util.ResourceBundle;

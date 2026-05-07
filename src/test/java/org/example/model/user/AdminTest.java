@@ -1,5 +1,6 @@
 package org.example.model.user;
 
+import org.example.common.model.user.Admin;
 import org.junit.jupiter.api.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;

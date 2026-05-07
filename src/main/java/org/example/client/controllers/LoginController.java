@@ -11,9 +11,8 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.util.Duration;
 import org.example.client.ClientApp;
-import org.example.manager.UserManager;
-import org.example.model.user.User;
-import org.example.network.Message;
+import org.example.common.model.user.User;
+import org.example.common.Message;
 
 import java.io.IOException;
 import java.net.URL;
@@ -54,7 +53,7 @@ public class LoginController implements Initializable {
         loginButton.setDisable(true);
         loginButton.setText("Đang đăng nhập...");
 
-        // Sử dụng Task để đăng nhập trên luồng nền, tránh làm đơ giao diện
+        // Sử dụng Task để đăng nhập trên luồng nền
         Task<User> loginTask = new Task<>() {
             @Override
             protected User call() throws Exception {
