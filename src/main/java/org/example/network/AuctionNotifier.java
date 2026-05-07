@@ -19,7 +19,7 @@ public class AuctionNotifier implements Subject {
 
     @Override
     public void notifyObservers(Message message) {
-        // Gửi chiếc phong bì Message đến toàn bộ những người trong danh sách
+        // Gửi Message đến toàn bộ những người trong danh sách
         for (Observer o : observers) {
             o.update(message);
         }

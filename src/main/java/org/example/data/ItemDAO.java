@@ -7,14 +7,10 @@ import java.sql.SQLException;
 
 public class ItemDAO {
 
-    /**
-     * Hàm cập nhật Giá và Người chiến thắng vào Database
-     */
     public static void updateBid(Item item) {
         String sql = "UPDATE items SET current_price = ?, current_winner_username = ? WHERE id = ?";
 
         try {
-            // 1. Gọi DatabaseManager "chính chủ" của nhóm em
             Connection conn = DatabaseManager.getConnection();
 
             // 2. Chỉ dùng try-with-resources cho PreparedStatement để tránh đóng nhầm Connection
@@ -31,9 +27,6 @@ public class ItemDAO {
         }
     }
 
-    /**
-     * Hàm cập nhật trạng thái khi phiên đấu giá kết thúc
-     */
     public static void updateStatus(Item item) {
         String sql = "UPDATE items SET status = ? WHERE id = ?";
 

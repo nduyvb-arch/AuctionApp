@@ -27,10 +27,9 @@ public class AuctionManager {
     private AuctionManager() {
         auctionItems = new ArrayList<>();
         try {
-            // SỰ THAY ĐỔI LỚN NHẤT: Trực tiếp lấy kết nối từ DatabaseManager đã cấu hình .env
             connection = DatabaseManager.getConnection();
             loadItemsFromDB();
-        } catch (Exception e) { // Bắt Exception chung vì DatabaseManager throw Exception
+        } catch (Exception e) {
             System.err.println("Lỗi kết nối database: " + e.getMessage());
         }
     }
@@ -48,7 +47,7 @@ public class AuctionManager {
              ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
-                String id = rs.getString("id"); // ID vẫn là String trong model
+                String id = rs.getString("id");
                 String name = rs.getString("name");
                 String type = rs.getString("type");
                 String describe = rs.getString("description");
@@ -92,11 +91,9 @@ public class AuctionManager {
         }
     }
 
-    /**
-     * 3. THÊM SẢN PHẨM MỚI VÀO CẢ RAM VÀ DB
-     */
+
     public synchronized void addItem(Item item) { // Item này chưa có ID từ DB
-        // Sửa lại câu SQL cho khớp với bảng `items` và bỏ cột ID vì nó là AUTO_INCREMENT
+
         String sql = "INSERT INTO items (name, description, type, start_price, bid_increment, current_price, status, seller_id) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -135,9 +132,6 @@ public class AuctionManager {
         return this.auctionItems;
     }
 
-    /**
-     * 4. CẬP NHẬT DATABASE KHI CÓ THAY ĐỔI TRẠNG THÁI HOẶC GIÁ
-     */
     private void updateItemDB(Item item) {
         // Sửa lại câu SQL cho khớp với bảng `items`
         String sql = "UPDATE items SET current_price = ?, current_winner_id = ?, status = ?, end_time = ? WHERE id = ?";
@@ -159,9 +153,6 @@ public class AuctionManager {
         }
     }
 
-    /**
-     * 5. MỞ PHIÊN ĐẤU GIÁ
-     */
     public synchronized String startAuction(String itemId, int durationInMinutes) {
         Item targetItem = auctionItems.stream()
                 .filter(item -> item.getId().equals(itemId))
@@ -177,15 +168,11 @@ public class AuctionManager {
         targetItem.setStatus(AuctionStatus.ACTIVE);
         targetItem.setEndTime(LocalDateTime.now().plusMinutes(durationInMinutes));
 
-        // Cập nhật lên Database
         updateItemDB(targetItem);
 
         return "Đã bắt đầu phiên đấu giá cho: " + targetItem.getItemName() + ". Thời gian: " + durationInMinutes + " phút.";
     }
 
-    /**
-     * 6. ĐẶT GIÁ
-     */
     public synchronized String placeBid(String itemId, double bidAmount, String bidderId) {
         Item targetItem = auctionItems.stream()
                 .filter(item -> item.getId().equals(itemId))

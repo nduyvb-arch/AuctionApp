@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public abstract class Item extends Entity implements Serializable {
-    // SỬA Ở ĐÂY: Đổi tên 'id' thành 'itemId'
+
     protected String itemName;
     protected String type;
     protected String describe;
@@ -19,7 +19,7 @@ public abstract class Item extends Entity implements Serializable {
     private LocalDateTime endTime;
 
     public Item(String name, String type, String describe, double startingPrice, double bidIncrement) {
-        // SỬA Ở ĐÂY: Cập nhật lại tên biến thành itemId
+
         this.id = "I-" + UUID.randomUUID().toString().substring(0, 8);
         this.itemName = name;
         this.type = type;
@@ -27,7 +27,6 @@ public abstract class Item extends Entity implements Serializable {
         this.startingPrice = startingPrice;
         this.bidIncrement = bidIncrement;
 
-        // Giá hiện tại ban đầu phải bằng giá khởi điểm
         this.currentPrice = startingPrice;
     }
 

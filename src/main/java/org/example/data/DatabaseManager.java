@@ -70,11 +70,11 @@ public class DatabaseManager {
         return connection;
     }
 
-    // Hàm tự động tạo các bảng Database Đấu Giá
+
     private static void autoCreateTables() {
         try (Statement stmt = connection.createStatement()) {
 
-            // 1. Bảng Users (Đã nâng cấp thêm Ví tiền và Role)
+            // 1. Bảng Users
             String sqlUsers = "CREATE TABLE IF NOT EXISTS users ("
                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
                     + "username VARCHAR(50) NOT NULL UNIQUE, "
@@ -84,7 +84,7 @@ public class DatabaseManager {
                     + ")";
             stmt.execute(sqlUsers);
 
-            // 2. Bảng Items (Phiên đấu giá)
+            // 2. Bảng Items
             String sqlItems = "CREATE TABLE IF NOT EXISTS items ("
                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
                     + "name VARCHAR(100) NOT NULL, "
@@ -102,7 +102,7 @@ public class DatabaseManager {
                     + ")";
             stmt.execute(sqlItems);
 
-            // 3. Bảng Bids (Lịch sử đặt giá)
+            // 3. Bảng Bids
             String sqlBids = "CREATE TABLE IF NOT EXISTS bids ("
                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
                     + "item_id INT, "

@@ -15,7 +15,7 @@ public class ClientHandler implements Runnable, Observer {
     private Socket clientSocket;
     private AuctionNotifier notifier;
 
-    // Sử dụng Object Stream để truyền nhận đối tượng Message
+    //Object Stream để truyền nhận Message
     private ObjectOutputStream out;
     private ObjectInputStream in;
 
@@ -45,7 +45,6 @@ public class ClientHandler implements Runnable, Observer {
                         // 2. Nhờ UserManager xác thực
                         User loggedInUser = UserManager.getInstance().login(loginData[0], loginData[1]);
                         // 3. Gửi trả kết quả (Gửi cả object User nếu thành công, hoặc null nếu thất bại)
-                        // LƯU Ý: Class User và các class con (Bidder, Seller, Admin) PHẢI implement Serializable
                         out.writeObject(new Message("LOGIN_RESPONSE", loggedInUser));
                         break;
 

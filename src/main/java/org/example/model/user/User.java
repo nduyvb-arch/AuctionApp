@@ -1,9 +1,6 @@
 package org.example.model.user;
 import java.io.Serializable;
-/**
- * Lớp trừu tượng đại diện cho một người dùng cơ bản trong hệ thống.
- * Cung cấp các thông tin nền tảng như tên đăng nhập và mật khẩu.
- */
+
 public abstract class User extends Entity implements Serializable {
 
     protected String username;
@@ -29,15 +26,6 @@ public abstract class User extends Entity implements Serializable {
         this.password = password;
     }
 
-    /**
-     * Phương thức trừu tượng để hiển thị vai trò cụ thể của từng loại người dùng.
-     */
     public abstract void displayRole();
-
-    /**
-     * Lấy vai trò của người dùng.
-     *
-     * @return vai trò (bidder, seller, admin)
-     */
     public abstract String getRole();
 }
