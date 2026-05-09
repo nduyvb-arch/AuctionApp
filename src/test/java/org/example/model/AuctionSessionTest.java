@@ -1,5 +1,6 @@
 package org.example.model;
 
+import org.example.server.network.AuctionSession;
 import org.example.exception.AuctionClosedException;
 import org.example.exception.InvalidBidException;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,5 +40,28 @@ class AuctionSessionTest {
         assertThrows(AuctionClosedException.class, () -> {
             session.placeBid("User3", 200.0);
         });
+    }
+    @Test
+    void testInitialState() {
+        // Đảm bảo thông tin ban đầu chính xác
+        assertEquals(100.0, session.getCurrentPrice());
+    }
+
+    @Test
+    void testBidEqualToCurrentPrice() {
+        // Kiểm tra đặt giá bằng đúng giá hiện tại (phải ném ngoại lệ)
+        assertThrows(InvalidBidException.class, () -> {
+            session.placeBid("User4", 100.0);
+        });
+    }
+
+    @Test
+    void testMultipleValidBids() throws Exception {
+        session.placeBid("UserA", 120.0);
+        session.placeBid("UserB", 130.0);
+
+        assertEquals(130.0, session.getCurrentPrice());
+        // Giả sử bạn có method getWinner() để kiểm tra người thắng
+        // assertEquals("UserB", session.getWinner());
     }
 }

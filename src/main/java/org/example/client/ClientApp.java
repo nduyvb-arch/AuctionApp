@@ -7,16 +7,13 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import org.example.model.user.User;
+import org.example.common.model.user.User;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
-/**
- * Lớp chính điều khiển ứng dụng Client sử dụng JavaFX.
- * Quản lý kết nối mạng tới Server và các màn hình giao diện.
- */
+
 public class ClientApp extends Application {
 
     /** Stage chính của ứng dụng. */
@@ -98,8 +95,12 @@ public class ClientApp extends Application {
     private static void closeConnection() {
         try {
             if (socket != null && !socket.isClosed()) {
-                if (outputStream != null) outputStream.close();
-                if (inputStream != null) inputStream.close();
+                if (outputStream != null) {
+                    outputStream.close();
+                }
+                if (inputStream != null) {
+                    inputStream.close();
+                }
                 socket.close();
                 System.out.println("Đã ngắt kết nối với server.");
             }
