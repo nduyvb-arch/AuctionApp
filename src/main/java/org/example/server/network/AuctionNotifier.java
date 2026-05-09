@@ -1,13 +1,11 @@
 package org.example.server.network;
 
 import org.example.common.Message;
-
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class AuctionNotifier implements Subject {
     // Danh sách lưu trữ những ai đang theo dõi phiên đấu giá
-    private final List<Observer> observers = new ArrayList<>();
+    private final CopyOnWriteArrayList<Observer> observers = new CopyOnWriteArrayList<>();
 
     @Override
     public void registerObserver(Observer o) {
