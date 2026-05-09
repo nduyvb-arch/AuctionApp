@@ -19,6 +19,7 @@ public class ClientHandler implements Runnable, Observer {
     //Object Stream để truyền nhận Message
     private ObjectOutputStream out;
     private ObjectInputStream in;
+    private User currentUser;
 
     public ClientHandler(Socket clientSocket, AuctionNotifier notifier) {
         this.clientSocket = clientSocket;
@@ -31,6 +32,9 @@ public class ClientHandler implements Runnable, Observer {
             // Mở OutputStream trước InputStream để tránh deadlock
             out = new ObjectOutputStream(clientSocket.getOutputStream());
             in = new ObjectInputStream(clientSocket.getInputStream());
+
+            // Đăng ký observer này để nhận thông báo broadcast
+            notifier.registerObserver(this);
 
             Message inputMessage;
             // Lắng nghe các tin nhắn từ Client
@@ -45,6 +49,7 @@ public class ClientHandler implements Runnable, Observer {
                         String[] loginData = (String[]) inputMessage.getPayload();
                         // 2. Nhờ UserManager xác thực
                         User loggedInUser = UserManager.getInstance().login(loginData[0], loginData[1]);
+                        currentUser = loggedInUser; // Lưu user hiện tại
                         // 3. Gửi trả kết quả (Gửi cả object User nếu thành công, hoặc null nếu thất bại)
                         out.writeObject(new Message("LOGIN_RESPONSE", loggedInUser));
                         break;
@@ -58,6 +63,29 @@ public class ClientHandler implements Runnable, Observer {
 
                         // 3. Gửi kết quả về cho Client
                         out.writeObject(new Message("REGISTER_RESPONSE", regResult));
+                        break;
+
+                    case "SWITCH_ROLE":
+                        // 1. Lấy vai trò mới từ payload
+                        String newRole = (String) inputMessage.getPayload();
+
+                        // 2. Cập nhật vai trò trong database (qua UserManager)
+                        if (currentUser != null) {
+                            String roleUpdateResult = UserManager.getInstance().updateUserRole(currentUser.getId(), newRole);
+                            boolean success = roleUpdateResult.equals("Cập nhật quyền thành công!");
+
+                            if (success) {
+                                // Cập nhật currentUser
+                                currentUser.setRole(newRole);
+                                // 3. Gửi phản hồi thành công
+                                out.writeObject(new Message("SWITCH_ROLE_RESPONSE", "success"));
+                                System.out.println("Người dùng " + currentUser.getUsername() + " đã đổi vai trò thành: " + newRole);
+                            } else {
+                                out.writeObject(new Message("SWITCH_ROLE_RESPONSE", "Lỗi: Không thể cập nhật vai trò"));
+                            }
+                        } else {
+                            out.writeObject(new Message("SWITCH_ROLE_RESPONSE", "Lỗi: Chưa đăng nhập"));
+                        }
                         break;
 
                     case "BID":
@@ -130,13 +158,13 @@ public class ClientHandler implements Runnable, Observer {
                         Item newItem;
                         switch (type.toLowerCase()) {
                             case "art":
-                                newItem = new org.example.model.item.Art(name, type, desc, startPrice, increment);
+                                newItem = new org.example.common.model.item.Art(name, type, desc, startPrice, increment);
                                 break;
                             case "vehicle":
-                                newItem = new org.example.model.item.Vehicle(name, type, desc, startPrice, increment);
+                                newItem = new org.example.common.model.item.Vehicle(name, type, desc, startPrice, increment);
                                 break;
                             default:
-                                newItem = new org.example.model.item.Electronic(name, type, desc, startPrice, increment);
+                                newItem = new org.example.common.model.item.Electronic(name, type, desc, startPrice, increment);
                                 break;
                         }
 
@@ -149,6 +177,7 @@ public class ClientHandler implements Runnable, Observer {
                         // 5. Bắn thông báo Realtime cho toàn Server biết có hàng mới (để Frontend các Client khác tự refresh danh sách)
                         notifier.notifyObservers(new Message("SYSTEM_NOTIFICATION", "Có sản phẩm mới vửa lên sàn: [" + name + "]"));
                         break;
+
                     default:
                         out.writeObject(new Message("ERROR", "Lệnh không hợp lệ!"));
                         break;

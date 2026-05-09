@@ -10,133 +10,155 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="700.0" prefWidth="1000.0" style="-fx-background-color: #f1f5f9;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.HomeController">
+<AnchorPane prefHeight="800.0" prefWidth="1200.0" style="-fx-background-color: #f8fafc;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.HomeController">
    <children>
-      <AnchorPane prefHeight="60.0" style="-fx-background-color: #1e293b;" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+      <!-- SIDEBAR MENU -->
+      <VBox fx:id="sidebarMenu" prefWidth="280.0" spacing="0" style="-fx-background-color: #1e293b; -fx-padding: 0;" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
-            <Label fx:id="welcomeLabel" layoutX="25.0" layoutY="18.0" text="🏛 SÀN GIAO DỊCH" textFill="#38bdf8">
-               <font>
-                  <Font name="System Bold" size="18.0" />
-               </font>
-            </Label>
-            <HBox alignment="CENTER_RIGHT" layoutY="12.0" spacing="20.0" AnchorPane.rightAnchor="25.0">
-               <children>
-                  <Label text="Trang chủ Đấu giá" textFill="#cbd5e1" />
-                  <Label fx:id="userInfoLabel" text="..." textFill="WHITE">
+            <!-- Logo & Branding -->
+            <VBox alignment="CENTER" prefHeight="100.0" spacing="10.0" style="-fx-background-color: #0f172a; -fx-padding: 20;">
+               <Label text="🏛 ĐẤU GIÁ" textFill="#38bdf8">
+                  <font>
+                     <Font name="System Bold" size="24.0" />
+                  </font>
+               </Label>
+               <Label text="Sàn giao dịch trực tuyến" textFill="#94a3b8" wrapText="true">
+                  <font>
+                     <Font size="12.0" />
+                  </font>
+               </Label>
+            </VBox>
+
+            <Separator style="-fx-padding: 0; -fx-border-color: #334155;" />
+
+            <!-- Current Role Display -->
+            <VBox spacing="8.0" style="-fx-padding: 20;">
+               <Label text="Vai trò hiện tại:" textFill="#94a3b8">
+                  <font>
+                     <Font size="11.0" />
+                  </font>
+               </Label>
+               <HBox spacing="10.0">
+                  <Label fx:id="currentRoleLabel" text="Người đấu giá" textFill="#38bdf8">
                      <font>
-                        <Font name="System Bold" size="17.0" />
+                        <Font name="System Bold" size="14.0" />
                      </font>
                   </Label>
-                  <Button fx:id="logoutButton" mnemonicParsing="false" onAction="#onLogoutClicked" style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-background-radius: 20; -fx-padding: 6 18; -fx-font-weight: bold; -fx-cursor: hand;" text="Đăng xuất" />
-               </children>
-            </HBox>
-         </children>
-      </AnchorPane>
+               </HBox>
+            </VBox>
 
-      <AnchorPane layoutY="60.0" prefHeight="80.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
-         <children>
-            <Label layoutX="25.0" layoutY="25.0" text="Danh mục sản phẩm" textFill="#334155">
+            <!-- Role Switcher Button -->
+            <Button fx:id="roleSwitcherButton" mnemonicParsing="false" onAction="#onRoleSwitcherClicked" prefWidth="240.0" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 12 15; -fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;" text="🔄 Chuyển sang Người bán" VBox.vgrow="NEVER">
+               <VBox.margin>
+                  <Insets left="20.0" right="20.0" />
+               </VBox.margin>
+            </Button>
+
+            <Separator style="-fx-padding: 15 0; -fx-border-color: #334155;" />
+
+            <!-- Menu Items -->
+            <VBox spacing="5.0" style="-fx-padding: 0 15;">
+               <!-- Home -->
+               <Button fx:id="homeMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="45.0" prefWidth="250.0" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 12 20; -fx-font-size: 13; -fx-background-radius: 8; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="🏠 Trang chủ" />
+
+               <!-- For Bidder -->
+               <Label fx:id="bidderMenuLabel" text="CHO NGƯỜI ĐẤU GIÁ" textFill="#475569" VBox.vgrow="NEVER">
+                  <font>
+                     <Font name="System Bold" size="10.0" />
+                  </font>
+                  <VBox.margin>
+                     <Insets top="15.0" bottom="8.0" />
+                  </VBox.margin>
+               </Label>
+               <Button fx:id="watchlistMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="⭐ Danh sách theo dõi" />
+               <Button fx:id="bidHistoryMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="📊 Lịch sử đấu giá" />
+
+               <!-- For Seller -->
+               <Label fx:id="sellerMenuLabel" text="CHO NGƯỜI BÁN" textFill="#475569" VBox.vgrow="NEVER">
+                  <font>
+                     <Font name="System Bold" size="10.0" />
+                  </font>
+                  <VBox.margin>
+                     <Insets top="15.0" bottom="8.0" />
+                  </VBox.margin>
+               </Label>
+               <Button fx:id="addItemMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="➕ Đăng sản phẩm mới" />
+               <Button fx:id="myItemsMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="📦 Sản phẩm của tôi" />
+               <Button fx:id="salesHistoryMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="💰 Lịch sử bán hàng" />
+
+               <!-- General -->
+               <Label text="CHUNG" textFill="#475569" VBox.vgrow="NEVER">
+                  <font>
+                     <Font name="System Bold" size="10.0" />
+                  </font>
+                  <VBox.margin>
+                     <Insets top="15.0" bottom="8.0" />
+                  </VBox.margin>
+               </Label>
+               <Button fx:id="accountMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="👤 Tài khoản" />
+               <Button fx:id="notificationsMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="🔔 Thông báo" />
+            </VBox>
+
+            <!-- Spacer -->
+            <VBox VBox.vgrow="ALWAYS" />
+
+            <!-- Logout Button -->
+            <VBox spacing="10.0" style="-fx-padding: 20;">
+               <Separator style="-fx-border-color: #334155;" />
+               <Button fx:id="logoutButton" mnemonicParsing="false" onAction="#onLogoutClicked" prefWidth="240.0" style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 10 15; -fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;" text="🚪 Đăng xuất" />
+            </VBox>
+         </children>
+      </VBox>
+
+      <!-- MAIN CONTENT AREA -->
+      <VBox AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="280.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <!-- TOP BAR -->
+         <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0" style="-fx-background-color: white; -fx-padding: 20; -fx-border-color: #e2e8f0; -fx-border-width: 0 0 1 0;">
+            <Label text="Trang chủ sàn đấu giá" textFill="#0f172a">
                <font>
                   <Font name="System Bold" size="22.0" />
                </font>
             </Label>
-            <HBox alignment="CENTER_RIGHT" layoutY="22.0" spacing="15.0" AnchorPane.rightAnchor="25.0">
-               <children>
-                  <ComboBox prefHeight="38.0" prefWidth="150.0" promptText="Lọc trạng thái..." style="-fx-background-color: transparent; -fx-border-color: #94a3b8; -fx-border-radius: 20;" />
-                  <TextField prefHeight="38.0" prefWidth="250.0" promptText="🔍 Tìm tên sản phẩm..." style="-fx-background-radius: 20; -fx-border-color: #94a3b8; -fx-border-radius: 20; -fx-background-color: white; -fx-padding: 0 15;" />
-               </children>
-            </HBox>
-         </children>
-      </AnchorPane>
 
-      <ScrollPane fitToWidth="true" layoutY="140.0" style="-fx-background-color: transparent; -fx-background: #f1f5f9;" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="25.0" AnchorPane.rightAnchor="25.0" AnchorPane.topAnchor="140.0">
-         <content>
-            <FlowPane hgap="25.0" vgap="25.0">
-               <padding>
-                  <Insets bottom="20.0" left="0.0" right="0.0" top="5.0" />
-               </padding>
-               <children>
+            <HBox HBox.hgrow="ALWAYS" />
 
-                  <AnchorPane prefHeight="165.0" prefWidth="300.0" style="-fx-background-color: white; -fx-background-radius: 12; -fx-border-color: #cbd5e1; -fx-border-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 8, 0, 0, 4);">
-                     <children>
-                        <Label layoutX="15.0" layoutY="15.0" text="Lịch sử nghệ thuật" textFill="#0f172a">
-                           <font>
-                              <Font name="System Bold" size="18.0" />
-                           </font>
-                        </Label>
-                        <Label alignment="CENTER" layoutX="215.0" layoutY="15.0" prefWidth="70.0" style="-fx-border-color: #10b981; -fx-text-fill: #10b981; -fx-border-radius: 6; -fx-padding: 3 5;" text="Mở bán">
-                           <font>
-                              <Font name="System Bold" size="11.0" />
-                           </font>
-                        </Label>
+            <!-- User Info -->
+            <VBox alignment="CENTER_RIGHT" spacing="5.0">
+               <Label fx:id="userInfoLabel" text="..." textFill="#334155">
+                  <font>
+                     <Font name="System Bold" size="13.0" />
+                  </font>
+               </Label>
+               <Label text="ID: ..." textFill="#64748b">
+                  <font>
+                     <Font size="11.0" />
+                  </font>
+               </Label>
+            </VBox>
+         </HBox>
 
-                        <Label layoutX="15.0" layoutY="50.0" text="Giá hiện tại:" textFill="#64748b" />
-                        <Label layoutX="15.0" layoutY="70.0" text="1.500.000 VNĐ" textFill="#2563eb">
-                           <font>
-                              <Font name="System Bold" size="22.0" />
-                           </font>
-                        </Label>
+         <!-- SEARCH & FILTER BAR -->
+         <HBox alignment="CENTER" prefHeight="80.0" spacing="15.0" style="-fx-background-color: #f8fafc; -fx-padding: 20;">
+            <TextField fx:id="searchTextField" prefHeight="40.0" prefWidth="400.0" promptText="🔍 Tìm kiếm sản phẩm..." style="-fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-color: white; -fx-padding: 0 15; -fx-font-size: 12;" />
+            <ComboBox fx:id="filterComboBox" prefHeight="40.0" prefWidth="180.0" promptText="Lọc trạng thái..." style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
+            <ComboBox fx:id="sortComboBox" prefHeight="40.0" prefWidth="180.0" promptText="Sắp xếp..." style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
+            <HBox HBox.hgrow="ALWAYS" />
+            <Button fx:id="refreshButton" mnemonicParsing="false" onAction="#onRefreshClicked" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-weight: bold;" text="🔄 Làm mới" />
+         </HBox>
 
-                        <Separator layoutX="15.0" layoutY="120.0" prefWidth="270.0" />
-
-                        <Label layoutX="15.0" layoutY="135.0" text="⏳ Còn 2 ngày" textFill="#ef4444" />
-                        <Label layoutX="220.0" layoutY="135.0" text="👤 3 lượt" textFill="#64748b" />
-                     </children>
-                  </AnchorPane>
-
-                  <AnchorPane prefHeight="165.0" prefWidth="300.0" style="-fx-background-color: white; -fx-background-radius: 12; -fx-border-color: #cbd5e1; -fx-border-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 8, 0, 0, 4);">
-                     <children>
-                        <Label layoutX="15.0" layoutY="15.0" text="Xe cổ điển" textFill="#0f172a">
-                           <font>
-                              <Font name="System Bold" size="18.0" />
-                           </font>
-                        </Label>
-                        <Label alignment="CENTER" layoutX="215.0" layoutY="15.0" prefWidth="70.0" style="-fx-border-color: #ef4444; -fx-text-fill: #ef4444; -fx-border-radius: 6; -fx-padding: 3 5;" text="Đã hủy">
-                           <font>
-                              <Font name="System Bold" size="11.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="15.0" layoutY="50.0" text="Giá hiện tại:" textFill="#64748b" />
-                        <Label layoutX="15.0" layoutY="70.0" text="1.000.000 VNĐ" textFill="#2563eb">
-                           <font>
-                              <Font name="System Bold" size="22.0" />
-                           </font>
-                        </Label>
-                        <Separator layoutX="15.0" layoutY="120.0" prefWidth="270.0" />
-                        <Label layoutX="15.0" layoutY="135.0" text="⏳ Đã đóng" textFill="#64748b" />
-                        <Label layoutX="220.0" layoutY="135.0" text="👤 0 lượt" textFill="#64748b" />
-                     </children>
-                  </AnchorPane>
-
-                  <AnchorPane prefHeight="165.0" prefWidth="300.0" style="-fx-background-color: white; -fx-background-radius: 12; -fx-border-color: #cbd5e1; -fx-border-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 8, 0, 0, 4);">
-                     <children>
-                        <Label layoutX="15.0" layoutY="15.0" text="Đồng hồ thông minh" textFill="#0f172a">
-                           <font>
-                              <Font name="System Bold" size="18.0" />
-                           </font>
-                        </Label>
-                        <Label alignment="CENTER" layoutX="215.0" layoutY="15.0" prefWidth="70.0" style="-fx-border-color: #94a3b8; -fx-text-fill: #94a3b8; -fx-border-radius: 6; -fx-padding: 3 5;" text="Kết thúc">
-                           <font>
-                              <Font name="System Bold" size="11.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="15.0" layoutY="50.0" text="Giá chốt:" textFill="#64748b" />
-                        <Label layoutX="15.0" layoutY="70.0" text="2.500.000 VNĐ" textFill="#2563eb">
-                           <font>
-                              <Font name="System Bold" size="22.0" />
-                           </font>
-                        </Label>
-                        <Separator layoutX="15.0" layoutY="120.0" prefWidth="270.0" />
-                        <Label layoutX="15.0" layoutY="135.0" text="✅ Hoàn tất" textFill="#10b981" />
-                        <Label layoutX="220.0" layoutY="135.0" text="👤 12 lượt" textFill="#64748b" />
-                     </children>
-                  </AnchorPane>
-
-               </children>
-            </FlowPane>
-         </content>
-      </ScrollPane>
+         <!-- ITEMS DISPLAY -->
+         <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #f8fafc; -fx-padding: 0;" VBox.vgrow="ALWAYS">
+            <content>
+               <FlowPane fx:id="itemFlowPane" hgap="20.0" vgap="20.0">
+                  <padding>
+                     <Insets bottom="20.0" left="20.0" right="20.0" top="10.0" />
+                  </padding>
+               </FlowPane>
+            </content>
+         </ScrollPane>
+      </VBox>
    </children>
 </AnchorPane>
