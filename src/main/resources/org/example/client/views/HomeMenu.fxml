@@ -53,88 +53,10 @@
 
       <ScrollPane fitToWidth="true" layoutY="140.0" style="-fx-background-color: transparent; -fx-background: #f1f5f9;" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="25.0" AnchorPane.rightAnchor="25.0" AnchorPane.topAnchor="140.0">
          <content>
-            <FlowPane hgap="25.0" vgap="25.0">
+            <FlowPane fx:id="itemFlowPane" hgap="25.0" vgap="25.0">
                <padding>
                   <Insets bottom="20.0" left="0.0" right="0.0" top="5.0" />
                </padding>
-               <children>
-
-                  <AnchorPane prefHeight="165.0" prefWidth="300.0" style="-fx-background-color: white; -fx-background-radius: 12; -fx-border-color: #cbd5e1; -fx-border-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 8, 0, 0, 4);">
-                     <children>
-                        <Label layoutX="15.0" layoutY="15.0" text="Lịch sử nghệ thuật" textFill="#0f172a">
-                           <font>
-                              <Font name="System Bold" size="18.0" />
-                           </font>
-                        </Label>
-                        <Label alignment="CENTER" layoutX="215.0" layoutY="15.0" prefWidth="70.0" style="-fx-border-color: #10b981; -fx-text-fill: #10b981; -fx-border-radius: 6; -fx-padding: 3 5;" text="Mở bán">
-                           <font>
-                              <Font name="System Bold" size="11.0" />
-                           </font>
-                        </Label>
-
-                        <Label layoutX="15.0" layoutY="50.0" text="Giá hiện tại:" textFill="#64748b" />
-                        <Label layoutX="15.0" layoutY="70.0" text="1.500.000 VNĐ" textFill="#2563eb">
-                           <font>
-                              <Font name="System Bold" size="22.0" />
-                           </font>
-                        </Label>
-
-                        <Separator layoutX="15.0" layoutY="120.0" prefWidth="270.0" />
-
-                        <Label layoutX="15.0" layoutY="135.0" text="⏳ Còn 2 ngày" textFill="#ef4444" />
-                        <Label layoutX="220.0" layoutY="135.0" text="👤 3 lượt" textFill="#64748b" />
-                     </children>
-                  </AnchorPane>
-
-                  <AnchorPane prefHeight="165.0" prefWidth="300.0" style="-fx-background-color: white; -fx-background-radius: 12; -fx-border-color: #cbd5e1; -fx-border-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 8, 0, 0, 4);">
-                     <children>
-                        <Label layoutX="15.0" layoutY="15.0" text="Xe cổ điển" textFill="#0f172a">
-                           <font>
-                              <Font name="System Bold" size="18.0" />
-                           </font>
-                        </Label>
-                        <Label alignment="CENTER" layoutX="215.0" layoutY="15.0" prefWidth="70.0" style="-fx-border-color: #ef4444; -fx-text-fill: #ef4444; -fx-border-radius: 6; -fx-padding: 3 5;" text="Đã hủy">
-                           <font>
-                              <Font name="System Bold" size="11.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="15.0" layoutY="50.0" text="Giá hiện tại:" textFill="#64748b" />
-                        <Label layoutX="15.0" layoutY="70.0" text="1.000.000 VNĐ" textFill="#2563eb">
-                           <font>
-                              <Font name="System Bold" size="22.0" />
-                           </font>
-                        </Label>
-                        <Separator layoutX="15.0" layoutY="120.0" prefWidth="270.0" />
-                        <Label layoutX="15.0" layoutY="135.0" text="⏳ Đã đóng" textFill="#64748b" />
-                        <Label layoutX="220.0" layoutY="135.0" text="👤 0 lượt" textFill="#64748b" />
-                     </children>
-                  </AnchorPane>
-
-                  <AnchorPane prefHeight="165.0" prefWidth="300.0" style="-fx-background-color: white; -fx-background-radius: 12; -fx-border-color: #cbd5e1; -fx-border-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 8, 0, 0, 4);">
-                     <children>
-                        <Label layoutX="15.0" layoutY="15.0" text="Đồng hồ thông minh" textFill="#0f172a">
-                           <font>
-                              <Font name="System Bold" size="18.0" />
-                           </font>
-                        </Label>
-                        <Label alignment="CENTER" layoutX="215.0" layoutY="15.0" prefWidth="70.0" style="-fx-border-color: #94a3b8; -fx-text-fill: #94a3b8; -fx-border-radius: 6; -fx-padding: 3 5;" text="Kết thúc">
-                           <font>
-                              <Font name="System Bold" size="11.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="15.0" layoutY="50.0" text="Giá chốt:" textFill="#64748b" />
-                        <Label layoutX="15.0" layoutY="70.0" text="2.500.000 VNĐ" textFill="#2563eb">
-                           <font>
-                              <Font name="System Bold" size="22.0" />
-                           </font>
-                        </Label>
-                        <Separator layoutX="15.0" layoutY="120.0" prefWidth="270.0" />
-                        <Label layoutX="15.0" layoutY="135.0" text="✅ Hoàn tất" textFill="#10b981" />
-                        <Label layoutX="220.0" layoutY="135.0" text="👤 12 lượt" textFill="#64748b" />
-                     </children>
-                  </AnchorPane>
-
-               </children>
             </FlowPane>
          </content>
       </ScrollPane>
