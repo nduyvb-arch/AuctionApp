@@ -90,6 +90,65 @@ public class ClientHandler implements Runnable, Observer {
                         out.writeObject(new Message("GET_ALL_ITEMS_RESPONSE", new ArrayList<>(AuctionManager.getInstance().getAllItems())));
                         break;
 
+                    case "START_AUCTION":
+                        // 1. Lấy dữ liệu (Frontend sẽ gửi Object[] chứa: {itemId, durationInMinutes})
+                        Object[] startData = (Object[]) inputMessage.getPayload();
+                        String sItemId = (String) startData[0];
+                        int duration = (Integer) startData[1];
+
+                        // 2. Gọi Manager xử lý logic mở phiên, tự động set EndTime và lưu DB
+                        String startResult = AuctionManager.getInstance().startAuction(sItemId, duration);
+
+                        // 3. Phản hồi cho người bấm nút
+                        out.writeObject(new Message("START_AUCTION_RESPONSE", startResult));
+
+                        // 4. Nếu mở thành công, broadcast cho tất cả Client biết để hiện đếm ngược thời gian
+                        if (startResult.startsWith("Đã bắt đầu")) {
+                            notifier.notifyObservers(new Message("SYSTEM_NOTIFICATION", startResult));
+
+                            // (Tùy chọn nâng cao): Nếu Frontend muốn tự động load lại Item khi nó đổi trạng thái,
+                            // em có thể bắn kèm chính cái Object Item đó đi
+                            Item startedItem = AuctionManager.getInstance().getAllItems().stream()
+                                    .filter(i -> i.getId().equals(sItemId)).findFirst().orElse(null);
+                            if (startedItem != null) {
+                                notifier.notifyObservers(new Message("ITEM_UPDATE", startedItem));
+                            }
+                        }
+                        break;
+
+                    case "ADD_ITEM":
+                        // 1. Lấy dữ liệu (Frontend sẽ gửi Object[] chứa: {type, name, describe, startingPrice, bidIncrement, sellerId})
+                        Object[] itemData = (Object[]) inputMessage.getPayload();
+                        String type = (String) itemData[0];
+                        String name = (String) itemData[1];
+                        String desc = (String) itemData[2];
+                        double startPrice = (Double) itemData[3];
+                        double increment = (Double) itemData[4];
+                        String sellerId = (String) itemData[5]; // Lưu ID người bán để sau này quản lý
+
+                        // 2. Khởi tạo đối tượng Item tương ứng
+                        Item newItem;
+                        switch (type.toLowerCase()) {
+                            case "art":
+                                newItem = new org.example.model.item.Art(name, type, desc, startPrice, increment);
+                                break;
+                            case "vehicle":
+                                newItem = new org.example.model.item.Vehicle(name, type, desc, startPrice, increment);
+                                break;
+                            default:
+                                newItem = new org.example.model.item.Electronic(name, type, desc, startPrice, increment);
+                                break;
+                        }
+
+                        // 3. Gọi Manager để lưu vào RAM và DB
+                        AuctionManager.getInstance().addItem(newItem);
+
+                        // 4. Trả phản hồi về cho Seller
+                        out.writeObject(new Message("ADD_ITEM_RESPONSE", "Đăng sản phẩm thành công! Mã SP: " + newItem.getId()));
+
+                        // 5. Bắn thông báo Realtime cho toàn Server biết có hàng mới (để Frontend các Client khác tự refresh danh sách)
+                        notifier.notifyObservers(new Message("SYSTEM_NOTIFICATION", "Có sản phẩm mới vửa lên sàn: [" + name + "]"));
+                        break;
                     default:
                         out.writeObject(new Message("ERROR", "Lệnh không hợp lệ!"));
                         break;
