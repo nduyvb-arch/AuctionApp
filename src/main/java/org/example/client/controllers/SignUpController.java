@@ -12,8 +12,8 @@ import javafx.scene.control.TextField;
 import javafx.util.Duration;
 import org.example.client.ClientApp;
 import org.example.common.Message;
-import java.io.IOException;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 

@@ -52,6 +52,11 @@ public class DatabaseManager {
                 // Tải driver của MySQL
                 Class.forName("com.mysql.cj.jdbc.Driver");
 
+                System.out.println("=== KIỂM TRA ĐỌC FILE .ENV ===");
+                System.out.println("DB_URL hiện tại là: " + DB_URL);
+                System.out.println("USER hiện tại là: " + USER);
+                System.out.println("==============================");
+
                 // Mở kết nối với dữ liệu đã đọc từ file .env
                 connection = DriverManager.getConnection(DB_URL, USER, PASSWORD);
                 System.out.println("Kết nối MySQL thành công: " + DB_URL);
@@ -130,4 +135,9 @@ public class DatabaseManager {
             }
         }
     }
+<<<<<<< HEAD:src/main/java/org/example/data/DatabaseManager.java
+
 }
+=======
+}
+>>>>>>> 2a560cbf6ff0cc80e03f038778e60284404e1e36:src/main/java/org/example/server/data/DatabaseManager.java
