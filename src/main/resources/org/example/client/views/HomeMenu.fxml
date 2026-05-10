@@ -6,7 +6,11 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
@@ -62,7 +66,7 @@
             <!-- Menu Items -->
             <VBox spacing="5.0" style="-fx-padding: 0 15;">
                <!-- Home -->
-               <Button fx:id="homeMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="45.0" prefWidth="250.0" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 12 20; -fx-font-size: 13; -fx-background-radius: 8; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="🏠 Trang chủ" />
+               <Button fx:id="homeMenuItem" mnemonicParsing="false" onAction="#switchToHomeView" prefHeight="45.0" prefWidth="250.0" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 12 20; -fx-font-size: 13; -fx-background-radius: 8; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="🏠 Trang chủ" />
 
                <!-- For Bidder -->
                <Label fx:id="bidderMenuLabel" text="CHO NGƯỜI ĐẤU GIÁ" textFill="#475569" VBox.vgrow="NEVER">
@@ -73,8 +77,8 @@
                      <Insets top="15.0" bottom="8.0" />
                   </VBox.margin>
                </Label>
-               <Button fx:id="watchlistMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="⭐ Danh sách theo dõi" />
-               <Button fx:id="bidHistoryMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="📊 Lịch sử đấu giá" />
+               <Button fx:id="watchlistMenuItem" mnemonicParsing="false" onAction="#switchToWatchlistView" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="⭐ Danh sách theo dõi" />
+               <Button fx:id="bidHistoryMenuItem" mnemonicParsing="false" onAction="#switchToBidHistoryView" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="📊 Lịch sử đấu giá" />
 
                <!-- For Seller -->
                <Label fx:id="sellerMenuLabel" text="CHO NGƯỜI BÁN" textFill="#475569" VBox.vgrow="NEVER">
@@ -85,9 +89,9 @@
                      <Insets top="15.0" bottom="8.0" />
                   </VBox.margin>
                </Label>
-               <Button fx:id="addItemMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="➕ Đăng sản phẩm mới" />
-               <Button fx:id="myItemsMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="📦 Sản phẩm của tôi" />
-               <Button fx:id="salesHistoryMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="💰 Lịch sử bán hàng" />
+               <Button fx:id="addItemMenuItem" mnemonicParsing="false" onAction="#switchToAddItemView" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="➕ Đăng sản phẩm mới" />
+               <Button fx:id="myItemsMenuItem" mnemonicParsing="false" onAction="#switchToMyItemsView" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="📦 Sản phẩm của tôi" />
+               <Button fx:id="salesHistoryMenuItem" mnemonicParsing="false" onAction="#switchToSalesHistoryView" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="💰 Lịch sử bán hàng" />
 
                <!-- General -->
                <Label text="CHUNG" textFill="#475569" VBox.vgrow="NEVER">
@@ -98,8 +102,8 @@
                      <Insets top="15.0" bottom="8.0" />
                   </VBox.margin>
                </Label>
-               <Button fx:id="accountMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="👤 Tài khoản" />
-               <Button fx:id="notificationsMenuItem" mnemonicParsing="false" onAction="#onMenuItemClicked" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="🔔 Thông báo" />
+               <Button fx:id="accountMenuItem" mnemonicParsing="false" onAction="#switchToAccountView" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="👤 Tài khoản" />
+               <Button fx:id="notificationsMenuItem" mnemonicParsing="false" onAction="#switchToNotificationsView" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="🔔 Thông báo" />
             </VBox>
 
             <!-- Spacer -->
@@ -117,7 +121,7 @@
       <VBox AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="280.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <!-- TOP BAR -->
          <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0" style="-fx-background-color: white; -fx-padding: 20; -fx-border-color: #e2e8f0; -fx-border-width: 0 0 1 0;">
-            <Label text="Trang chủ sàn đấu giá" textFill="#0f172a">
+            <Label fx:id="pageTitle" text="Trang chủ sàn đấu giá" textFill="#0f172a">
                <font>
                   <Font name="System Bold" size="22.0" />
                </font>
@@ -140,25 +144,84 @@
             </VBox>
          </HBox>
 
-         <!-- SEARCH & FILTER BAR -->
-         <HBox alignment="CENTER" prefHeight="80.0" spacing="15.0" style="-fx-background-color: #f8fafc; -fx-padding: 20;">
-            <TextField fx:id="searchTextField" prefHeight="40.0" prefWidth="400.0" promptText="🔍 Tìm kiếm sản phẩm..." style="-fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-color: white; -fx-padding: 0 15; -fx-font-size: 12;" />
-            <ComboBox fx:id="filterComboBox" prefHeight="40.0" prefWidth="180.0" promptText="Lọc trạng thái..." style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
-            <ComboBox fx:id="sortComboBox" prefHeight="40.0" prefWidth="180.0" promptText="Sắp xếp..." style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
-            <HBox HBox.hgrow="ALWAYS" />
-            <Button fx:id="refreshButton" mnemonicParsing="false" onAction="#onRefreshClicked" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-weight: bold;" text="🔄 Làm mới" />
-         </HBox>
+         <!-- CONTENT CONTAINER -->
+         <VBox fx:id="contentContainer" VBox.vgrow="ALWAYS" style="-fx-background-color: #f8fafc;">
 
-         <!-- ITEMS DISPLAY -->
-         <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #f8fafc; -fx-padding: 0;" VBox.vgrow="ALWAYS">
-            <content>
-               <FlowPane fx:id="itemFlowPane" hgap="20.0" vgap="20.0">
-                  <padding>
-                     <Insets bottom="20.0" left="20.0" right="20.0" top="10.0" />
-                  </padding>
-               </FlowPane>
-            </content>
-         </ScrollPane>
+            <!-- ===== HOME VIEW ===== -->
+            <VBox fx:id="homeView" visible="true" VBox.vgrow="ALWAYS">
+               <!-- SEARCH & FILTER BAR -->
+               <HBox alignment="CENTER" prefHeight="80.0" spacing="15.0" style="-fx-background-color: #f8fafc; -fx-padding: 20;">
+                  <TextField fx:id="searchTextField" prefHeight="40.0" prefWidth="400.0" promptText="🔍 Tìm kiếm sản phẩm..." style="-fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-color: white; -fx-padding: 0 15; -fx-font-size: 12;" />
+                  <ComboBox fx:id="filterComboBox" prefHeight="40.0" prefWidth="180.0" promptText="Lọc trạng thái..." style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
+                  <ComboBox fx:id="sortComboBox" prefHeight="40.0" prefWidth="180.0" promptText="Sắp xếp..." style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
+                  <HBox HBox.hgrow="ALWAYS" />
+                  <Button fx:id="refreshButton" mnemonicParsing="false" onAction="#onRefreshClicked" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-weight: bold;" text="🔄 Làm mới" />
+               </HBox>
+
+               <!-- ITEMS DISPLAY -->
+               <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #f8fafc; -fx-padding: 0;" VBox.vgrow="ALWAYS">
+                  <content>
+                     <FlowPane fx:id="itemFlowPane" hgap="20.0" vgap="20.0">
+                        <padding>
+                           <Insets bottom="20.0" left="20.0" right="20.0" top="10.0" />
+                        </padding>
+                     </FlowPane>
+                  </content>
+               </ScrollPane>
+            </VBox>
+
+            <!-- ===== WATCHLIST VIEW ===== -->
+            <VBox fx:id="watchlistView" visible="false" VBox.vgrow="ALWAYS" spacing="10" style="-fx-padding: 20;">
+               <Label text="📋 Danh sách theo dõi của bạn" style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #0f172a;" />
+
+               <!-- Filter & Search for Watchlist -->
+               <HBox alignment="CENTER" spacing="15.0" style="-fx-background-color: white; -fx-padding: 15; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-border-width: 1;">
+                  <TextField fx:id="watchlistSearchTextField" prefHeight="40.0" prefWidth="350.0" promptText="🔍 Tìm kiếm trong danh sách theo dõi..." style="-fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-color: white; -fx-padding: 0 15; -fx-font-size: 12;" />
+                  <ComboBox fx:id="watchlistFilterComboBox" prefHeight="40.0" prefWidth="150.0" promptText="Lọc theo..." style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
+                  <ComboBox fx:id="watchlistSortComboBox" prefHeight="40.0" prefWidth="150.0" promptText="Sắp xếp..." style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
+                  <HBox HBox.hgrow="ALWAYS" />
+                  <Button fx:id="watchlistRefreshButton" mnemonicParsing="false" onAction="#onWatchlistRefreshClicked" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-weight: bold;" text="🔄 Làm mới" />
+               </HBox>
+
+               <!-- Watchlist Items Display -->
+               <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #f8fafc; -fx-padding: 0;" VBox.vgrow="ALWAYS">
+                  <content>
+                     <FlowPane fx:id="watchlistFlowPane" hgap="20.0" vgap="20.0">
+                        <padding>
+                           <Insets bottom="20.0" left="0" right="0" top="10.0" />
+                        </padding>
+                     </FlowPane>
+                  </content>
+               </ScrollPane>
+            </VBox>
+
+            <!-- ===== BID HISTORY VIEW ===== -->
+            <VBox fx:id="bidHistoryView" visible="false" VBox.vgrow="ALWAYS" spacing="10" style="-fx-padding: 20;">
+               <Label text="📊 Lịch sử đấu giá của bạn" style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #0f172a;" />
+
+               <!-- Filter, Sort & Search for Bid History -->
+               <HBox alignment="CENTER" spacing="15.0" style="-fx-background-color: white; -fx-padding: 15; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-border-width: 1;">
+                  <TextField fx:id="bidHistorySearchTextField" prefHeight="40.0" prefWidth="300.0" promptText="🔍 Tìm kiếm sản phẩm..." style="-fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-color: white; -fx-padding: 0 15; -fx-font-size: 12;" />
+                  <ComboBox fx:id="bidHistoryStatusComboBox" prefHeight="40.0" prefWidth="150.0" promptText="Lọc trạng thái..." style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
+                  <ComboBox fx:id="bidHistorySortComboBox" prefHeight="40.0" prefWidth="150.0" promptText="Sắp xếp..." style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
+                  <HBox HBox.hgrow="ALWAYS" />
+                  <Button fx:id="bidHistoryRefreshButton" mnemonicParsing="false" onAction="#onBidHistoryRefreshClicked" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-weight: bold;" text="🔄 Làm mới" />
+               </HBox>
+
+               <!-- Bid History Table -->
+               <TableView fx:id="bidHistoryTable" VBox.vgrow="ALWAYS" style="-fx-font-family: 'System'; -fx-font-size: 11;">
+                  <columns>
+                     <TableColumn fx:id="colItemName" text="Tên Sản Phẩm" prefWidth="200" />
+                     <TableColumn fx:id="colItemType" text="Loại" prefWidth="100" />
+                     <TableColumn fx:id="colBidAmount" text="Giá Đặt" prefWidth="120" />
+                     <TableColumn fx:id="colBidTime" text="Thời Gian" prefWidth="150" />
+                     <TableColumn fx:id="colAuctionStatus" text="Trạng Thái" prefWidth="120" />
+                     <TableColumn fx:id="colResult" text="Kết Quả" prefWidth="150" />
+                  </columns>
+               </TableView>
+            </VBox>
+
+         </VBox>
       </VBox>
    </children>
 </AnchorPane>
