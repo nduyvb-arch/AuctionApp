@@ -1,6 +1,7 @@
 package org.example.client.controllers;
 
 import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -22,16 +23,12 @@ public class LoginController implements Initializable {
 
     @FXML
     private TextField usernameField;
-
     @FXML
     private PasswordField passwordField;
-
     @FXML
     private Label errorLabel;
-
     @FXML
     private CheckBox rememberCheckbox;
-
     @FXML
     private Button loginButton;
 
@@ -53,32 +50,30 @@ public class LoginController implements Initializable {
         loginButton.setDisable(true);
         loginButton.setText("Đang đăng nhập...");
 
-        // Sử dụng Task để đăng nhập trên luồng nền
         Task<User> loginTask = new Task<>() {
             @Override
             protected User call() throws Exception {
-
+                ClientApp.connectToServer();
                 var out = ClientApp.getOutputStream();
                 var in = ClientApp.getInputStream();
 
-                // Đóng gói dữ liệu gửi lên Server
                 String[] loginData = {username, password};
                 Message loginMsg = new Message("LOGIN", loginData);
                 out.writeObject(loginMsg);
                 out.flush();
 
-                // Chờ Server (ClientHandler) trả lời
                 Message responseMsg = (Message) in.readObject();
 
                 if (responseMsg != null && "LOGIN_RESPONSE".equals(responseMsg.getAction())) {
-                    User user = (User) responseMsg.getPayload(); // Ép kiểu payload về User
-
+                    User user = (User) responseMsg.getPayload();
                     if (user != null) {
-                        return user; // Đăng nhập thành công
+                        return user;
                     } else {
+                        ClientApp.closeConnection();
                         throw new SecurityException("Tên đăng nhập hoặc mật khẩu không đúng");
                     }
                 } else {
+                    ClientApp.closeConnection();
                     throw new IOException("Phản hồi từ server không hợp lệ.");
                 }
             }
@@ -86,27 +81,33 @@ public class LoginController implements Initializable {
 
         // Xử lý khi đăng nhập thành công
         loginTask.setOnSucceeded(event -> {
-            User user = loginTask.getValue();
-            ClientApp.setCurrentUser(user);
-            System.out.println("Đăng nhập thành công: " + user.getUsername());
-            try {
-                ClientApp.switchToHome();
-            } catch (Exception e) {
-                showError("Lỗi chuyển màn hình: " + e.getMessage());
-                loginButton.setDisable(false);
-                loginButton.setText("Đăng nhập");
-            }
+            // SỬA LỖI: Chuyển toàn bộ logic cập nhật UI vào Platform.runLater
+            Platform.runLater(() -> {
+                User user = loginTask.getValue();
+                ClientApp.setCurrentUser(user);
+                System.out.println("Đăng nhập thành công: " + user.getUsername());
+                try {
+                    ClientApp.switchToHome();
+                } catch (Exception e) {
+                    showError("Lỗi chuyển màn hình: " + e.getMessage());
+                    loginButton.setDisable(false);
+                    loginButton.setText("Đăng nhập");
+                }
+            });
         });
 
         // Xử lý khi đăng nhập thất bại
         loginTask.setOnFailed(event -> {
-            Throwable exception = loginTask.getException();
-            showError(exception.getMessage()); // Hiển thị lỗi "Tên đăng nhập hoặc mật khẩu không đúng"
-            loginButton.setDisable(false);
-            loginButton.setText("Đăng nhập");
+            // Cập nhật UI cũng cần Platform.runLater để đảm bảo an toàn
+            Platform.runLater(() -> {
+                Throwable exception = loginTask.getException();
+                showError(exception.getMessage());
+                loginButton.setDisable(false);
+                loginButton.setText("Đăng nhập");
+                ClientApp.closeConnection();
+            });
         });
 
-        // Bắt đầu chạy Task
         new Thread(loginTask).start();
     }
 
@@ -116,14 +117,12 @@ public class LoginController implements Initializable {
             ClientApp.switchToSignUp();
         } catch (Exception e) {
             System.err.println("Error switching to sign up: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 
     @FXML
     public void onForgotPasswordClicked() {
-        System.out.println("Chuyển đến trang lấy lại mật khẩu...");
-        // TODO: Load cảnh reset password
+        // ...
     }
 
     private void showError(String message) {
