@@ -36,34 +36,40 @@ public class ClientApp extends Application {
      */
     @Override
     public void start(final Stage stage) throws Exception {
-        primaryStage = stage;
-
-        // --- Thiết lập kết nối mạng và bắt buộc thoát nếu thất bại ---
         try {
-            System.out.println("Đang kết nối tới server tại " + SERVER_ADDRESS + ":" + SERVER_PORT + "...");
-            socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
-            outputStream = new ObjectOutputStream(socket.getOutputStream());
-            inputStream = new ObjectInputStream(socket.getInputStream());
-            System.out.println("Kết nối server thành công!");
+            primaryStage = stage;
+
+            // --- Thiết lập kết nối mạng và bắt buộc thoát nếu thất bại ---
+            try {
+                System.out.println("Đang kết nối tới server tại " + SERVER_ADDRESS + ":" + SERVER_PORT + "...");
+                socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
+                outputStream = new ObjectOutputStream(socket.getOutputStream());
+                inputStream = new ObjectInputStream(socket.getInputStream());
+                System.out.println("Kết nối server thành công!");
+            } catch (Exception e) {
+                System.err.println("Không thể kết nối tới server: " + e.getMessage());
+                showConnectionErrorAndExit(e.getMessage());
+                return; // Dừng thực thi phương thức start
+            }
+
+            Image icon = new Image(getClass().getResourceAsStream("/images/logo.png"));
+            primaryStage.getIcons().add(icon);
+
+            switchToLogin();
+            stage.setResizable(false);
+
+            // Xử lý khi người dùng đóng ứng dụng
+            stage.setOnCloseRequest(event -> {
+                closeConnection();
+                System.out.println("Ứng dụng đã đóng.");
+            });
+
+            stage.show();
         } catch (Exception e) {
-            System.err.println("Không thể kết nối tới server: " + e.getMessage());
-            showConnectionErrorAndExit(e.getMessage());
-            return; // Dừng thực thi phương thức start
+            System.err.println("Lỗi nghiêm trọng khi khởi động ứng dụng: " + e.getMessage());
+            e.printStackTrace();
+            Platform.exit();
         }
-
-        Image icon = new Image(getClass().getResourceAsStream("/images/logo.png"));
-        primaryStage.getIcons().add(icon);
-
-        switchToLogin();
-        stage.setResizable(false);
-
-        // Xử lý khi người dùng đóng ứng dụng
-        stage.setOnCloseRequest(event -> {
-            closeConnection();
-            System.out.println("Ứng dụng đã đóng.");
-        });
-
-        stage.show();
     }
 
     /**

@@ -3,6 +3,8 @@ import java.io.Serializable;
 
 public class Admin extends User implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     public Admin(final String id, final String username, final String password) {
         super(id, username, password);
     }

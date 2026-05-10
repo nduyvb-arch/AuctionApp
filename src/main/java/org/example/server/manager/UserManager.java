@@ -191,6 +191,47 @@ public class UserManager {
         }
     }
     
+    public synchronized String updateUserRole(String userId, String newRole) {
+        String sql = "UPDATE users SET role = ? WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, newRole.toLowerCase());
+            pstmt.setString(2, userId);
+            
+            int affectedRows = pstmt.executeUpdate();
+            if (affectedRows > 0) {
+                // Update in-memory list
+                for (int i = 0; i < users.size(); i++) {
+                    User user = users.get(i);
+                    if (user.getId().equals(userId)) {
+                        // Recreate user object with new role
+                        User updatedUser;
+                        switch (newRole.toLowerCase()) {
+                            case "bidder":
+                                updatedUser = new Bidder(user.getId(), user.getUsername(), user.getPassword(), 0.0);
+                                break;
+                            case "seller":
+                                updatedUser = new Seller(user.getId(), user.getUsername(), user.getPassword());
+                                break;
+                            case "admin":
+                                updatedUser = new Admin(user.getId(), user.getUsername(), user.getPassword());
+                                break;
+                            default:
+                                return "Invalid role";
+                        }
+                        users.set(i, updatedUser);
+                        break;
+                    }
+                }
+                return "Cập nhật quyền thành công!";
+            }
+            return "Không tìm thấy user.";
+        } catch (SQLException e) {
+            return "Lỗi cơ sở dữ liệu: " + e.getMessage();
+        }
+    }
+    
     public void closeConnection() {
         DatabaseManager.closeConnection();
     }

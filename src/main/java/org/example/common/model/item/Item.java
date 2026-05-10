@@ -8,9 +8,10 @@ import java.util.UUID;
 
 public abstract class Item extends Entity implements Serializable {
 
+    private static final long serialVersionUID = 1L;
     protected String itemName;
     protected String type;
-    protected String describe;
+    protected String description;
     protected double startingPrice;
     protected double bidIncrement;
     private double currentPrice;
@@ -18,12 +19,12 @@ public abstract class Item extends Entity implements Serializable {
     private AuctionStatus status = AuctionStatus.PENDING; // mặc định là trạng thái chờ
     private LocalDateTime endTime;
 
-    public Item(String name, String type, String describe, double startingPrice, double bidIncrement) {
+    public Item(String name, String type, String description, double startingPrice, double bidIncrement) {
 
         this.id = "I-" + UUID.randomUUID().toString().substring(0, 8);
         this.itemName = name;
         this.type = type;
-        this.describe = describe;
+        this.description = description;
         this.startingPrice = startingPrice;
         this.bidIncrement = bidIncrement;
 
@@ -47,12 +48,12 @@ public abstract class Item extends Entity implements Serializable {
         this.type = type;
     }
 
-    public String getDescribe() {
-        return this.describe;
+    public String getDescription() {
+        return this.description;
     }
 
-    public void setDescribe(String describe) {
-        this.describe = describe;
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public String getItemName() {

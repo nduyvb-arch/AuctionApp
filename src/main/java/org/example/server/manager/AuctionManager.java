@@ -50,7 +50,7 @@ public class AuctionManager {
                 String id = rs.getString("id");
                 String name = rs.getString("name");
                 String type = rs.getString("type");
-                String describe = rs.getString("description");
+                String description = rs.getString("description");
                 double startingPrice = rs.getDouble("start_price");
                 double bidIncrement = rs.getDouble("bid_increment");
                 double currentPrice = rs.getDouble("current_price");
@@ -62,16 +62,16 @@ public class AuctionManager {
                 Item item;
                 switch (type.toLowerCase()) {
                     case "art":
-                        item = new Art(name, type, describe, startingPrice, bidIncrement);
+                        item = new Art(name, type, description, startingPrice, bidIncrement);
                         break;
                     case "electronic":
-                        item = new Electronic(name, type, describe, startingPrice, bidIncrement);
+                        item = new Electronic(name, type, description, startingPrice, bidIncrement);
                         break;
                     case "vehicle":
-                        item = new Vehicle(name, type, describe, startingPrice, bidIncrement);
+                        item = new Vehicle(name, type, description, startingPrice, bidIncrement);
                         break;
                     default:
-                        item = new Art(name, type, describe, startingPrice, bidIncrement); // default to Art
+                        item = new Art(name, type, description, startingPrice, bidIncrement); // default to Art
                 }
 
                 // Khôi phục trạng thái
@@ -98,7 +98,7 @@ public class AuctionManager {
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, item.getItemName());
-            pstmt.setString(2, item.getDescribe());
+            pstmt.setString(2, item.getDescription());
             pstmt.setString(3, item.getType());
             pstmt.setDouble(4, item.getStartingPrice());
             pstmt.setDouble(5, item.getBidIncrement());

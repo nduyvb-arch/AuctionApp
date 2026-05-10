@@ -3,6 +3,8 @@ import java.io.Serializable;
 
 public class Seller extends User implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     public Seller(final String id, final String username, final String password) {
         super(id, username, password);
     }

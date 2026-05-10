@@ -18,7 +18,7 @@ class ItemTest {
         // Kiểm tra các thông tin cơ bản
         assertEquals("Macbook", laptop.getItemName());
         assertEquals("Electronics", laptop.getType());
-        assertEquals("M3 Chip", laptop.getDescribe());
+        assertEquals("M3 Chip", laptop.getDescription());
         assertEquals(1000.0, laptop.getStartingPrice());
         assertEquals(50.0, laptop.getBidIncrement());
         assertEquals(1000.0, laptop.getCurrentPrice());
@@ -39,9 +39,9 @@ class ItemTest {
 
         // Test cập nhật tên và mô tả
         painting.setName("Mona Lisa v2");
-        painting.setDescribe("Bản phục chế");
+        painting.setDescription("Bản phục chế");
         assertEquals("Mona Lisa v2", painting.getItemName());
-        assertEquals("Bản phục chế", painting.getDescribe());
+        assertEquals("Bản phục chế", painting.getDescription());
 
         // Test cập nhật giá và bước giá
         painting.setStartingPrice(6000.0);
