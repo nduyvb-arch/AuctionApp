@@ -135,4 +135,9 @@ public class DatabaseManager {
             }
         }
     }
+<<<<<<< HEAD:src/main/java/org/example/data/DatabaseManager.java
+
 }
+=======
+}
+>>>>>>> 2a560cbf6ff0cc80e03f038778e60284404e1e36:src/main/java/org/example/server/data/DatabaseManager.java
