@@ -1,0 +1,39 @@
+name: AuctionApp CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build_and_test:
+    name: Build, Test and Analyze
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Checkout mã nguồn
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Cần thiết cho SonarCloud để phân tích lịch sử commit
+
+      - name: 2. Cài đặt môi trường Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: 3. Kiểm tra tiêu chuẩn Code (Checkstyle)
+        run: mvn checkstyle:check
+
+      - name: 4. Build và chạy Unit Test
+        run: mvn clean verify
+
+      - name: 5. Phân tích mã nguồn với SonarCloud
+        # Chạy lệnh phân tích của Maven, gửi kết quả đến SonarCloud.
+        # Các biến môi trường SONAR_TOKEN và GITHUB_TOKEN được cung cấp bởi GitHub Actions.
+        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=nduyvb-arch_AuctionApp
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
