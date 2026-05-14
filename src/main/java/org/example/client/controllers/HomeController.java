@@ -5,14 +5,12 @@ import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -20,23 +18,35 @@ import org.example.client.ClientApp;
 import org.example.common.Message;
 import org.example.common.model.item.Item;
 import org.example.common.model.user.User;
-import org.example.common.model.user.Bidder;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.URL;
 import java.text.NumberFormat;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Controller chính của HomeMenu.fxml.
+ * Quản lý:
+ *   - Sidebar / navigation
+ *   - Top bar (tiêu đề trang, thông tin user)
+ *   - Home View (danh sách sản phẩm, bộ lọc)
+ *   - Dữ liệu dùng chung: items, watchlistItemIds
+ *
+ * Các màn hình con (Watchlist, BidHistory) được tách thành FXML + Controller riêng
+ * và nhúng vào HomeMenu.fxml qua {@code <fx:include>}.
+ * HomeController giao tiếp với chúng thông qua {@link WatchlistController}
+ * và {@link BidHistoryController}.
+ */
 public class HomeController implements Initializable {
 
+    // ═══════════════════════════════════════════════════════════
     // SIDEBAR COMPONENTS
-    @FXML private VBox sidebarMenu;
-    @FXML private Label currentRoleLabel;
-    @FXML private Button roleSwitcherButton;
+    // ═══════════════════════════════════════════════════════════
+    @FXML private VBox    sidebarMenu;
+    @FXML private Label   currentRoleLabel;
+    @FXML private Button  roleSwitcherButton;
 
     // MENU ITEMS
     @FXML private Button homeMenuItem;
@@ -53,120 +63,94 @@ public class HomeController implements Initializable {
     @FXML private Label bidderMenuLabel;
     @FXML private Label sellerMenuLabel;
 
+    // ═══════════════════════════════════════════════════════════
     // TOP BAR COMPONENTS
+    // ═══════════════════════════════════════════════════════════
     @FXML private Label pageTitle;
     @FXML private Label userInfoLabel;
 
-    // ===== HOME VIEW =====
-    @FXML private TextField searchTextField;
-    @FXML private ComboBox<String> filterComboBox;
-    @FXML private ComboBox<String> sortComboBox;
-    @FXML private Button refreshButton;
-    @FXML private FlowPane itemFlowPane;
+    // ═══════════════════════════════════════════════════════════
+    // HOME VIEW COMPONENTS
+    // ═══════════════════════════════════════════════════════════
+    @FXML private VBox              homeView;
+    @FXML private TextField         searchTextField;
+    @FXML private ComboBox<String>  filterComboBox;
+    @FXML private ComboBox<String>  sortComboBox;
+    @FXML private Button            refreshButton;
+    @FXML private FlowPane          itemFlowPane;
 
-    // ===== WATCHLIST VIEW =====
-    @FXML private VBox watchlistView;
-    @FXML private TextField watchlistSearchTextField;
-    @FXML private ComboBox<String> watchlistFilterComboBox;
-    @FXML private ComboBox<String> watchlistSortComboBox;
-    @FXML private Button watchlistRefreshButton;
-    @FXML private FlowPane watchlistFlowPane;
+    // ═══════════════════════════════════════════════════════════
+    // SUB-VIEW ROOTS (được inject từ fx:include)
+    // Quy tắc đặt tên: fx:id="watchlistViewPane"
+    //   → @FXML VBox watchlistViewPane          (root node)
+    //   → @FXML WatchlistController watchlistViewPaneController (controller)
+    // ═══════════════════════════════════════════════════════════
+    @FXML private VBox                 watchlistViewPane;
+    @FXML private WatchlistController  watchlistViewPaneController;
 
-    // ===== BID HISTORY VIEW =====
-    @FXML private VBox bidHistoryView;
-    @FXML private TextField bidHistorySearchTextField;
-    @FXML private ComboBox<String> bidHistoryStatusComboBox;
-    @FXML private ComboBox<String> bidHistorySortComboBox;
-    @FXML private Button bidHistoryRefreshButton;
-    @FXML private TableView<BidHistoryRecord> bidHistoryTable;
-    @FXML private TableColumn<BidHistoryRecord, String> colItemName;
-    @FXML private TableColumn<BidHistoryRecord, String> colItemType;
-    @FXML private TableColumn<BidHistoryRecord, String> colBidAmount;
-    @FXML private TableColumn<BidHistoryRecord, String> colBidTime;
-    @FXML private TableColumn<BidHistoryRecord, String> colAuctionStatus;
-    @FXML private TableColumn<BidHistoryRecord, String> colResult;
+    @FXML private VBox                  bidHistoryViewPane;
+    @FXML private BidHistoryController  bidHistoryViewPaneController;
 
-    // ===== VIEW CONTAINERS =====
-    @FXML private VBox homeView;
+    // CONTENT CONTAINER (bọc tất cả views)
     @FXML private VBox contentContainer;
 
-    // DATA
-    private List<Item> items = new ArrayList<>();
-    private List<Item> watchlistItems = new ArrayList<>();
-    private List<BidHistoryRecord> bidHistory = new ArrayList<>();
-    private Set<String> watchlistItemIds = new HashSet<>();
+    // ═══════════════════════════════════════════════════════════
+    // SHARED DATA
+    // ═══════════════════════════════════════════════════════════
+    private List<Item>    items            = new ArrayList<>();
+    private Set<String>   watchlistItemIds = new HashSet<>();
 
-    private ObjectOutputStream out;
-    private ObjectInputStream in;
-    private User currentUser;
-    private static final NumberFormat currencyFormat = NumberFormat.getInstance(new Locale("vi_VN"));
+    // Bid history được quản lý bởi BidHistoryController;
+    // HomeController giữ reference để có thể thêm record khi cần.
+    private List<BidHistoryController.BidHistoryRecord> bidHistory = new ArrayList<>();
 
-    // ===== INNER CLASS FOR BID HISTORY RECORD =====
-    public static class BidHistoryRecord {
-        private String itemId;
-        private String itemName;
-        private String itemType;
-        private double bidAmount;
-        private LocalDateTime bidTime;
-        private String auctionStatus;
-        private String result;
+    private ObjectOutputStream  out;
+    private ObjectInputStream   in;
+    private User                currentUser;
 
-        public BidHistoryRecord(String itemId, String itemName, String itemType,
-                                double bidAmount, LocalDateTime bidTime, String auctionStatus, String result) {
-            this.itemId = itemId;
-            this.itemName = itemName;
-            this.itemType = itemType;
-            this.bidAmount = bidAmount;
-            this.bidTime = bidTime;
-            this.auctionStatus = auctionStatus;
-            this.result = result;
-        }
+    private static final NumberFormat currencyFormat =
+            NumberFormat.getInstance(new Locale("vi_VN"));
 
-        // Getters
-        public String getItemId() { return itemId; }
-        public String getItemName() { return itemName; }
-        public String getItemType() { return itemType; }
-        public double getBidAmount() { return bidAmount; }
-        public LocalDateTime getBidTime() { return bidTime; }
-        public String getAuctionStatus() { return auctionStatus; }
-        public String getResult() { return result; }
-    }
+    // ═══════════════════════════════════════════════════════════
+    // INITIALIZE
+    // ═══════════════════════════════════════════════════════════
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        // 1. Lấy thông tin người dùng hiện tại
+        // 1. Thông tin người dùng
         currentUser = ClientApp.getCurrentUser();
         if (currentUser != null) {
-            userInfoLabel.setText("👤 " + currentUser.getUsername() + " | Role: " + currentUser.getRole());
+            userInfoLabel.setText("👤 " + currentUser.getUsername()
+                    + " | Role: " + currentUser.getRole());
             updateUIBasedOnRole();
         }
 
-        // 2. Lấy stream để giao tiếp với server
+        // 2. Streams giao tiếp với server
         out = ClientApp.getOutputStream();
-        in = ClientApp.getInputStream();
+        in  = ClientApp.getInputStream();
 
-        // 3. Setup filter & sort combobox cho HOME VIEW
+        // 3. Thiết lập bộ lọc cho Home View
         setupHomeViewFilters();
 
-        // 4. Setup filter & sort combobox cho WATCHLIST VIEW
-        setupWatchlistViewFilters();
+        // 4. Ẩn các sub-view, chỉ hiện Home View mặc định
+        watchlistViewPane.setVisible(false);
+        bidHistoryViewPane.setVisible(false);
+        homeView.setVisible(true);
 
-        // 5. Setup filter & sort combobox cho BID HISTORY VIEW
-        setupBidHistoryViewFilters();
+        // 5. Khởi động các sub-controllers với dữ liệu dùng chung
+        watchlistViewPaneController.setup(items, watchlistItemIds, out, in, currentUser);
+        bidHistoryViewPaneController.setup(bidHistory);
 
-        // 6. Setup TableView columns cho BID HISTORY
-        setupBidHistoryTableColumns();
-
-        // 7. Load items từ server
+        // 6. Tải danh sách sản phẩm từ server
         loadInitialItems();
 
-        // 8. Lắng nghe server updates
+        // 7. Lắng nghe cập nhật từ server
         listenForServerUpdates();
     }
 
-    // ============================================================
-    // VIEW SWITCHING METHODS
-    // ============================================================
+    // ═══════════════════════════════════════════════════════════
+    // CHUYỂN MÀN HÌNH
+    // ═══════════════════════════════════════════════════════════
 
     @FXML
     private void switchToHomeView() {
@@ -177,16 +161,17 @@ public class HomeController implements Initializable {
 
     @FXML
     private void switchToWatchlistView() {
-        showView(watchlistView);
+        showView(watchlistViewPane);
         pageTitle.setText("⭐ Danh sách theo dõi");
-        refreshWatchlistView();
+        // Cập nhật dữ liệu mới nhất trước khi hiển thị
+        watchlistViewPaneController.updateData(items, watchlistItemIds);
     }
 
     @FXML
     private void switchToBidHistoryView() {
-        showView(bidHistoryView);
+        showView(bidHistoryViewPane);
         pageTitle.setText("📊 Lịch sử đấu giá");
-        refreshBidHistoryView();
+        bidHistoryViewPaneController.refreshBidHistoryView();
     }
 
     @FXML
@@ -249,6 +234,7 @@ public class HomeController implements Initializable {
         alert.showAndWait();
     }
 
+    /** Ẩn tất cả views con, rồi hiện {@code view}. */
     private void showView(VBox view) {
         hideAllViews();
         view.setVisible(true);
@@ -256,13 +242,13 @@ public class HomeController implements Initializable {
 
     private void hideAllViews() {
         homeView.setVisible(false);
-        watchlistView.setVisible(false);
-        bidHistoryView.setVisible(false);
+        watchlistViewPane.setVisible(false);
+        bidHistoryViewPane.setVisible(false);
     }
 
-    // ============================================================
-    // HOME VIEW SETUP & REFRESH
-    // ============================================================
+    // ═══════════════════════════════════════════════════════════
+    // HOME VIEW – SETUP, TẢI DỮ LIỆU, LỌC & SẮP XẾP
+    // ═══════════════════════════════════════════════════════════
 
     private void setupHomeViewFilters() {
         ObservableList<String> statuses = FXCollections.observableArrayList(
@@ -277,7 +263,6 @@ public class HomeController implements Initializable {
         sortComboBox.setItems(sorts);
         sortComboBox.setValue("Mặc định");
 
-        // Add listeners
         filterComboBox.setOnAction(e -> applyHomeFiltersAndSort());
         sortComboBox.setOnAction(e -> applyHomeFiltersAndSort());
         searchTextField.setOnKeyReleased(e -> applyHomeFiltersAndSort());
@@ -292,14 +277,17 @@ public class HomeController implements Initializable {
         Task<Void> task = new Task<Void>() {
             @Override
             protected Void call() throws Exception {
-                Message request = new Message("GET_ALL_ITEMS", null);
+                Message request  = new Message("GET_ALL_ITEMS", null);
                 out.writeObject(request);
                 Message response = (Message) in.readObject();
 
                 if ("GET_ALL_ITEMS_RESPONSE".equals(response.getAction())) {
                     List<Item> fetchedItems = (List<Item>) response.getPayload();
                     Platform.runLater(() -> {
-                        items = fetchedItems;
+                        // Cập nhật list dùng chung mà không thay đổi reference
+                        // để WatchlistController vẫn thấy dữ liệu mới
+                        items.clear();
+                        items.addAll(fetchedItems);
                         applyHomeFiltersAndSort();
                     });
                 }
@@ -310,28 +298,25 @@ public class HomeController implements Initializable {
     }
 
     private void applyHomeFiltersAndSort() {
-        String searchText = searchTextField.getText().toLowerCase();
+        String searchText   = searchTextField.getText().toLowerCase();
         String statusFilter = filterComboBox.getValue();
-        String sortOption = sortComboBox.getValue();
+        String sortOption   = sortComboBox.getValue();
 
         List<Item> filtered = items.stream()
                 .filter(item -> item.getItemName().toLowerCase().contains(searchText))
                 .filter(item -> applyStatusFilter(item, statusFilter))
                 .collect(Collectors.toList());
 
-        // Apply sorting
         applySorting(filtered, sortOption);
-
-        // Display items
         displayItems(filtered);
     }
 
     private boolean applyStatusFilter(Item item, String filter) {
-        if ("Tất cả".equals(filter)) return true;
-        if ("Chờ".equals(filter)) return "PENDING".equals(item.getStatus().name());
-        if ("Đang diễn ra".equals(filter)) return "ACTIVE".equals(item.getStatus().name());
-        if ("Đã kết thúc".equals(filter)) return "CLOSED".equals(item.getStatus().name());
-        if ("Bị hủy".equals(filter)) return "CANCELED".equals(item.getStatus().name());
+        if ("Tất cả".equals(filter))          return true;
+        if ("Chờ".equals(filter))             return "PENDING".equals(item.getStatus().name());
+        if ("Đang diễn ra".equals(filter))    return "ACTIVE".equals(item.getStatus().name());
+        if ("Đã kết thúc".equals(filter))     return "CLOSED".equals(item.getStatus().name());
+        if ("Bị hủy".equals(filter))          return "CANCELED".equals(item.getStatus().name());
         return true;
     }
 
@@ -350,7 +335,7 @@ public class HomeController implements Initializable {
                     return a.getEndTime().compareTo(b.getEndTime());
                 });
                 break;
-            default: // Mặc định - không sắp xếp
+            default:
                 break;
         }
     }
@@ -362,9 +347,14 @@ public class HomeController implements Initializable {
         }
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // TẠO THẺ SẢN PHẨM (Home View)
+    // ═══════════════════════════════════════════════════════════
+
     private Node createItemCard(Item item) {
         AnchorPane pane = new AnchorPane();
-        pane.setStyle("-fx-border-color: #e2e8f0; -fx-border-radius: 12; -fx-background-color: white; -fx-padding: 15;");
+        pane.setStyle("-fx-border-color: #e2e8f0; -fx-border-radius: 12; " +
+                "-fx-background-color: white; -fx-padding: 15;");
         pane.setPrefSize(220, 280);
 
         // Status Badge
@@ -389,7 +379,8 @@ public class HomeController implements Initializable {
         AnchorPane.setLeftAnchor(typeLabel, 12.0);
 
         // Description
-        Label descLabel = new Label(item.getDescription().isEmpty() ? "Không có mô tả" : item.getDescription());
+        Label descLabel = new Label(item.getDescription().isEmpty()
+                ? "Không có mô tả" : item.getDescription());
         descLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10;");
         descLabel.setWrapText(true);
         descLabel.setPrefHeight(40);
@@ -403,14 +394,16 @@ public class HomeController implements Initializable {
         AnchorPane.setTopAnchor(priceLabel, 160.0);
         AnchorPane.setLeftAnchor(priceLabel, 12.0);
 
-        Label priceValueLabel = new Label(currencyFormat.format(item.getCurrentPrice()) + " VNĐ");
+        Label priceValueLabel = new Label(
+                currencyFormat.format(item.getCurrentPrice()) + " VNĐ");
         priceValueLabel.setFont(new Font("System Bold", 13));
         priceValueLabel.setStyle("-fx-text-fill: #3b82f6;");
         AnchorPane.setTopAnchor(priceValueLabel, 175.0);
         AnchorPane.setLeftAnchor(priceValueLabel, 12.0);
 
         // Bid Increment
-        Label incrementLabel = new Label("Mức tăng: +" + currencyFormat.format(item.getBidIncrement()) + " VNĐ");
+        Label incrementLabel = new Label(
+                "Mức tăng: +" + currencyFormat.format(item.getBidIncrement()) + " VNĐ");
         incrementLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10;");
         AnchorPane.setTopAnchor(incrementLabel, 195.0);
         AnchorPane.setLeftAnchor(incrementLabel, 12.0);
@@ -427,12 +420,12 @@ public class HomeController implements Initializable {
         // View Details Button
         Button viewDetailsButton = new Button("📄");
         viewDetailsButton.setFont(new Font("System Bold", 14));
-        viewDetailsButton.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 8 12; " +
-                "-fx-background-radius: 6; -fx-cursor: hand;");
+        viewDetailsButton.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; " +
+                "-fx-padding: 8 12; -fx-background-radius: 6; -fx-cursor: hand;");
         AnchorPane.setBottomAnchor(viewDetailsButton, 12.0);
         AnchorPane.setRightAnchor(viewDetailsButton, 35.0);
 
-        // Watchlist Button
+        // Watchlist Toggle Button
         Button watchlistButton = new Button(watchlistItemIds.contains(item.getId()) ? "⭐" : "☆");
         watchlistButton.setFont(new Font("System Bold", 14));
         watchlistButton.setStyle("-fx-background-color: transparent; -fx-text-fill: " +
@@ -442,33 +435,37 @@ public class HomeController implements Initializable {
         AnchorPane.setBottomAnchor(watchlistButton, 12.0);
         AnchorPane.setRightAnchor(watchlistButton, 12.0);
 
-        pane.getChildren().addAll(statusBadge, nameLabel, typeLabel, descLabel, priceLabel,
-                priceValueLabel, incrementLabel, bidButton, viewDetailsButton, watchlistButton);
+        pane.getChildren().addAll(statusBadge, nameLabel, typeLabel, descLabel,
+                priceLabel, priceValueLabel, incrementLabel,
+                bidButton, viewDetailsButton, watchlistButton);
         return pane;
     }
 
     private String getStatusText(String status) {
         switch (status) {
-            case "PENDING": return "Chờ";
-            case "ACTIVE": return "Đang diễn ra";
-            case "CLOSED": return "Đã kết thúc";
+            case "PENDING":  return "Chờ";
+            case "ACTIVE":   return "Đang diễn ra";
+            case "CLOSED":   return "Đã kết thúc";
             case "CANCELED": return "Bị hủy";
-            default: return status;
+            default:         return status;
         }
     }
 
     private String getStatusColor(String status) {
         switch (status) {
-            case "PENDING": return "#94a3b8";
-            case "ACTIVE": return "#10b981";
-            case "CLOSED": return "#8b5cf6";
+            case "PENDING":  return "#94a3b8";
+            case "ACTIVE":   return "#10b981";
+            case "CLOSED":   return "#8b5cf6";
             case "CANCELED": return "#ef4444";
-            default: return "#6b7280";
+            default:         return "#6b7280";
         }
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // ĐẶT GIÁ
+    // ═══════════════════════════════════════════════════════════
+
     private void openBidDialog(Item item) {
-        // TODO: Implement Bid Dialog
         Dialog<Double> dialog = new Dialog<>();
         dialog.setTitle("Đặt Giá - " + item.getItemName());
         dialog.setHeaderText("Nhập mức giá mà bạn muốn đặt");
@@ -487,7 +484,6 @@ public class HomeController implements Initializable {
                 new Label("Nhập giá của bạn:"),
                 amountField
         );
-
         dialog.getDialogPane().setContent(content);
 
         Optional<Double> result = dialog.showAndWait();
@@ -499,7 +495,7 @@ public class HomeController implements Initializable {
             @Override
             protected Void call() throws Exception {
                 Object[] bidData = {itemId, bidAmount, currentUser.getId()};
-                Message request = new Message("BID", bidData);
+                Message request  = new Message("BID", bidData);
                 out.writeObject(request);
                 Message response = (Message) in.readObject();
 
@@ -516,173 +512,32 @@ public class HomeController implements Initializable {
         new Thread(task).start();
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // TOGGLE WATCHLIST (từ Home View)
+    // ═══════════════════════════════════════════════════════════
+
     private void toggleWatchlist(Item item, Button button) {
         if (watchlistItemIds.contains(item.getId())) {
             watchlistItemIds.remove(item.getId());
             button.setText("☆");
-            button.setStyle("-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 8 12; -fx-cursor: hand;");
+            button.setStyle("-fx-background-color: transparent; -fx-text-fill: #cbd5e1; " +
+                    "-fx-padding: 8 12; -fx-cursor: hand;");
         } else {
             watchlistItemIds.add(item.getId());
             button.setText("⭐");
-            button.setStyle("-fx-background-color: transparent; -fx-text-fill: #f59e0b; -fx-padding: 8 12; -fx-cursor: hand;");
+            button.setStyle("-fx-background-color: transparent; -fx-text-fill: #f59e0b; " +
+                    "-fx-padding: 8 12; -fx-cursor: hand;");
         }
     }
 
-    private void addToWatchlist(Item item) {
-        if (!watchlistItemIds.contains(item.getId())) {
-            watchlistItemIds.add(item.getId());
-        }
-    }
-
-    // ============================================================
-    // WATCHLIST VIEW SETUP & REFRESH
-    // ============================================================
-
-    private void setupWatchlistViewFilters() {
-        ObservableList<String> filters = FXCollections.observableArrayList(
-                "Tất cả", "Đang diễn ra", "Chờ", "Đã kết thúc"
-        );
-        watchlistFilterComboBox.setItems(filters);
-        watchlistFilterComboBox.setValue("Tất cả");
-
-        ObservableList<String> sorts = FXCollections.observableArrayList(
-                "Mặc định", "Giá thấp → cao", "Giá cao → thấp", "Sắp hết hạn"
-        );
-        watchlistSortComboBox.setItems(sorts);
-        watchlistSortComboBox.setValue("Mặc định");
-
-        watchlistFilterComboBox.setOnAction(e -> refreshWatchlistView());
-        watchlistSortComboBox.setOnAction(e -> refreshWatchlistView());
-        watchlistSearchTextField.setOnKeyReleased(e -> refreshWatchlistView());
-    }
-
-    @FXML
-    public void onWatchlistRefreshClicked() {
-        refreshWatchlistView();
-    }
-
-    private void refreshWatchlistView() {
-        watchlistFlowPane.getChildren().clear();
-
-        String searchText = watchlistSearchTextField.getText().toLowerCase();
-        String statusFilter = watchlistFilterComboBox.getValue();
-        String sortOption = watchlistSortComboBox.getValue();
-
-        List<Item> filtered = items.stream()
-                .filter(item -> watchlistItemIds.contains(item.getId()))
-                .filter(item -> item.getItemName().toLowerCase().contains(searchText))
-                .filter(item -> applyStatusFilter(item, statusFilter))
-                .collect(Collectors.toList());
-
-        applySorting(filtered, sortOption);
-
-        if (filtered.isEmpty()) {
-            Label emptyLabel = new Label("📭 Danh sách theo dõi của bạn trống. Hãy thêm sản phẩm!");
-            emptyLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 14;");
-            watchlistFlowPane.getChildren().add(emptyLabel);
-        } else {
-            for (Item item : filtered) {
-                watchlistFlowPane.getChildren().add(createItemCard(item));
-            }
-        }
-    }
-
-    // ============================================================
-    // BID HISTORY VIEW SETUP & REFRESH
-    // ============================================================
-
-    private void setupBidHistoryViewFilters() {
-        ObservableList<String> statuses = FXCollections.observableArrayList(
-                "Tất cả", "Đang diễn ra", "Thắng", "Thua", "Chờ"
-        );
-        bidHistoryStatusComboBox.setItems(statuses);
-        bidHistoryStatusComboBox.setValue("Tất cả");
-
-        ObservableList<String> sorts = FXCollections.observableArrayList(
-                "Mới nhất", "Cũ nhất", "Giá cao → thấp", "Giá thấp → cao"
-        );
-        bidHistorySortComboBox.setItems(sorts);
-        bidHistorySortComboBox.setValue("Mới nhất");
-
-        bidHistoryStatusComboBox.setOnAction(e -> refreshBidHistoryView());
-        bidHistorySortComboBox.setOnAction(e -> refreshBidHistoryView());
-        bidHistorySearchTextField.setOnKeyReleased(e -> refreshBidHistoryView());
-    }
-
-    private void setupBidHistoryTableColumns() {
-        colItemName.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(cellData.getValue().getItemName()));
-        colItemType.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(cellData.getValue().getItemType()));
-        colBidAmount.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(
-                        currencyFormat.format(cellData.getValue().getBidAmount()) + " VNĐ"));
-        colBidTime.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(
-                        cellData.getValue().getBidTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
-        colAuctionStatus.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(cellData.getValue().getAuctionStatus()));
-        colResult.setCellValueFactory(cellData ->
-                new javafx.beans.property.SimpleStringProperty(cellData.getValue().getResult()));
-    }
-
-    @FXML
-    public void onBidHistoryRefreshClicked() {
-        refreshBidHistoryView();
-    }
-
-    private void refreshBidHistoryView() {
-        String searchText = bidHistorySearchTextField.getText().toLowerCase();
-        String statusFilter = bidHistoryStatusComboBox.getValue();
-        String sortOption = bidHistorySortComboBox.getValue();
-
-        List<BidHistoryRecord> filtered = bidHistory.stream()
-                .filter(record -> record.getItemName().toLowerCase().contains(searchText))
-                .filter(record -> applyBidHistoryStatusFilter(record, statusFilter))
-                .collect(Collectors.toList());
-
-        applyBidHistorySorting(filtered, sortOption);
-
-        ObservableList<BidHistoryRecord> tableData = FXCollections.observableArrayList(filtered);
-        bidHistoryTable.setItems(tableData);
-    }
-
-    private boolean applyBidHistoryStatusFilter(BidHistoryRecord record, String filter) {
-        if ("Tất cả".equals(filter)) return true;
-        if ("Đang diễn ra".equals(filter)) return "ACTIVE".equals(record.getAuctionStatus());
-        if ("Thắng".equals(filter)) return "Thắng".equals(record.getResult());
-        if ("Thua".equals(filter)) return "Thua".equals(record.getResult());
-        if ("Chờ".equals(filter)) return "Chờ".equals(record.getResult());
-        return true;
-    }
-
-    private void applyBidHistorySorting(List<BidHistoryRecord> recordList, String sortOption) {
-        switch (sortOption) {
-            case "Mới nhất":
-                recordList.sort((a, b) -> b.getBidTime().compareTo(a.getBidTime()));
-                break;
-            case "Cũ nhất":
-                recordList.sort(Comparator.comparing(BidHistoryRecord::getBidTime));
-                break;
-            case "Giá cao → thấp":
-                recordList.sort((a, b) -> Double.compare(b.getBidAmount(), a.getBidAmount()));
-                break;
-            case "Giá thấp → cao":
-                recordList.sort(Comparator.comparingDouble(BidHistoryRecord::getBidAmount));
-                break;
-            default:
-                break;
-        }
-    }
-
-    // ============================================================
-    // UTILITY METHODS
-    // ============================================================
+    // ═══════════════════════════════════════════════════════════
+    // ROLE SWITCHER
+    // ═══════════════════════════════════════════════════════════
 
     private void updateUIBasedOnRole() {
-        String role = currentUser.getRole();
-        boolean isBidder = "bidder".equalsIgnoreCase(role);
-        boolean isSeller = "seller".equalsIgnoreCase(role);
+        String  role      = currentUser.getRole();
+        boolean isBidder  = "bidder".equalsIgnoreCase(role);
+        boolean isSeller  = "seller".equalsIgnoreCase(role);
 
         bidderMenuLabel.setVisible(isBidder);
         watchlistMenuItem.setVisible(isBidder);
@@ -706,15 +561,15 @@ public class HomeController implements Initializable {
         Task<Void> task = new Task<Void>() {
             @Override
             protected Void call() throws Exception {
-                Message request = new Message("SWITCH_ROLE", newRole);
+                Message request  = new Message("SWITCH_ROLE", newRole);
                 out.writeObject(request);
                 Message response = (Message) in.readObject();
 
                 Platform.runLater(() -> {
                     if ("success".equals(response.getPayload())) {
                         currentUser.setRole(newRole);
-                        currentRoleLabel.setText("bidder".equalsIgnoreCase(newRole) ?
-                                "Người đấu giá" : "Người bán");
+                        currentRoleLabel.setText("bidder".equalsIgnoreCase(newRole)
+                                ? "Người đấu giá" : "Người bán");
                         updateUIBasedOnRole();
 
                         Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -729,6 +584,10 @@ public class HomeController implements Initializable {
         new Thread(task).start();
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // LẮNG NGHE CẬP NHẬT TỪ SERVER
+    // ═══════════════════════════════════════════════════════════
+
     private void listenForServerUpdates() {
         Task<Void> task = new Task<Void>() {
             @Override
@@ -741,8 +600,9 @@ public class HomeController implements Initializable {
                 }
             }
         };
-        new Thread(task).setDaemon(true);
-        new Thread(task).start();
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
     }
 
     private void handleServerMessage(Message message) {
@@ -755,15 +615,26 @@ public class HomeController implements Initializable {
                         .ifPresent(i -> {
                             items.remove(i);
                             items.add(updatedItem);
-                            if (homeView.isVisible()) applyHomeFiltersAndSort();
-                            if (watchlistView.isVisible()) refreshWatchlistView();
+                            // Làm mới view đang hiện
+                            if (homeView.isVisible()) {
+                                applyHomeFiltersAndSort();
+                            }
+                            if (watchlistViewPane.isVisible()) {
+                                // watchlistItemIds đã là reference dùng chung → chỉ cần refresh
+                                watchlistViewPaneController.updateData(items, watchlistItemIds);
+                            }
                         });
                 break;
+
             case "SYSTEM_NOTIFICATION":
                 System.out.println("Server: " + message.getPayload());
                 break;
         }
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // ĐĂNG XUẤT
+    // ═══════════════════════════════════════════════════════════
 
     @FXML
     public void onLogoutClicked() {
