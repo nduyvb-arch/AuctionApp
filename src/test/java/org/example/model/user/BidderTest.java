@@ -1,5 +1,6 @@
 package org.example.model.user;
 
+import org.example.common.model.user.Bidder;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
