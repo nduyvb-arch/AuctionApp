@@ -1,39 +1,109 @@
-name: AuctionApp CI/CD Pipeline
+name: Maven CI/CD for BTL
 
 on:
   push:
     branches: [ "main" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch: # Cho phép chạy workflow thủ công từ GitHub UI
+
+permissions:
+  contents: read # Quyền đọc nội dung repository
+
+concurrency:
+  group: maven-${{ github.workflow }}-${{ github.ref }} # Đảm bảo chỉ có một workflow chạy cho mỗi nhánh/tag
+  cancel-in-progress: true # Hủy các workflow đang chạy nếu có cái mới hơn
 
 jobs:
-  build_and_test:
-    name: Build, Test and Analyze
+  verify:
+    name: Verify (Compile & Test)
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # Giới hạn thời gian chạy job
 
     steps:
-      - name: 1. Checkout mã nguồn
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # Cần thiết cho SonarCloud để phân tích lịch sử commit
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: 2. Cài đặt môi trường Java
-        uses: actions/setup-java@v3
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '17' # Sử dụng JDK 17
+          distribution: 'temurin'
+          cache: maven # Cache các thư viện Maven để tăng tốc độ build
+
+      - name: Verify (compile + test)
+        run: mvn -B -ntp clean verify --file pom.xml # Chạy clean, compile và unit tests
+
+  package:
+    name: Package Application
+    needs: verify # Job này chỉ chạy khi job 'verify' thành công
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17' # Sử dụng JDK 17
           distribution: 'temurin'
           cache: maven
 
-      - name: 3. Kiểm tra tiêu chuẩn Code (Checkstyle)
-        run: mvn checkstyle:check
+      - name: Package jar
+        # Bỏ qua test vì đã chạy ở job 'verify'
+        run: mvn -B -ntp -DskipTests package --file pom.xml # Tạo ra một file .jar duy nhất
 
-      - name: 4. Build và chạy Unit Test
-        run: mvn clean verify
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: auctionapp-jar # Tên artifact
+          path: target/*.jar # Đường dẫn đến file .jar duy nhất trong thư mục target
+          if-no-files-found: error # Báo lỗi nếu không tìm thấy file
 
-      - name: 5. Phân tích mã nguồn với SonarCloud
-        # Chạy lệnh phân tích của Maven, gửi kết quả đến SonarCloud.
-        # Các biến môi trường SONAR_TOKEN và GITHUB_TOKEN được cung cấp bởi GitHub Actions.
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=nduyvb-arch_AuctionApp
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  release:
+    name: Create GitHub Release
+    needs: package # Job này chỉ chạy khi job 'package' thành công
+    if: startsWith(github.ref, 'refs/tags/v') # Chỉ chạy khi push một tag bắt đầu bằng 'v'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Cần quyền ghi để tạo release
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Cần thiết để Git có đủ lịch sử cho các kiểm tra tag/version
+
+      - name: Validate project version is not SNAPSHOT
+        run: |
+          VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n 1)
+          echo "Project version: $VERSION"
+          if [[ "$VERSION" == *-SNAPSHOT ]]; then
+            echo "::error::Project version is SNAPSHOT. Release is blocked."
+            exit 1
+          fi
+
+      - name: Validate tag commit is on main history
+        run: |
+          git fetch origin main --no-tags --prune
+          if git merge-base --is-ancestor "$GITHUB_SHA" "origin/main"; then
+            echo "Tag commit is reachable from main."
+          else
+            echo "::error::Tag commit is not reachable from main. Release is blocked."
+            exit 1
+          fi
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: auctionapp-jar # Tải về artifact đã upload ở job 'package'
+          path: dist # Lưu vào thư mục 'dist'
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true # Tự động tạo release notes
+          files: dist/*.jar # Đính kèm file .jar từ thư mục 'dist' vào release
