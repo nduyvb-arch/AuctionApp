@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.client.controllers.WatchlistController"
+      spacing="10" style="-fx-padding: 20;" VBox.vgrow="ALWAYS">
+    <children>
+        <Label text="📋 Danh sách theo dõi của bạn"
+               style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #0f172a;" />
+
+        <!-- Filter &amp; Search for Watchlist -->
+        <HBox alignment="CENTER" spacing="15.0"
+              style="-fx-background-color: white; -fx-padding: 15; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-border-width: 1;">
+            <TextField fx:id="watchlistSearchTextField"
+                       prefHeight="40.0" prefWidth="350.0"
+                       promptText="🔍 Tìm kiếm trong danh sách theo dõi..."
+                       style="-fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-color: white; -fx-padding: 0 15; -fx-font-size: 12;" />
+            <ComboBox fx:id="watchlistFilterComboBox"
+                      prefHeight="40.0" prefWidth="150.0" promptText="Lọc theo..."
+                      style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
+            <ComboBox fx:id="watchlistSortComboBox"
+                      prefHeight="40.0" prefWidth="150.0" promptText="Sắp xếp..."
+                      style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
+            <HBox HBox.hgrow="ALWAYS" />
+            <Button fx:id="watchlistRefreshButton"
+                    mnemonicParsing="false" onAction="#onWatchlistRefreshClicked"
+                    style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-weight: bold;"
+                    text="🔄 Làm mới" />
+        </HBox>
+
+        <!-- Watchlist Items Display -->
+        <ScrollPane fitToWidth="true"
+                    style="-fx-background-color: transparent; -fx-background: #f8fafc; -fx-padding: 0;"
+                    VBox.vgrow="ALWAYS">
+            <content>
+                <FlowPane fx:id="watchlistFlowPane" hgap="20.0" vgap="20.0">
+                    <padding>
+                        <Insets bottom="20.0" left="0" right="0" top="10.0" />
+                    </padding>
+                </FlowPane>
+            </content>
+        </ScrollPane>
+    </children>
+</VBox>
