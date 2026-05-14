@@ -61,7 +61,7 @@ public class AuctionServer {
                 List<String> notifications = AuctionManager.getInstance().checkAndCloseExpiredAuctions();
                 for (String msg : notifications)
                 {
-                    logger.info(["[THÔNG BÁO HỆ THỐNG] {}", msg)
+                    logger.info("[THÔNG BÁO HỆ THỐNG] {}", msg);
                     // gửi thông báo về cho Client
                     notifier.notifyObservers(new Message("SYSTEM_NOTIFICATION", msg));
                 }
