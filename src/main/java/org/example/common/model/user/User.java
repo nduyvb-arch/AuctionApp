@@ -36,11 +36,11 @@ public abstract class User extends Entity implements Serializable {
         // Thực hiện logic nếu cần, hiện tại là rỗng đối với abstract class
     }
 
-    public void setBanned() {
-        this.isBanned = true;
+    public void setBanned(boolean isBanned) {
+        this.isBanned = isBanned;
     }
 
-    public void isBanned()
+    public boolean isBanned()
     {
         return this.isBanned;
     }
