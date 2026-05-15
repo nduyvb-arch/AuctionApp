@@ -6,6 +6,7 @@ public abstract class User extends Entity implements Serializable {
     private static final long serialVersionUID = 1L;
     protected String username;
     protected String password;
+    private boolean isBanned = false;
 
     public User(final String id, final String username, final String password) {
         this.id = id;
@@ -33,5 +34,14 @@ public abstract class User extends Entity implements Serializable {
     // Thêm hàm setRole vì có thể User cần set lại role ở Controller
     public void setRole(String role) {
         // Thực hiện logic nếu cần, hiện tại là rỗng đối với abstract class
+    }
+
+    public void setBanned(boolean isBanned) {
+        this.isBanned = isBanned;
+    }
+
+    public boolean isBanned()
+    {
+        return this.isBanned;
     }
 }

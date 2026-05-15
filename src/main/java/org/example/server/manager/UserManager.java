@@ -4,15 +4,18 @@ import org.example.common.model.user.Admin;
 import org.example.common.model.user.Bidder;
 import org.example.common.model.user.Seller;
 import org.example.common.model.user.User;
-import org.example.common.model.user.*;
 import org.example.server.data.DatabaseManager;
 import at.favre.lib.crypto.bcrypt.BCrypt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class UserManager {
+
+    private final Logger logger = LoggerFactory.getLogger(UserManager.class);
 
     private static volatile UserManager instance;
     private List<User> users;
@@ -36,12 +39,18 @@ public class UserManager {
              ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
-                // Lấy ID dưới dạng String để tương thích chung
                 String id = rs.getString("id");
                 String username = rs.getString("username");
                 String password = rs.getString("password");
                 String role = rs.getString("role");
                 double balance = rs.getDouble("balance");
+
+                boolean isBanned = false;
+                try {
+                    isBanned = rs.getInt("is_banned") == 1;
+                } catch (SQLException ignored) {
+                    // Bỏ qua nếu DB chưa có cột này
+                }
 
                 User user;
                 switch (role.toLowerCase()) {
@@ -57,12 +66,14 @@ public class UserManager {
                     default:
                         continue;
                 }
+
+                // Set trạng thái ban
+                user.setBanned(isBanned);
                 users.add(user);
             }
-            System.out.println("Đã tải " + users.size() + " tài khoản từ database");
+            logger.info("Đã tải {} tài khoản từ database", users.size());
         } catch (SQLException e) {
-            System.err.println("Lỗi khi tải dữ liệu: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Lỗi khi tải dữ liệu: {}", e.getMessage(), e);
         }
     }
 
@@ -110,9 +121,10 @@ public class UserManager {
                 default: return "Loại tài khoản không hợp lệ";
             }
             users.add(newUser);
+            logger.info("Tạo tài khoản thành công: {}", username);
             return "Tạo tài khoản thành công!";
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi lưu dữ liệu: {}", e.getMessage(), e);
             return "Lỗi khi lưu dữ liệu: " + e.getMessage();
         }
     }
@@ -120,18 +132,24 @@ public class UserManager {
     public synchronized User login(String username, String password) {
         for (User user : users) {
             if (user.getUsername().equals(username)) {
-                // So khớp mật khẩu nhập vào với mật khẩu đã băm trong bộ nhớ
+
+                // 4. CHỐT CHẶN: Kiểm tra xem tài khoản có bị khóa không
+                if (user.isBanned()) {
+                    logger.warn("Tài khoản {} đang bị khóa cố gắng đăng nhập.", username);
+                    return null; // Có thể throw Exception để ClientHandler báo lỗi chi tiết hơn
+                }
+
                 BCrypt.Result result = BCrypt.verifyer().verify(password.toCharArray(), user.getPassword());
                 if (result.verified) {
-                    System.out.println("Đăng nhập thành công: " + username);
+                    logger.info("Đăng nhập thành công: {}", username);
                     return user;
                 } else {
-                    System.out.println("Sai mật khẩu cho tài khoản: " + username);
+                    logger.warn("Sai mật khẩu cho tài khoản: {}", username);
                     return null;
                 }
             }
         }
-        System.out.println("Không tìm thấy tài khoản: " + username);
+        logger.warn("Không tìm thấy tài khoản: {}", username);
         return null;
     }
 
@@ -151,6 +169,15 @@ public class UserManager {
     public User findUserByUsername(String username) {
         for (User user : users) {
             if (user.getUsername().equals(username)) {
+                return user;
+            }
+        }
+        return null;
+    }
+
+    public User findUserById(String id) {
+        for (User user : users) {
+            if (user.getId().equals(id)) {
                 return user;
             }
         }
@@ -178,7 +205,7 @@ public class UserManager {
                 for (int i = 0; i < users.size(); i++) {
                     if (users.get(i).getId().equals(updatedUser.getId())) {
                         users.set(i, updatedUser);
-                        System.out.println("Cập nhật user: " + updatedUser.getUsername());
+                        logger.info("Cập nhật user: {}", updatedUser.getUsername());
                         break;
                     }
                 }
@@ -186,26 +213,24 @@ public class UserManager {
             }
             return false;
         } catch (SQLException e) {
-            System.err.println("Lỗi khi cập nhật user: " + e.getMessage());
+            logger.error("Lỗi khi cập nhật user: {}", e.getMessage(), e);
             return false;
         }
     }
-    
+
     public synchronized String updateUserRole(String userId, String newRole) {
         String sql = "UPDATE users SET role = ? WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            
+
             pstmt.setString(1, newRole.toLowerCase());
             pstmt.setString(2, userId);
-            
+
             int affectedRows = pstmt.executeUpdate();
             if (affectedRows > 0) {
-                // Update in-memory list
                 for (int i = 0; i < users.size(); i++) {
                     User user = users.get(i);
                     if (user.getId().equals(userId)) {
-                        // Recreate user object with new role
                         User updatedUser;
                         switch (newRole.toLowerCase()) {
                             case "bidder":
@@ -231,7 +256,25 @@ public class UserManager {
             return "Lỗi cơ sở dữ liệu: " + e.getMessage();
         }
     }
-    
+
+    public String banUser(String userId) {
+        User user = findUserById(userId);
+        if (user == null) return "Người dùng không tồn tại!";
+
+        user.setBanned(true);
+
+        String sql = "UPDATE users SET is_banned = 1 WHERE id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, userId);
+            pstmt.executeUpdate();
+            return "success";
+        } catch (SQLException e) {
+            logger.error("Lỗi khi ban user: {}", e.getMessage(), e);
+            return "Lỗi Database";
+        }
+    }
+
     public void closeConnection() {
         DatabaseManager.closeConnection();
     }
