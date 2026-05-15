@@ -18,8 +18,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AuctionManager {
+import org.example.server.network.AuctionServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+public class AuctionManager {
+    private static final Logger logger = LoggerFactory.getLogger(AuctionManager.class);
     private static volatile AuctionManager instance;
     private final List<Item> auctionItems;
     private Connection connection;
@@ -30,7 +34,7 @@ public class AuctionManager {
             connection = DatabaseManager.getConnection();
             loadItemsFromDB();
         } catch (Exception e) {
-            System.err.println("Lỗi kết nối database: " + e.getMessage());
+            logger.error("Lỗi kết nối database: {}", e.getMessage(),e);
         }
     }
 
@@ -85,9 +89,9 @@ public class AuctionManager {
 
                 auctionItems.add(item);
             }
-            System.out.println("Đã tải " + auctionItems.size() + " vật phẩm từ database");
+            logger.info("Đã tải {}", auctionItems.size() + " vật phẩm từ database");
         } catch (SQLException e) {
-            System.err.println("Lỗi khi tải item: " + e.getMessage());
+            logger.error("Lỗi khi tải item: {}", e.getMessage(), e);
         }
     }
 
@@ -119,12 +123,12 @@ public class AuctionManager {
                     if (generatedKeys.next()) {
                         item.setId(String.valueOf(generatedKeys.getLong(1))); // Cập nhật ID cho đối tượng
                         auctionItems.add(item); // Chỉ thêm vào RAM sau khi đã có ID từ DB
-                        System.out.println("Đã thêm sản phẩm " + item.getItemName() + " vào DB với ID: " + item.getId());
+                        logger.info("Đã thêm sản phẩm {} vào DB với ID: {}", item.getItemName(), item.getId());
                     }
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi lưu item vào DB: " + e.getMessage());
+            logger.error("Lỗi lưu item vào DB: {}", e.getMessage(), e);
         }
     }
 
@@ -149,7 +153,7 @@ public class AuctionManager {
             pstmt.setInt(5, Integer.parseInt(item.getId()));
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Lỗi cập nhật item vào DB: " + e.getMessage());
+            logger.error("Lỗi cập nhật item vào DB: {}", e.getMessage(), e);
         }
     }
 

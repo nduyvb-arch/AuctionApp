@@ -47,13 +47,13 @@ public class ClientHandler implements Runnable, Observer {
                         String[] loginData = (String[]) inputMessage.getPayload();
                         User loggedInUser = UserManager.getInstance().login(loginData[0], loginData[1]);
                         currentUser = loggedInUser;
-                        out.writeObject(new Message("LOGIN_RESPONSE", loggedInUser));
+                        sendMessage(new Message("LOGIN_RESPONSE", loggedInUser));
                         break;
 
                     case "REGISTER":
                         String[] regData = (String[]) inputMessage.getPayload();
                         String regResult = UserManager.getInstance().createAccount(regData[0], regData[1], regData[2]);
-                        out.writeObject(new Message("REGISTER_RESPONSE", regResult));
+                        sendMessage(new Message("REGISTER_RESPONSE", regResult));
                         break;
 
                     case "SWITCH_ROLE":
@@ -64,14 +64,13 @@ public class ClientHandler implements Runnable, Observer {
 
                             if (success) {
                                 currentUser.setRole(newRole);
-                                out.writeObject(new Message("SWITCH_ROLE_RESPONSE", "success"));
-                                // SỬA: Dùng Logger
+                                sendMessage(new Message("SWITCH_ROLE_RESPONSE", "success"));
                                 logger.info("Người dùng {} đã đổi vai trò thành: {}", currentUser.getUsername(), newRole);
                             } else {
-                                out.writeObject(new Message("SWITCH_ROLE_RESPONSE", "Lỗi: Không thể cập nhật vai trò"));
+                                sendMessage(new Message("SWITCH_ROLE_RESPONSE", "Lỗi: Không thể cập nhật vai trò"));
                             }
                         } else {
-                            out.writeObject(new Message("SWITCH_ROLE_RESPONSE", "Lỗi: Chưa đăng nhập"));
+                            sendMessage(new Message("SWITCH_ROLE_RESPONSE", "Lỗi: Chưa đăng nhập"));
                         }
                         break;
 
@@ -82,7 +81,7 @@ public class ClientHandler implements Runnable, Observer {
                         String bidderId = (String) bidData[2];
 
                         String bidResult = AuctionManager.getInstance().placeBid(itemId, bidAmount, bidderId);
-                        out.writeObject(new Message("BID_RESPONSE", bidResult));
+                        sendMessage(new Message("BID_RESPONSE", bidResult));
 
                         if (bidResult.startsWith("Đặt giá thành công")) {
                             Item updatedItem = AuctionManager.getInstance().getAllItems().stream()
@@ -94,7 +93,7 @@ public class ClientHandler implements Runnable, Observer {
                         break;
 
                     case "GET_ALL_ITEMS":
-                        out.writeObject(new Message("GET_ALL_ITEMS_RESPONSE", new ArrayList<>(AuctionManager.getInstance().getAllItems())));
+                        sendMessage(new Message("GET_ALL_ITEMS_RESPONSE", new ArrayList<>(AuctionManager.getInstance().getAllItems())));
                         break;
 
                     case "START_AUCTION":
@@ -103,7 +102,7 @@ public class ClientHandler implements Runnable, Observer {
                         int duration = (Integer) startData[1];
 
                         String startResult = AuctionManager.getInstance().startAuction(sItemId, duration);
-                        out.writeObject(new Message("START_AUCTION_RESPONSE", startResult));
+                        sendMessage(new Message("START_AUCTION_RESPONSE", startResult));
 
                         if (startResult.startsWith("Đã bắt đầu")) {
                             notifier.notifyObservers(new Message("SYSTEM_NOTIFICATION", startResult));
@@ -138,45 +137,35 @@ public class ClientHandler implements Runnable, Observer {
                         }
 
                         AuctionManager.getInstance().addItem(newItem);
-                        out.writeObject(new Message("ADD_ITEM_RESPONSE", "Đăng sản phẩm thành công! Mã SP: " + newItem.getId()));
-                        notifier.notifyObservers(new Message("SYSTEM_NOTIFICATION", "Có sản phẩm mới vửa lên sàn: [" + name + "]"));
+                        sendMessage(new Message("ADD_ITEM_RESPONSE", "Đăng sản phẩm thành công! Mã SP: " + newItem.getId()));
+                        notifier.notifyObservers(new Message("NEW_ITEM_ADDED", null));
                         break;
 
                     case "CANCEL_AUCTION":
-                        // 1. Chốt chặn quyền Admin
                         if (currentUser == null || !"admin".equals(currentUser.getRole())) {
-                            out.writeObject(new Message("CANCEL_AUCTION_RESPONSE", "Cảnh báo: Chỉ admin mới có quyền hủy phiên đấu giá"));
+                            sendMessage(new Message("CANCEL_AUCTION_RESPONSE", "Cảnh báo: Chỉ admin mới có quyền hủy phiên đấu giá"));
                             break;
                         }
-
-                        // 2. Nhận ID sản phẩm cần hủy
                         String itemToCancelId = (String) inputMessage.getPayload();
-
-                        // 3. Gọi hàm xử lý và LẤY KẾT QUẢ lưu vào biến cancelResult
                         String cancelResult = AuctionManager.getInstance().cancelAuctionByAdmin(itemToCancelId);
 
-                        // 4. Xử lý phản hồi dựa trên kết quả
                         if ("success".equals(cancelResult)) {
                             logger.info("Admin {} đã hủy khẩn cấp phiên đấu giá mã {}", currentUser.getUsername(), itemToCancelId);
-                            out.writeObject(new Message("CANCEL_AUCTION_RESPONSE", "Đã hủy phiên đấu giá thành công!"));
+                            sendMessage(new Message("CANCEL_AUCTION_RESPONSE", "Đã hủy phiên đấu giá thành công!"));
 
-                            // Bắn thông báo toàn Server
                             notifier.notifyObservers(new Message("SYSTEM_NOTIFICATION", "⚠️ [THÔNG BÁO TỪ ADMIN] Phiên đấu giá mã " + itemToCancelId + " đã bị hủy bỏ!"));
-
-                            // Cập nhật lại Item để UI vô hiệu hóa nút Đặt Giá
                             Item canceledItem = AuctionManager.getInstance().getAllItems().stream()
                                     .filter(i -> i.getId().equals(itemToCancelId)).findFirst().orElse(null);
                             if (canceledItem != null) {
                                 notifier.notifyObservers(new Message("ITEM_UPDATE", canceledItem));
                             }
                         } else {
-                            // Báo lỗi nếu việc hủy thất bại
-                            out.writeObject(new Message("CANCEL_AUCTION_RESPONSE", cancelResult));
+                            sendMessage(new Message("CANCEL_AUCTION_RESPONSE", cancelResult));
                         }
                         break;
 
                     default:
-                        out.writeObject(new Message("ERROR", "Lệnh không hợp lệ!"));
+                        sendMessage(new Message("ERROR", "Lệnh không hợp lệ!"));
                         break;
                 }
             }
@@ -192,15 +181,19 @@ public class ClientHandler implements Runnable, Observer {
         }
     }
 
-    @Override
-    public void update(Message message) {
-        if (out != null) {
-            try {
+    public synchronized void sendMessage(Message message) {
+        try {
+            if (out != null && !clientSocket.isClosed()) {
                 out.writeObject(message);
                 out.flush();
-            } catch (IOException e) {
-                logger.error("Không thể gửi thông báo tới Client", e);
             }
+        } catch (IOException e) {
+            logger.error("Không thể gửi tin nhắn tới Client {}", clientSocket.getInetAddress(), e);
         }
+    }
+
+    @Override
+    public void update(Message message) {
+        sendMessage(message);
     }
 }

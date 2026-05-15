@@ -9,9 +9,13 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.example.server.network.AuctionServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class DatabaseManager {
 
-
+    private static final Logger logger = LoggerFactory.getLogger(DatabaseManager.class);
     private static String DB_URL;
     private static String USER;
     private static String PASSWORD;
@@ -41,7 +45,7 @@ public class DatabaseManager {
             PASSWORD = env.get("DB_PASSWORD");
 
         } catch (Exception e) {
-            System.err.println("Lỗi: Không tìm thấy hoặc đọc lỗi file .env! Đảm bảo bạn đã tạo file .env ở thư mục gốc.");
+            logger.error("Lỗi: Không tìm thấy hoặc đọc lỗi file .env! Đảm bảo bạn đã tạo file .env ở thư mục gốc.");
             e.printStackTrace();
         }
     }
@@ -52,23 +56,23 @@ public class DatabaseManager {
                 // Tải driver của MySQL
                 Class.forName("com.mysql.cj.jdbc.Driver");
 
-                System.out.println("=== KIỂM TRA ĐỌC FILE .ENV ===");
-                System.out.println("DB_URL hiện tại là: " + DB_URL);
-                System.out.println("USER hiện tại là: " + USER);
-                System.out.println("==============================");
+                logger.info("=== KIỂM TRA ĐỌC FILE .ENV ===");
+                logger.info("DB_URL hiện tại là: {}", DB_URL);
+                logger.info("USER hiện tại là: {}", USER);
+                logger.info("==============================");
 
                 // Mở kết nối với dữ liệu đã đọc từ file .env
                 connection = DriverManager.getConnection(DB_URL, USER, PASSWORD);
-                System.out.println("Kết nối MySQL thành công: " + DB_URL);
+                logger.info("Kết nối MySQL thành công: {}", DB_URL);
 
                 // Tự động dựng bảng nếu chưa có
                 autoCreateTables();
 
             } catch (ClassNotFoundException e) {
-                System.err.println("Lỗi: Không tìm thấy thư viện MySQL JDBC!");
+                logger.error("Lỗi: Không tìm thấy thư viện MySQL JDBC!");
                 e.printStackTrace();
             } catch (SQLException e) {
-                System.err.println("Lỗi kết nối MySQL: " + e.getMessage());
+                logger.info("Lỗi kết nối MySQL: {}", e.getMessage());
                 e.printStackTrace();
             }
         }
@@ -119,9 +123,9 @@ public class DatabaseManager {
                     + ")";
             stmt.execute(sqlBids);
 
-            System.out.println("Đã khởi tạo toàn bộ CSDL cho Hệ Thống Đấu Giá thành công!");
+            logger.info("Đã khởi tạo toàn bộ CSDL cho Hệ Thống Đấu Giá thành công!");
         } catch (SQLException e) {
-            System.err.println("Lỗi khi tự động tạo bảng: " + e.getMessage());
+            logger.error("Lỗi khi tự động tạo bảng: {}", e.getMessage(), e);
         }
     }
 
@@ -129,7 +133,7 @@ public class DatabaseManager {
         if (connection != null) {
             try {
                 connection.close();
-                System.out.println("Đã đóng kết nối database");
+                logger.info("Đã đóng kết nối database");
             } catch (SQLException e) {
                 e.printStackTrace();
             }
