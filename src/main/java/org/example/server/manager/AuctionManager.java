@@ -247,4 +247,29 @@ public class AuctionManager {
         }
         return notifications;
     }
+
+    public synchronized String cancelAuctionByAdmin(String itemId) {
+        Item targetItem = getAllItems().stream()
+                .filter(i -> i.getId().equals(itemId))
+                .findFirst()
+                .orElse(null);
+
+        if (targetItem == null) {
+            return "Không tìm thấy sản phẩm này!";
+        }
+
+        // Xác nhận là phiên đấu giá đang diễn ra
+        if (targetItem.getStatus() != AuctionStatus.ACTIVE) {
+            return "Phiên đấu giá chưa bắt đầu hoặc đã kết thúc!";
+        }
+
+        // Cưỡng chế kết thúc (trừ đi 1 giây) và đổi trạng thái
+        targetItem.setEndTime(LocalDateTime.now().minusSeconds(1));
+        targetItem.setStatus(AuctionStatus.CLOSED);
+
+        // Gọi hàm updateItemDB có sẵn để cập nhật xuống Database (Code cực gọn!)
+        updateItemDB(targetItem);
+
+        return "success";
+    }
 }
