@@ -133,9 +133,9 @@ public class HomeController implements Initializable {
         setupHomeViewFilters();
 
         // 4. Ẩn các sub-view, chỉ hiện Home View mặc định
-        watchlistViewPane.setVisible(false);
-        bidHistoryViewPane.setVisible(false);
-        homeView.setVisible(true);
+        setViewState(homeView, true);
+        setViewState(watchlistViewPane, false);
+        setViewState(bidHistoryViewPane, false);
 
         // 5. Khởi động các sub-controllers với dữ liệu dùng chung
         watchlistViewPaneController.setup(items, watchlistItemIds, out, in, currentUser);
@@ -155,7 +155,7 @@ public class HomeController implements Initializable {
     @FXML
     private void switchToHomeView() {
         showView(homeView);
-        pageTitle.setText("🏠 Trang chủ sàn đấu giá");
+        pageTitle.setText("Trang chủ đấu giá");
         loadInitialItems();
     }
 
@@ -237,13 +237,22 @@ public class HomeController implements Initializable {
     /** Ẩn tất cả views con, rồi hiện {@code view}. */
     private void showView(VBox view) {
         hideAllViews();
-        view.setVisible(true);
+        setViewState(view, true);
     }
 
     private void hideAllViews() {
-        homeView.setVisible(false);
-        watchlistViewPane.setVisible(false);
-        bidHistoryViewPane.setVisible(false);
+        setViewState(homeView, false);
+        setViewState(watchlistViewPane, false);
+        setViewState(bidHistoryViewPane, false);
+    }
+
+    /**
+     * visible=false chỉ làm node biến mất nhưng vẫn có thể chiếm layout trong VBox.
+     * managed=false giúp VBox bỏ qua node đó khi tính toán vị trí/khoảng trống.
+     */
+    private void setViewState(VBox view, boolean active) {
+        view.setVisible(active);
+        view.setManaged(active);
     }
 
     // ═══════════════════════════════════════════════════════════
