@@ -1,14 +1,14 @@
 package org.example.client;
 
-import javafx.application.Platform;
-import javafx.scene.control.Alert;
-import javafx.scene.image.Image;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import org.example.common.model.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -16,6 +16,8 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 
 public class ClientApp extends Application {
+
+    private static final Logger logger = LoggerFactory.getLogger(ClientApp.class);
 
     private static Stage primaryStage;
     private static User currentUser;
@@ -32,57 +34,43 @@ public class ClientApp extends Application {
         Image icon = new Image(getClass().getResourceAsStream("/images/logo.png"));
         primaryStage.getIcons().add(icon);
 
-        // Không kết nối tự động khi khởi động
-        // Việc kết nối sẽ do LoginController xử lý
         switchToLogin();
         stage.setResizable(false);
 
         stage.setOnCloseRequest(event -> {
             closeConnection();
-            System.out.println("✅ Ứng dụng đã đóng.");
+            logger.info("Ứng dụng đã đóng.");
         });
 
         stage.show();
     }
 
-    /**
-     * Phương thức mới: Thiết lập một kết nối hoàn toàn mới đến server.
-     * Ném Exception nếu thất bại để Controller có thể bắt và xử lý.
-     */
     public static void connectToServer() throws IOException {
-        if (socket != null && !socket.isClosed()) {
-            System.out.println("Kết nối đã tồn tại, không cần tạo mới.");
-            return;
-        }
+        closeConnection();
         try {
-            System.out.println("Đang tạo kết nối mới tới server...");
+            logger.info("Đang tạo kết nối mới tới server tại {}:{}", SERVER_ADDRESS, SERVER_PORT);
             socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
             outputStream = new ObjectOutputStream(socket.getOutputStream());
             inputStream = new ObjectInputStream(socket.getInputStream());
-            System.out.println("Kết nối mới thành công!");
+            logger.info("Kết nối mới thành công!");
         } catch (IOException e) {
-            System.err.println("Lỗi khi tạo kết nối mới: " + e.getMessage());
-            throw e; // Ném lại lỗi để LoginController xử lý
+            logger.error("Lỗi khi tạo kết nối mới: {}", e.getMessage());
+            throw e;
         }
     }
 
-    /**
-     * Đóng kết nối hiện tại và dọn dẹp tài nguyên.
-     */
     public static void closeConnection() {
         try {
             if (socket != null && !socket.isClosed()) {
-                System.out.println("Đang đóng kết nối...");
-                // Đóng stream theo thứ tự ngược lại để tránh lỗi
+                logger.info("Đang đóng kết nối...");
                 if (outputStream != null) outputStream.close();
                 if (inputStream != null) inputStream.close();
                 socket.close();
-                System.out.println("Đã đóng kết nối thành công.");
+                logger.info("Đã đóng kết nối thành công.");
             }
         } catch (IOException e) {
-            System.err.println("Lỗi khi đóng kết nối: " + e.getMessage());
+            logger.warn("Lỗi không nghiêm trọng khi đóng kết nối: {}", e.getMessage());
         } finally {
-            // Đảm bảo tất cả tài nguyên được giải phóng
             socket = null;
             outputStream = null;
             inputStream = null;
