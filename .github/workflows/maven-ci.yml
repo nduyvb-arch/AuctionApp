@@ -7,8 +7,10 @@ on:
   pull_request:
     branches: [ "main" ]
   workflow_dispatch: # Cho phép chạy workflow thủ công từ GitHub UI
-  env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 : true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true' # Đã đưa ra ngoài ngang hàng với 'on' và 'jobs'
+
 permissions:
   contents: read # Quyền đọc nội dung repository
 
