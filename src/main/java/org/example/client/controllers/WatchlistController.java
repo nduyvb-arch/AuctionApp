@@ -191,8 +191,10 @@ public class WatchlistController implements Initializable {
     private Node createItemCard(Item item) {
         AnchorPane pane = new AnchorPane();
         pane.setStyle("-fx-border-color: #e2e8f0; -fx-border-radius: 12; " +
-                "-fx-background-color: white; -fx-padding: 15;");
-        pane.setPrefSize(220, 280);
+                "-fx-background-radius: 12; -fx-background-color: white; -fx-padding: 15;");
+        pane.setPrefSize(235, 285);
+        pane.setMinSize(235, 285);
+        pane.setMaxSize(235, 285);
 
         // Status Badge
         Label statusBadge = new Label(getStatusText(item.getStatus().name()));
@@ -255,7 +257,7 @@ public class WatchlistController implements Initializable {
         AnchorPane.setRightAnchor(bidButton, 70.0);
 
         // View Details Button
-        Button viewDetailsButton = new Button("📄");
+        Button viewDetailsButton = new Button("👁");
         viewDetailsButton.setFont(new Font("System Bold", 14));
         viewDetailsButton.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 8 12; " +
                 "-fx-background-radius: 6; -fx-cursor: hand;");
