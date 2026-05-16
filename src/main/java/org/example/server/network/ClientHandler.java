@@ -136,6 +136,7 @@ public class ClientHandler implements Runnable, Observer {
                                 break;
                         }
 
+                        newItem.setSellerId(sellerId);
                         AuctionManager.getInstance().addItem(newItem);
                         sendMessage(new Message("ADD_ITEM_RESPONSE", "Đăng sản phẩm thành công! Mã SP: " + newItem.getId()));
                         notifier.notifyObservers(new Message("NEW_ITEM_ADDED", null));

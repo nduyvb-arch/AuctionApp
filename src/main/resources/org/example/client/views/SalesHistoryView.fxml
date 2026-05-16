@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/25"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.client.controllers.SalesHistoryController"
+      spacing="12"
+      style="-fx-padding: 20; -fx-background-color: #f8fafc;"
+      VBox.vgrow="ALWAYS">
+    <children>
+        <Label text="Lịch sử bán hàng" style="-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #0f172a;" />
+
+        <HBox spacing="14" alignment="CENTER_LEFT">
+            <children>
+                <VBox spacing="4" style="-fx-background-color: white; -fx-background-radius: 12; -fx-border-color: #e2e8f0; -fx-border-radius: 12; -fx-padding: 14;" prefWidth="180">
+                    <children>
+                        <Label text="Đã bán" style="-fx-text-fill: #64748b; -fx-font-size: 11;" />
+                        <Label fx:id="totalSoldLabel" text="0" style="-fx-text-fill: #10b981; -fx-font-size: 24; -fx-font-weight: bold;" />
+                    </children>
+                </VBox>
+                <VBox spacing="4" style="-fx-background-color: white; -fx-background-radius: 12; -fx-border-color: #e2e8f0; -fx-border-radius: 12; -fx-padding: 14;" prefWidth="260">
+                    <children>
+                        <Label text="Doanh thu" style="-fx-text-fill: #64748b; -fx-font-size: 11;" />
+                        <Label fx:id="revenueLabel" text="0 VNĐ" style="-fx-text-fill: #2563eb; -fx-font-size: 22; -fx-font-weight: bold;" />
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+
+        <HBox alignment="CENTER_LEFT" spacing="12"
+              style="-fx-background-color: white; -fx-padding: 14; -fx-border-color: #e2e8f0; -fx-border-radius: 10; -fx-background-radius: 10; -fx-border-width: 1;">
+            <children>
+                <TextField fx:id="salesSearchTextField" prefHeight="38" prefWidth="340"
+                           promptText="Tìm kiếm lịch sử bán hàng..."
+                           style="-fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-color: white; -fx-padding: 0 14; -fx-font-size: 12;" />
+                <ComboBox fx:id="salesStatusComboBox" prefHeight="38" prefWidth="160"
+                          style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 0 10;" />
+                <HBox HBox.hgrow="ALWAYS" />
+                <Button text="🔄 Làm mới" onAction="#onSalesRefreshClicked" prefHeight="38"
+                        style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 8 18; -fx-font-size: 12; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-weight: bold;" />
+            </children>
+        </HBox>
+
+        <TableView fx:id="salesHistoryTableView" VBox.vgrow="ALWAYS"
+                   style="-fx-background-color: white; -fx-background-radius: 12; -fx-border-color: #e2e8f0; -fx-border-radius: 12;">
+            <columns>
+                <TableColumn fx:id="idColumn" text="Mã SP" prefWidth="90" />
+                <TableColumn fx:id="nameColumn" text="Tên sản phẩm" prefWidth="230" />
+                <TableColumn fx:id="typeColumn" text="Loại" prefWidth="110" />
+                <TableColumn fx:id="winnerColumn" text="Người thắng" prefWidth="120" />
+                <TableColumn fx:id="priceColumn" text="Giá cuối" prefWidth="160" />
+                <TableColumn fx:id="statusColumn" text="Trạng thái" prefWidth="130" />
+                <TableColumn fx:id="endTimeColumn" text="Thời gian kết thúc" prefWidth="170" />
+            </columns>
+        </TableView>
+    </children>
+</VBox>

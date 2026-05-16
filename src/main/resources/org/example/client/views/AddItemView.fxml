@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.Spinner?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox xmlns="http://javafx.com/javafx/25"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.client.controllers.AddItemViewController"
+      spacing="12"
+      style="-fx-padding: 20; -fx-background-color: #f8fafc;"
+      VBox.vgrow="ALWAYS">
+    <children>
+        <Label text="Đăng sản phẩm mới"
+               style="-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: #0f172a;" />
+
+        <ScrollPane fitToWidth="true"
+                    VBox.vgrow="ALWAYS"
+                    style="-fx-background-color: transparent; -fx-background: #f8fafc; -fx-padding: 0;">
+            <content>
+                <VBox spacing="18"
+                      style="-fx-background-color: white; -fx-background-radius: 14; -fx-border-color: #e2e8f0; -fx-border-radius: 14; -fx-padding: 22;">
+                    <children>
+                        <Label text="Thông tin sản phẩm"
+                               style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #0f172a;" />
+                        <Label text="Nhập đầy đủ thông tin bên dưới để tạo sản phẩm đấu giá mới."
+                               style="-fx-text-fill: #64748b; -fx-font-size: 12;" />
+
+                        <GridPane hgap="18" vgap="14">
+                            <children>
+                                <VBox spacing="6" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                    <children>
+                                        <Label text="Loại sản phẩm" style="-fx-font-weight: bold; -fx-text-fill: #334155;" />
+                                        <ComboBox fx:id="itemTypeComboBox" prefHeight="40" prefWidth="260"
+                                                  style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-radius: 8;" />
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="6" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                    <children>
+                                        <Label text="Tên sản phẩm" style="-fx-font-weight: bold; -fx-text-fill: #334155;" />
+                                        <TextField fx:id="itemNameTextField" prefHeight="40" prefWidth="420"
+                                                   promptText="Ví dụ: iPhone 15 Pro Max"
+                                                   style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 0 12;" />
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="6" GridPane.columnIndex="0" GridPane.columnSpan="2" GridPane.rowIndex="1">
+                                    <children>
+                                        <Label text="Mô tả chi tiết" style="-fx-font-weight: bold; -fx-text-fill: #334155;" />
+                                        <TextArea fx:id="itemDescriptionTextArea" prefHeight="120" wrapText="true"
+                                                  promptText="Tình trạng sản phẩm, thông số, lưu ý khi đấu giá..."
+                                                  style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 8;" />
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="6" GridPane.columnIndex="0" GridPane.rowIndex="2">
+                                    <children>
+                                        <Label text="Giá khởi điểm (VNĐ)" style="-fx-font-weight: bold; -fx-text-fill: #334155;" />
+                                        <TextField fx:id="startPriceTextField" prefHeight="40" prefWidth="260"
+                                                   promptText="Ví dụ: 1000000"
+                                                   style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 0 12;" />
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="6" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                                    <children>
+                                        <Label text="Bước giá tối thiểu (VNĐ)" style="-fx-font-weight: bold; -fx-text-fill: #334155;" />
+                                        <TextField fx:id="bidIncrementTextField" prefHeight="40" prefWidth="260"
+                                                   promptText="Ví dụ: 50000"
+                                                   style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 0 12;" />
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="6" GridPane.columnIndex="0" GridPane.rowIndex="3">
+                                    <children>
+                                        <Label text="Thời gian mặc định (phút)" style="-fx-font-weight: bold; -fx-text-fill: #334155;" />
+                                        <Spinner fx:id="durationSpinner" prefHeight="40" prefWidth="260"
+                                                 style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-radius: 8;" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </GridPane>
+
+                        <Separator />
+                        <Label fx:id="messageLabel" text="" style="-fx-font-size: 12;" />
+
+                        <HBox spacing="12">
+                            <children>
+                                <Button fx:id="submitItemButton" text="✅ Đăng sản phẩm" onAction="#onSubmitItemClicked"
+                                        prefHeight="42"
+                                        style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 24; -fx-cursor: hand;" />
+                                <Button fx:id="clearFormButton" text="Xóa form" onAction="#onClearFormClicked"
+                                        prefHeight="42"
+                                        style="-fx-background-color: #e2e8f0; -fx-text-fill: #334155; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 10 20; -fx-cursor: hand;" />
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </children>
+</VBox>

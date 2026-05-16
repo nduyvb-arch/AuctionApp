@@ -91,6 +91,15 @@ public class HomeController implements Initializable {
     @FXML private VBox                  bidHistoryViewPane;
     @FXML private BidHistoryController  bidHistoryViewPaneController;
 
+    @FXML private VBox                   addItemViewPane;
+    @FXML private AddItemViewController  addItemViewPaneController;
+
+    @FXML private VBox                   myItemsViewPane;
+    @FXML private MyItemsController      myItemsViewPaneController;
+
+    @FXML private VBox                   salesHistoryViewPane;
+    @FXML private SalesHistoryController salesHistoryViewPaneController;
+
     // CONTENT CONTAINER (bọc tất cả views)
     @FXML private VBox contentContainer;
 
@@ -107,6 +116,7 @@ public class HomeController implements Initializable {
     private ObjectOutputStream  out;
     private ObjectInputStream   in;
     private User                currentUser;
+    private boolean             sellerMode;
 
     private static final NumberFormat currencyFormat =
             NumberFormat.getInstance(new Locale("vi_VN"));
@@ -120,8 +130,8 @@ public class HomeController implements Initializable {
         // 1. Thông tin người dùng
         currentUser = ClientApp.getCurrentUser();
         if (currentUser != null) {
-            userInfoLabel.setText("👤 " + currentUser.getUsername()
-                    + " | Role: " + currentUser.getRole());
+            sellerMode = "seller".equalsIgnoreCase(currentUser.getRole());
+            updateUserInfoLabel();
             updateUIBasedOnRole();
         }
 
@@ -136,16 +146,22 @@ public class HomeController implements Initializable {
         setViewState(homeView, true);
         setViewState(watchlistViewPane, false);
         setViewState(bidHistoryViewPane, false);
+        setViewState(addItemViewPane, false);
+        setViewState(myItemsViewPane, false);
+        setViewState(salesHistoryViewPane, false);
 
         // 5. Khởi động các sub-controllers với dữ liệu dùng chung
         watchlistViewPaneController.setup(items, watchlistItemIds, out, in, currentUser);
         bidHistoryViewPaneController.setup(bidHistory);
+        addItemViewPaneController.setup(out, currentUser, this::loadInitialItems);
+        myItemsViewPaneController.setup(items, out, currentUser, this::loadInitialItems);
+        salesHistoryViewPaneController.setup(items, currentUser, this::loadInitialItems);
 
-        // 6. Tải danh sách sản phẩm từ server
-        loadInitialItems();
-
-        // 7. Lắng nghe cập nhật từ server
+        // 6. Lắng nghe cập nhật/phản hồi từ server qua một luồng đọc duy nhất
         listenForServerUpdates();
+
+        // 7. Tải danh sách sản phẩm từ server
+        loadInitialItems();
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -155,7 +171,7 @@ public class HomeController implements Initializable {
     @FXML
     private void switchToHomeView() {
         showView(homeView);
-        pageTitle.setText("Trang chủ đấu giá");
+        pageTitle.setText("Trang chủ sàn đấu giá");
         loadInitialItems();
     }
 
@@ -176,38 +192,22 @@ public class HomeController implements Initializable {
 
     @FXML
     private void switchToAddItemView() {
+        showView(addItemViewPane);
         pageTitle.setText("➕ Đăng sản phẩm mới");
-        hideAllViews();
-        // TODO: Implement Add Item View
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Đăng Sản Phẩm");
-        alert.setHeaderText("Chức năng này sẽ được cải thiện");
-        alert.setContentText("Hiện tại, vui lòng sử dụng dialog.");
-        alert.showAndWait();
     }
 
     @FXML
     private void switchToMyItemsView() {
+        showView(myItemsViewPane);
         pageTitle.setText("📦 Sản phẩm của tôi");
-        hideAllViews();
-        // TODO: Implement My Items View
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Sản Phẩm Của Tôi");
-        alert.setHeaderText("Chức năng này sẽ được cải thiện");
-        alert.setContentText("Hiện tại, vui lòng xem ở trang chủ.");
-        alert.showAndWait();
+        myItemsViewPaneController.updateData(items);
     }
 
     @FXML
     private void switchToSalesHistoryView() {
+        showView(salesHistoryViewPane);
         pageTitle.setText("💰 Lịch sử bán hàng");
-        hideAllViews();
-        // TODO: Implement Sales History View
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Lịch Sử Bán Hàng");
-        alert.setHeaderText("Chức năng này sẽ được cải thiện");
-        alert.setContentText("Hiện tại, đang phát triển.");
-        alert.showAndWait();
+        salesHistoryViewPaneController.updateData(items);
     }
 
     @FXML
@@ -244,6 +244,9 @@ public class HomeController implements Initializable {
         setViewState(homeView, false);
         setViewState(watchlistViewPane, false);
         setViewState(bidHistoryViewPane, false);
+        setViewState(addItemViewPane, false);
+        setViewState(myItemsViewPane, false);
+        setViewState(salesHistoryViewPane, false);
     }
 
     /**
@@ -251,6 +254,7 @@ public class HomeController implements Initializable {
      * managed=false giúp VBox bỏ qua node đó khi tính toán vị trí/khoảng trống.
      */
     private void setViewState(VBox view, boolean active) {
+        if (view == null) return;
         view.setVisible(active);
         view.setManaged(active);
     }
@@ -286,24 +290,16 @@ public class HomeController implements Initializable {
         Task<Void> task = new Task<Void>() {
             @Override
             protected Void call() throws Exception {
-                Message request  = new Message("GET_ALL_ITEMS", null);
-                out.writeObject(request);
-                Message response = (Message) in.readObject();
-
-                if ("GET_ALL_ITEMS_RESPONSE".equals(response.getAction())) {
-                    List<Item> fetchedItems = (List<Item>) response.getPayload();
-                    Platform.runLater(() -> {
-                        // Cập nhật list dùng chung mà không thay đổi reference
-                        // để WatchlistController vẫn thấy dữ liệu mới
-                        items.clear();
-                        items.addAll(fetchedItems);
-                        applyHomeFiltersAndSort();
-                    });
+                synchronized (out) {
+                    out.writeObject(new Message("GET_ALL_ITEMS", null));
+                    out.flush();
                 }
                 return null;
             }
         };
-        new Thread(task).start();
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
     }
 
     private void applyHomeFiltersAndSort() {
@@ -504,21 +500,16 @@ public class HomeController implements Initializable {
             @Override
             protected Void call() throws Exception {
                 Object[] bidData = {itemId, bidAmount, currentUser.getId()};
-                Message request  = new Message("BID", bidData);
-                out.writeObject(request);
-                Message response = (Message) in.readObject();
-
-                Platform.runLater(() -> {
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                    alert.setTitle("Kết quả đặt giá");
-                    alert.setHeaderText("Phản hồi từ server");
-                    alert.setContentText((String) response.getPayload());
-                    alert.showAndWait();
-                });
+                synchronized (out) {
+                    out.writeObject(new Message("BID", bidData));
+                    out.flush();
+                }
                 return null;
             }
         };
-        new Thread(task).start();
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -544,53 +535,64 @@ public class HomeController implements Initializable {
     // ═══════════════════════════════════════════════════════════
 
     private void updateUIBasedOnRole() {
-        String  role      = currentUser.getRole();
-        boolean isBidder  = "bidder".equalsIgnoreCase(role);
-        boolean isSeller  = "seller".equalsIgnoreCase(role);
+        boolean isSeller = sellerMode;
+        boolean isBidder = !sellerMode;
 
         bidderMenuLabel.setVisible(isBidder);
+        bidderMenuLabel.setManaged(isBidder);
         watchlistMenuItem.setVisible(isBidder);
+        watchlistMenuItem.setManaged(isBidder);
         bidHistoryMenuItem.setVisible(isBidder);
+        bidHistoryMenuItem.setManaged(isBidder);
 
         sellerMenuLabel.setVisible(isSeller);
+        sellerMenuLabel.setManaged(isSeller);
         addItemMenuItem.setVisible(isSeller);
+        addItemMenuItem.setManaged(isSeller);
         myItemsMenuItem.setVisible(isSeller);
+        myItemsMenuItem.setManaged(isSeller);
         salesHistoryMenuItem.setVisible(isSeller);
+        salesHistoryMenuItem.setManaged(isSeller);
 
-        if (isBidder) {
-            roleSwitcherButton.setText("🔄 Chuyển sang Người bán");
-        } else if (isSeller) {
-            roleSwitcherButton.setText("🔄 Chuyển sang Người đấu giá");
-        }
+        currentRoleLabel.setText(isSeller ? "Người bán" : "Người đấu giá");
+        roleSwitcherButton.setText(isSeller
+                ? "🔄 Chuyển sang Người đấu giá"
+                : "🔄 Chuyển sang Người bán");
+        updateUserInfoLabel();
+    }
+
+    private void updateUserInfoLabel() {
+        if (currentUser == null) return;
+        userInfoLabel.setText("👤 " + currentUser.getUsername()
+                + " | Role: " + (sellerMode ? "seller" : "bidder"));
     }
 
     @FXML
     public void onRoleSwitcherClicked() {
-        String newRole = "bidder".equalsIgnoreCase(currentUser.getRole()) ? "seller" : "bidder";
+        sellerMode = !sellerMode;
+        String newRole = sellerMode ? "seller" : "bidder";
+        currentUser.setRole(newRole);
+        updateUIBasedOnRole();
+
+        if (sellerMode) {
+            switchToAddItemView();
+        } else {
+            switchToHomeView();
+        }
+
         Task<Void> task = new Task<Void>() {
             @Override
             protected Void call() throws Exception {
-                Message request  = new Message("SWITCH_ROLE", newRole);
-                out.writeObject(request);
-                Message response = (Message) in.readObject();
-
-                Platform.runLater(() -> {
-                    if ("success".equals(response.getPayload())) {
-                        currentUser.setRole(newRole);
-                        currentRoleLabel.setText("bidder".equalsIgnoreCase(newRole)
-                                ? "Người đấu giá" : "Người bán");
-                        updateUIBasedOnRole();
-
-                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                        alert.setTitle("Thành công");
-                        alert.setContentText("Đã chuyển vai trò thành: " + newRole);
-                        alert.showAndWait();
-                    }
-                });
+                synchronized (out) {
+                    out.writeObject(new Message("SWITCH_ROLE", newRole));
+                    out.flush();
+                }
                 return null;
             }
         };
-        new Thread(task).start();
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -616,6 +618,19 @@ public class HomeController implements Initializable {
 
     private void handleServerMessage(Message message) {
         switch (message.getAction()) {
+            case "GET_ALL_ITEMS_RESPONSE":
+                updateItemsFromServer((List<Item>) message.getPayload());
+                break;
+
+            case "BID_RESPONSE":
+                Alert bidAlert = new Alert(Alert.AlertType.INFORMATION);
+                bidAlert.setTitle("Kết quả đặt giá");
+                bidAlert.setHeaderText("Phản hồi từ server");
+                bidAlert.setContentText(String.valueOf(message.getPayload()));
+                bidAlert.showAndWait();
+                loadInitialItems();
+                break;
+
             case "ITEM_UPDATE":
                 Item updatedItem = (Item) message.getPayload();
                 items.stream()
@@ -632,12 +647,48 @@ public class HomeController implements Initializable {
                                 // watchlistItemIds đã là reference dùng chung → chỉ cần refresh
                                 watchlistViewPaneController.updateData(items, watchlistItemIds);
                             }
+                            if (myItemsViewPane.isVisible()) {
+                                myItemsViewPaneController.updateData(items);
+                            }
+                            if (salesHistoryViewPane.isVisible()) {
+                                salesHistoryViewPaneController.updateData(items);
+                            }
                         });
+                break;
+
+            case "NEW_ITEM_ADDED":
+                loadInitialItems();
+                break;
+
+            case "ADD_ITEM_RESPONSE":
+            case "START_AUCTION_RESPONSE":
+            case "SWITCH_ROLE_RESPONSE":
+                System.out.println("Server: " + message.getPayload());
+                loadInitialItems();
                 break;
 
             case "SYSTEM_NOTIFICATION":
                 System.out.println("Server: " + message.getPayload());
                 break;
+        }
+    }
+
+
+    private void updateItemsFromServer(List<Item> fetchedItems) {
+        items.clear();
+        items.addAll(fetchedItems);
+
+        if (homeView.isVisible()) {
+            applyHomeFiltersAndSort();
+        }
+        if (watchlistViewPane.isVisible()) {
+            watchlistViewPaneController.updateData(items, watchlistItemIds);
+        }
+        if (myItemsViewPane.isVisible()) {
+            myItemsViewPaneController.updateData(items);
+        }
+        if (salesHistoryViewPane.isVisible()) {
+            salesHistoryViewPaneController.updateData(items);
         }
     }
 
