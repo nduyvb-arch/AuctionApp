@@ -16,6 +16,7 @@ public abstract class Item extends Entity implements Serializable {
     protected double bidIncrement;
     private double currentPrice;
     private String currentWinnerId;
+    private String sellerId;
     private AuctionStatus status = AuctionStatus.PENDING; // mặc định là trạng thái chờ
     private LocalDateTime endTime;
 
@@ -90,6 +91,14 @@ public abstract class Item extends Entity implements Serializable {
 
     public void setCurrentWinnerId(String currentWinnerId) {
         this.currentWinnerId = currentWinnerId;
+    }
+
+    public String getSellerId() {
+        return this.sellerId;
+    }
+
+    public void setSellerId(String sellerId) {
+        this.sellerId = sellerId;
     }
 
     public AuctionStatus getStatus() {

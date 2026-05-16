@@ -208,6 +208,21 @@
                         source="BidHistoryView.fxml"
                         VBox.vgrow="ALWAYS" />
 
+            <!-- ───────────── ADD ITEM VIEW (người bán) ───────────── -->
+            <fx:include fx:id="addItemViewPane"
+                        source="AddItemView.fxml"
+                        VBox.vgrow="ALWAYS" />
+
+            <!-- ───────────── MY ITEMS VIEW (người bán) ───────────── -->
+            <fx:include fx:id="myItemsViewPane"
+                        source="MyItemsView.fxml"
+                        VBox.vgrow="ALWAYS" />
+
+            <!-- ───────────── SALES HISTORY VIEW (người bán) ───────────── -->
+            <fx:include fx:id="salesHistoryViewPane"
+                        source="SalesHistoryView.fxml"
+                        VBox.vgrow="ALWAYS" />
+
          </VBox>
       </VBox>
 

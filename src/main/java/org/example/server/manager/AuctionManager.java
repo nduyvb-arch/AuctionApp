@@ -44,7 +44,7 @@ public class AuctionManager {
         }
         return instance;
     }
-    
+
     private void loadItemsFromDB() {
         String sql = "SELECT * FROM items";
         try (PreparedStatement pstmt = connection.prepareStatement(sql);
@@ -59,6 +59,7 @@ public class AuctionManager {
                 double bidIncrement = rs.getDouble("bid_increment");
                 double currentPrice = rs.getDouble("current_price");
                 String currentWinnerId = rs.getString("current_winner_id");
+                String sellerId = rs.getString("seller_id");
                 String statusStr = rs.getString("status");
                 String endTimeStr = rs.getString("end_time");
 
@@ -82,6 +83,7 @@ public class AuctionManager {
                 item.setId(id);
                 item.setCurrentPrice(currentPrice);
                 item.setCurrentWinnerId(currentWinnerId);
+                item.setSellerId(sellerId);
                 item.setStatus(AuctionStatus.valueOf(statusStr));
                 if (endTimeStr != null && !endTimeStr.isEmpty()) {
                     item.setEndTime(LocalDateTime.parse(endTimeStr));
@@ -109,13 +111,11 @@ public class AuctionManager {
             pstmt.setDouble(6, item.getCurrentPrice()); // Ban đầu giá hiện tại bằng giá khởi điểm
             pstmt.setString(7, item.getStatus().name());
 
-            // Cần có sellerId trong model Item của bạn, ví dụ: item.getSellerId()
-            // Tạm thời để là null nếu model chưa có
-            // if (item.getSellerId() != null) {
-            //     pstmt.setInt(8, Integer.parseInt(item.getSellerId()));
-            // } else {
-                 pstmt.setNull(8, java.sql.Types.INTEGER);
-            // }
+            if (item.getSellerId() != null && !item.getSellerId().isEmpty()) {
+                pstmt.setInt(8, Integer.parseInt(item.getSellerId()));
+            } else {
+                pstmt.setNull(8, java.sql.Types.INTEGER);
+            }
 
             int affectedRows = pstmt.executeUpdate();
             if (affectedRows > 0) {
