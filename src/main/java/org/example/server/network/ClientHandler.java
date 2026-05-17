@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 
 public class ClientHandler implements Runnable, Observer {
@@ -116,12 +117,13 @@ public class ClientHandler implements Runnable, Observer {
 
                     case "ADD_ITEM":
                         Object[] itemData = (Object[]) inputMessage.getPayload();
-                        String type = (String) itemData[0];
-                        String name = (String) itemData[1];
-                        String desc = (String) itemData[2];
+                        String type       = (String) itemData[0];
+                        String name       = (String) itemData[1];
+                        String desc       = (String) itemData[2];
                         double startPrice = (Double) itemData[3];
-                        double increment = (Double) itemData[4];
-                        String sellerId = (String) itemData[5];
+                        double increment  = (Double) itemData[4];
+                        String sellerId   = String.valueOf(itemData[5]);
+                        int addDuration   = (Integer) itemData[6];
 
                         Item newItem;
                         switch (type.toLowerCase()) {
@@ -137,6 +139,7 @@ public class ClientHandler implements Runnable, Observer {
                         }
 
                         newItem.setSellerId(sellerId);
+                        newItem.setEndTime(LocalDateTime.now().plusMinutes(addDuration));
                         AuctionManager.getInstance().addItem(newItem);
                         sendMessage(new Message("ADD_ITEM_RESPONSE", "Đăng sản phẩm thành công! Mã SP: " + newItem.getId()));
                         notifier.notifyObservers(new Message("NEW_ITEM_ADDED", null));
