@@ -9,26 +9,33 @@ import java.util.UUID;
 public abstract class Item extends Entity implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
     protected String itemName;
     protected String type;
     protected String description;
     protected double startingPrice;
     protected double bidIncrement;
+
     private double currentPrice;
     private String currentWinnerId;
     private String sellerId;
-    private AuctionStatus status = AuctionStatus.PENDING; // mặc định là trạng thái chờ
+    private AuctionStatus status = AuctionStatus.PENDING;
     private LocalDateTime endTime;
 
-    public Item(String name, String type, String description, double startingPrice, double bidIncrement) {
+    /*
+     * Đường dẫn ảnh sản phẩm.
+     * FileChooser bên client lưu dạng URI, ví dụ:
+     * file:/C:/Users/.../image.png
+     */
+    private String imagePath;
 
+    public Item(String name, String type, String description, double startingPrice, double bidIncrement) {
         this.id = "I-" + UUID.randomUUID().toString().substring(0, 8);
         this.itemName = name;
         this.type = type;
         this.description = description;
         this.startingPrice = startingPrice;
         this.bidIncrement = bidIncrement;
-
         this.currentPrice = startingPrice;
     }
 
@@ -39,7 +46,6 @@ public abstract class Item extends Entity implements Serializable {
     public void setName(String newName) {
         this.itemName = newName;
     }
-
 
     public String getType() {
         return this.type;
@@ -115,5 +121,13 @@ public abstract class Item extends Entity implements Serializable {
 
     public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
+    }
+
+    public String getImagePath() {
+        return this.imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
     }
 }
