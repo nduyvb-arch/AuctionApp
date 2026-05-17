@@ -9,7 +9,6 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.example.server.network.AuctionServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,77 +18,47 @@ public class DatabaseManager {
     private static String DB_URL;
     private static String USER;
     private static String PASSWORD;
+    private static boolean tablesCreated = false; // Cờ để đảm bảo chỉ tạo bảng một lần
 
-    private static Connection connection;
-
-    // Khối code này tự động lấy dữ liệu từ file .env khi Server khởi động
     static {
         Map<String, String> env = new HashMap<>();
         try (BufferedReader br = new BufferedReader(new FileReader(".env"))) {
             String line;
             while ((line = br.readLine()) != null) {
-                // Bỏ qua dòng trống hoặc comment
-                if (line.trim().isEmpty() || line.startsWith("#")) {
-                    continue;
-                }
-
+                if (line.trim().isEmpty() || line.startsWith("#")) continue;
                 String[] parts = line.split("=", 2);
                 if (parts.length == 2) {
                     env.put(parts[0].trim(), parts[1].trim());
                 }
             }
-
-            // Lấy dữ liệu gán vào biến
             DB_URL = env.get("DB_URL");
             USER = env.get("DB_USER");
             PASSWORD = env.get("DB_PASSWORD");
-
         } catch (Exception e) {
-            logger.error("Lỗi: Không tìm thấy hoặc đọc lỗi file .env! Đảm bảo bạn đã tạo file .env ở thư mục gốc.");
-            e.printStackTrace();
+            logger.error("Lỗi: Không tìm thấy hoặc đọc lỗi file .env!", e);
         }
     }
 
     public static Connection getConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) {
-            try {
-                // Tải driver của MySQL
-                Class.forName("com.mysql.cj.jdbc.Driver");
-
-                logger.info("=== KIỂM TRA ĐỌC FILE .ENV ===");
-                logger.info("DB_URL hiện tại là: {}", DB_URL);
-                logger.info("USER hiện tại là: {}", USER);
-                logger.info("==============================");
-
-                // Mở kết nối với dữ liệu đã đọc từ file .env
-                connection = DriverManager.getConnection(DB_URL, USER, PASSWORD);
-                logger.info("Kết nối MySQL thành công: {}", DB_URL);
-
-                // Tự động dựng bảng nếu chưa có
-                autoCreateTables();
-
-            } catch (ClassNotFoundException e) {
-                logger.error("Lỗi: Không tìm thấy thư viện MySQL JDBC!");
-                e.printStackTrace();
-            } catch (SQLException e) {
-                logger.info("Lỗi kết nối MySQL: {}", e.getMessage());
-                e.printStackTrace();
-            }
+        Connection conn = DriverManager.getConnection(DB_URL, USER, PASSWORD);
+        // Chỉ tạo bảng trong lần kết nối đầu tiên để tối ưu hóa
+        if (!tablesCreated) {
+            autoCreateTables(conn);
+            tablesCreated = true;
         }
-        return connection;
+        return conn;
     }
 
-
-    private static void autoCreateTables() {
-        try (Statement stmt = connection.createStatement()) {
-
+    private static void autoCreateTables(Connection conn) {
+        try (Statement stmt = conn.createStatement()) {
             // 1. Bảng Users
             String sqlUsers = "CREATE TABLE IF NOT EXISTS users ("
                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
                     + "username VARCHAR(50) NOT NULL UNIQUE, "
                     + "password VARCHAR(255) NOT NULL, "
                     + "role VARCHAR(50) NOT NULL DEFAULT 'bidder', "
-                    + "balance DECIMAL(15,2) DEFAULT 0.00"
+                    + "balance DECIMAL(15,2) DEFAULT 0.00, "
+                    + "is_banned TINYINT(1) DEFAULT 0"
                     + ")";
             stmt.execute(sqlUsers);
 
@@ -98,13 +67,13 @@ public class DatabaseManager {
                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
                     + "name VARCHAR(100) NOT NULL, "
                     + "description TEXT, "
-                    + "type VARCHAR(50), " // Thêm cột loại sản phẩm
+                    + "type VARCHAR(50), "
                     + "start_price DECIMAL(15,2) NOT NULL, "
-                    + "bid_increment DECIMAL(15,2) NOT NULL, " // Thêm cột bước giá
+                    + "bid_increment DECIMAL(15,2) NOT NULL, "
                     + "current_price DECIMAL(15,2) NOT NULL, "
                     + "seller_id INT, "
-                    + "current_winner_id INT, " // Thêm cột người thắng hiện tại
-                    + "status VARCHAR(20) NOT NULL DEFAULT 'PENDING', " // Thêm cột trạng thái
+                    + "current_winner_id INT, "
+                    + "status VARCHAR(20) NOT NULL DEFAULT 'PENDING', "
                     + "end_time DATETIME, "
                     + "FOREIGN KEY (seller_id) REFERENCES users(id), "
                     + "FOREIGN KEY (current_winner_id) REFERENCES users(id)"
@@ -123,21 +92,14 @@ public class DatabaseManager {
                     + ")";
             stmt.execute(sqlBids);
 
-            logger.info("Đã khởi tạo toàn bộ CSDL cho Hệ Thống Đấu Giá thành công!");
+            logger.info("Đã khởi tạo/kiểm tra CSDL thành công!");
         } catch (SQLException e) {
             logger.error("Lỗi khi tự động tạo bảng: {}", e.getMessage(), e);
         }
     }
 
+    // Phương thức này không còn cần thiết vì try-with-resources sẽ tự đóng kết nối
     public static void closeConnection() {
-        if (connection != null) {
-            try {
-                connection.close();
-                logger.info("Đã đóng kết nối database");
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
+        // No-op
     }
 }
-

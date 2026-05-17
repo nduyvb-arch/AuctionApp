@@ -88,7 +88,7 @@ public class MyItemsController implements Initializable {
             String search = this.myItemsSearchTextField.getText() == null ? "" : this.myItemsSearchTextField.getText().toLowerCase();
             String status = (String)this.myItemsStatusComboBox.getValue();
             String sort = (String)this.myItemsSortComboBox.getValue();
-            List<Item> filtered = (List)this.items.stream().filter((itemx) -> this.currentUser.getId().equals(itemx.getSellerId())).filter((itemx) -> itemx.getItemName().toLowerCase().contains(search)).filter((itemx) -> this.applyStatusFilter(itemx, status)).collect(Collectors.toList());
+            List<Item> filtered = (List)this.items.stream().filter((itemx) -> String.valueOf(this.currentUser.getId()).equals(itemx.getSellerId())).filter((itemx) -> itemx.getItemName().toLowerCase().contains(search)).filter((itemx) -> this.applyStatusFilter(itemx, status)).collect(Collectors.toList());
             this.applySorting(filtered, sort);
             this.myItemsSummaryLabel.setText("Tổng: " + filtered.size() + " sản phẩm");
             if (filtered.isEmpty()) {

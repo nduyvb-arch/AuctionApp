@@ -137,7 +137,7 @@ public class AddItemDialog extends Dialog<Boolean> {
                             descTextArea.getText().trim(),
                             startPrice,
                             increment,
-                            currentUser.getId()
+                            String.valueOf(currentUser.getId())
                     };
 
                     out.writeObject(new Message("ADD_ITEM", itemData));
