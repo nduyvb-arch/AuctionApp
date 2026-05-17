@@ -72,7 +72,8 @@ public class AuctionManager {
                 item.setSellerId(sellerId);
                 item.setStatus(AuctionStatus.valueOf(statusStr));
                 if (endTimeStr != null && !endTimeStr.isEmpty()) {
-                    item.setEndTime(LocalDateTime.parse(endTimeStr));
+                    item.setEndTime(LocalDateTime.parse(endTimeStr,
+                            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
                 }
                 auctionItems.add(item);
             }
@@ -134,7 +135,8 @@ public class AuctionManager {
                 pstmt.setNull(2, java.sql.Types.INTEGER);
             }
             pstmt.setString(3, item.getStatus().name());
-            pstmt.setString(4, item.getEndTime() != null ? item.getEndTime().toString() : null);
+            pstmt.setString(4, item.getEndTime() != null ?
+                    item.getEndTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : null);
             pstmt.setInt(5, Integer.parseInt(item.getId()));
             pstmt.executeUpdate();
         } catch (SQLException e) {
