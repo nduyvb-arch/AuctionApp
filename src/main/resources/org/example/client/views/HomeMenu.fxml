@@ -303,6 +303,10 @@
                         source="SalesHistoryView.fxml"
                         VBox.vgrow="ALWAYS" />
 
+            <fx:include fx:id="accountViewPane"
+                        source="AccountView.fxml"
+                        VBox.vgrow="ALWAYS" />
+
          </VBox>
       </VBox>
 

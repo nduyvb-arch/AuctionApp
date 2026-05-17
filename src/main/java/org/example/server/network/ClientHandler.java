@@ -97,12 +97,61 @@ public class ClientHandler implements Runnable, Observer {
                         break;
 
                     case "GET_ALL_ITEMS":
+                        java.util.List<String> closedNotifications = AuctionManager.getInstance().checkAndCloseExpiredAuctions();
+
+                        for (String notification : closedNotifications) {
+                            notifier.notifyObservers(new Message("AUCTION_RESULT_NOTIFICATION", notification));
+                        }
+
                         sendMessage(new Message(
                                 "GET_ALL_ITEMS_RESPONSE",
                                 new ArrayList<>(AuctionManager.getInstance().getAllItems())
                         ));
                         break;
 
+                    case "GET_MY_BID_HISTORY":
+                        String historyUserId = (String) inputMessage.getPayload();
+                        sendMessage(new Message(
+                                "MY_BID_HISTORY_RESPONSE",
+                                AuctionManager.getInstance().getBidHistoryForUser(historyUserId)
+                        ));
+                        break;
+
+                    case "GET_ACCOUNT_INFO":
+                        String accountUserId = (String) inputMessage.getPayload();
+                        sendMessage(new Message(
+                                "ACCOUNT_INFO_RESPONSE",
+                                UserManager.getInstance().findUserById(accountUserId)
+                        ));
+                        break;
+
+                    case "TOP_UP":
+                        Object[] topUpData = (Object[]) inputMessage.getPayload();
+
+                        String topUpUserId = (String) topUpData[0];
+                        double topUpAmount = (Double) topUpData[1];
+                        String topUpMethod = (String) topUpData[2];
+
+                        User updatedUser = UserManager.getInstance().topUpBalance(topUpUserId, topUpAmount, topUpMethod);
+
+                        if (updatedUser != null) {
+                            if (currentUser != null && currentUser.getId().equals(updatedUser.getId())) {
+                                currentUser = updatedUser;
+                            }
+
+                            sendMessage(new Message("TOP_UP_RESPONSE", new Object[]{
+                                    true,
+                                    "Đã nạp thành công " + topUpAmount + " VNĐ bằng phương thức: " + topUpMethod,
+                                    updatedUser
+                            }));
+                        } else {
+                            sendMessage(new Message("TOP_UP_RESPONSE", new Object[]{
+                                    false,
+                                    "Nạp tiền thất bại. Vui lòng kiểm tra lại tài khoản hoặc số tiền.",
+                                    null
+                            }));
+                        }
+                        break;
                     case "START_AUCTION":
                         Object[] startData = (Object[]) inputMessage.getPayload();
 
@@ -172,6 +221,7 @@ public class ClientHandler implements Runnable, Observer {
                         notifier.notifyObservers(new Message("NEW_ITEM_ADDED", null));
                         break;
 
+
                     case "CANCEL_AUCTION":
                         if (currentUser == null || !"admin".equals(currentUser.getRole())) {
                             sendMessage(new Message("CANCEL_AUCTION_RESPONSE", "Cảnh báo: Chỉ admin mới có quyền hủy phiên đấu giá"));
@@ -225,6 +275,7 @@ public class ClientHandler implements Runnable, Observer {
     public synchronized void sendMessage(Message message) {
         try {
             if (out != null && !clientSocket.isClosed()) {
+                out.reset();
                 out.writeObject(message);
                 out.flush();
             }

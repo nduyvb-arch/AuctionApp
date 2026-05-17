@@ -1,4 +1,5 @@
 package org.example.common.model.user;
+
 import java.io.Serializable;
 
 public class Seller extends User implements Serializable {
@@ -7,6 +8,10 @@ public class Seller extends User implements Serializable {
 
     public Seller(final String id, final String username, final String password) {
         super(id, username, password);
+    }
+
+    public Seller(final String id, final String username, final String password, final double balance) {
+        super(id, username, password, balance);
     }
 
     @Override

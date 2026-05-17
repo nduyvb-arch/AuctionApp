@@ -98,6 +98,9 @@ public class HomeController implements Initializable {
     @FXML private VBox salesHistoryViewPane;
     @FXML private SalesHistoryController salesHistoryViewPaneController;
 
+    @FXML private VBox accountViewPane;
+    @FXML private AccountViewController accountViewPaneController;
+
     @FXML private VBox contentContainer;
 
     // ═══════════════════════════════════════════════════════════
@@ -105,6 +108,7 @@ public class HomeController implements Initializable {
     // ═══════════════════════════════════════════════════════════
     private final List<Item> items = new ArrayList<>();
     private final List<BidHistoryController.BidHistoryRecord> bidHistory = new ArrayList<>();
+    private final List<String> notifications = new ArrayList<>();
 
     private ObjectOutputStream out;
     private ObjectInputStream in;
@@ -136,6 +140,8 @@ public class HomeController implements Initializable {
         setViewState(addItemViewPane, false);
         setViewState(myItemsViewPane, false);
         setViewState(salesHistoryViewPane, false);
+        setViewState(accountViewPane, false);
+        setViewState(accountViewPane, false);
 
         if (bidHistoryViewPaneController != null) {
             bidHistoryViewPaneController.setup(bidHistory);
@@ -151,6 +157,10 @@ public class HomeController implements Initializable {
 
         if (salesHistoryViewPaneController != null) {
             salesHistoryViewPaneController.setup(items, currentUser, this::loadInitialItems);
+        }
+
+        if (accountViewPaneController != null) {
+            accountViewPaneController.setup(out, currentUser, this::onCurrentUserUpdated);
         }
 
         listenForServerUpdates();
@@ -171,6 +181,7 @@ public class HomeController implements Initializable {
     private void switchToBidHistoryView() {
         showView(bidHistoryViewPane);
         pageTitle.setText("Lịch sử đấu giá");
+        requestMyBidHistory();
 
         if (bidHistoryViewPaneController != null) {
             bidHistoryViewPaneController.refreshBidHistoryView();
@@ -205,25 +216,35 @@ public class HomeController implements Initializable {
 
     @FXML
     private void switchToAccountView() {
+        showView(accountViewPane);
         pageTitle.setText("Tài khoản");
-        hideAllViews();
 
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Tài khoản");
-        alert.setHeaderText("Chức năng này đang được phát triển");
-        alert.setContentText("Hiện tại chưa có giao diện tài khoản riêng.");
-        alert.showAndWait();
+        if (accountViewPaneController != null) {
+            accountViewPaneController.updateUser(currentUser);
+        }
     }
 
     @FXML
     private void switchToNotificationsView() {
         pageTitle.setText("Thông báo");
-        hideAllViews();
 
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Thông báo");
-        alert.setHeaderText("Chức năng này đang được phát triển");
-        alert.setContentText("Hiện tại chưa có giao diện thông báo riêng.");
+        alert.setHeaderText("Thông báo của bạn");
+
+        if (notifications.isEmpty()) {
+            alert.setContentText("Chưa có thông báo nào.");
+        } else {
+            StringBuilder builder = new StringBuilder();
+
+            for (int i = notifications.size() - 1; i >= 0; i--) {
+                builder.append("• ").append(notifications.get(i)).append("\n\n");
+            }
+
+            alert.setContentText(builder.toString());
+        }
+
+        alert.getDialogPane().setPrefWidth(600);
         alert.showAndWait();
     }
 
@@ -238,6 +259,8 @@ public class HomeController implements Initializable {
         setViewState(addItemViewPane, false);
         setViewState(myItemsViewPane, false);
         setViewState(salesHistoryViewPane, false);
+        setViewState(accountViewPane, false);
+        setViewState(accountViewPane, false);
     }
 
     private void setViewState(VBox view, boolean active) {
@@ -678,8 +701,12 @@ public class HomeController implements Initializable {
         );
 
         bidButton.setOnAction(event -> {
+            /*
+             * Không mở dialog nhập giá ngay trong lúc dialog chi tiết đang đóng,
+             * vì một số phiên bản JavaFX sẽ bị lỗi focus làm TextField không gõ được.
+             */
             dialog.close();
-            openBidDialog(item);
+            Platform.runLater(() -> openBidDialog(item));
         });
 
         if (!"ACTIVE".equals(status)) {
@@ -850,59 +877,133 @@ public class HomeController implements Initializable {
     // ĐẶT GIÁ
     // ═══════════════════════════════════════════════════════════
     private void openBidDialog(Item item) {
-        Dialog<Double> dialog = new Dialog<>();
-        dialog.setTitle("Đặt giá - " + item.getItemName());
-        dialog.setHeaderText("Nhập mức giá bạn muốn đặt");
-
-        TextField amountField = new TextField();
-        amountField.setPromptText("Nhập giá tiền...");
+        Dialog<Double> bidDialog = new Dialog<>();
+        bidDialog.setTitle("Đặt giá - " + item.getItemName());
+        bidDialog.setHeaderText(null);
 
         double minBid = item.getCurrentPrice() + item.getBidIncrement();
 
-        VBox content = new VBox(10);
-        content.setPadding(new Insets(10));
-        content.getChildren().addAll(
-                new Label("Giá hiện tại: " + currencyFormat.format(item.getCurrentPrice()) + " VNĐ"),
-                new Label("Mức tăng tối thiểu: " + currencyFormat.format(item.getBidIncrement()) + " VNĐ"),
-                new Label("Giá tối thiểu cần đặt: " + currencyFormat.format(minBid) + " VNĐ"),
-                new Label("Nhập giá của bạn:"),
-                amountField
+        VBox root = new VBox(14);
+        root.setPadding(new Insets(20));
+        root.setPrefWidth(420);
+        root.setStyle("-fx-background-color: #f8fafc;");
+
+        Label titleLabel = new Label("Nhập mức giá bạn muốn đặt");
+        titleLabel.setStyle(
+                "-fx-text-fill: #0f172a;" +
+                        "-fx-font-size: 20;" +
+                        "-fx-font-weight: bold;"
         );
 
-        ButtonType submitButton = new ButtonType("Xác nhận", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(submitButton, ButtonType.CANCEL);
-        dialog.getDialogPane().setContent(content);
+        Label currentPriceLabel = new Label("Giá hiện tại: " + currencyFormat.format(item.getCurrentPrice()) + " VNĐ");
+        currentPriceLabel.setStyle("-fx-text-fill: #334155; -fx-font-size: 13;");
 
-        dialog.setResultConverter(buttonType -> {
-            if (buttonType == submitButton) {
+        Label incrementLabel = new Label("Bước giá tối thiểu: " + currencyFormat.format(item.getBidIncrement()) + " VNĐ");
+        incrementLabel.setStyle("-fx-text-fill: #334155; -fx-font-size: 13;");
+
+        Label minBidLabel = new Label("Bạn cần đặt tối thiểu: " + currencyFormat.format(minBid) + " VNĐ");
+        minBidLabel.setStyle(
+                "-fx-text-fill: #2563eb;" +
+                        "-fx-font-size: 14;" +
+                        "-fx-font-weight: bold;"
+        );
+
+        TextField amountField = new TextField();
+        amountField.setPromptText("Ví dụ: " + currencyFormat.format(minBid));
+        amountField.setPrefHeight(42);
+        amountField.setEditable(true);
+        amountField.setDisable(false);
+        amountField.setFocusTraversable(true);
+        amountField.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #cbd5e1;" +
+                        "-fx-border-radius: 10;" +
+                        "-fx-background-radius: 10;" +
+                        "-fx-padding: 0 12;" +
+                        "-fx-font-size: 14;"
+        );
+
+        Label errorLabel = new Label("");
+        errorLabel.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 12;");
+
+        root.getChildren().addAll(
+                titleLabel,
+                currentPriceLabel,
+                incrementLabel,
+                minBidLabel,
+                new Label("Số tiền đặt giá:"),
+                amountField,
+                errorLabel
+        );
+
+        ButtonType submitButtonType = new ButtonType("Xác nhận đặt giá", ButtonBar.ButtonData.OK_DONE);
+        bidDialog.getDialogPane().getButtonTypes().addAll(submitButtonType, ButtonType.CANCEL);
+        bidDialog.getDialogPane().setContent(root);
+
+        Button submitButton = (Button) bidDialog.getDialogPane().lookupButton(submitButtonType);
+        submitButton.setDisable(true);
+        submitButton.setStyle(
+                "-fx-background-color: #10b981;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 8;"
+        );
+
+        amountField.textProperty().addListener((observable, oldValue, newValue) -> {
+            String cleaned = newValue.replaceAll("[^0-9]", "");
+
+            if (!cleaned.equals(newValue)) {
+                amountField.setText(cleaned);
+                return;
+            }
+
+            if (cleaned.isBlank()) {
+                submitButton.setDisable(true);
+                errorLabel.setText("");
+                return;
+            }
+
+            try {
+                double amount = Double.parseDouble(cleaned);
+
+                if (amount < minBid) {
+                    submitButton.setDisable(true);
+                    errorLabel.setText("Giá phải từ " + currencyFormat.format(minBid) + " VNĐ trở lên.");
+                } else {
+                    submitButton.setDisable(false);
+                    errorLabel.setText("");
+                }
+            } catch (NumberFormatException e) {
+                submitButton.setDisable(true);
+                errorLabel.setText("Số tiền không hợp lệ.");
+            }
+        });
+
+        bidDialog.setOnShown(event -> Platform.runLater(() -> {
+            amountField.requestFocus();
+            amountField.positionCaret(amountField.getText().length());
+        }));
+
+        bidDialog.setResultConverter(buttonType -> {
+            if (buttonType == submitButtonType) {
+                String raw = amountField.getText().trim();
+
+                if (raw.isBlank()) {
+                    return null;
+                }
+
                 try {
-                    String raw = amountField.getText()
-                            .trim()
-                            .replace(".", "")
-                            .replace(",", "");
-
                     return Double.parseDouble(raw);
                 } catch (NumberFormatException e) {
                     return null;
                 }
             }
+
             return null;
         });
 
-        Optional<Double> result = dialog.showAndWait();
-
-        result.ifPresent(amount -> {
-            if (amount < minBid) {
-                Alert alert = new Alert(Alert.AlertType.WARNING);
-                alert.setTitle("Giá không hợp lệ");
-                alert.setHeaderText("Mức giá đặt chưa đủ");
-                alert.setContentText("Bạn cần đặt tối thiểu " + currencyFormat.format(minBid) + " VNĐ.");
-                alert.showAndWait();
-                return;
-            }
-
-            submitBid(item.getId(), amount);
-        });
+        Optional<Double> result = bidDialog.showAndWait();
+        result.ifPresent(amount -> submitBid(item.getId(), amount));
     }
 
     private void submitBid(String itemId, double bidAmount) {
@@ -1046,6 +1147,7 @@ public class HomeController implements Initializable {
         switch (message.getAction()) {
             case "GET_ALL_ITEMS_RESPONSE":
                 updateItemsFromServer((List<Item>) message.getPayload());
+                requestMyBidHistory();
                 break;
 
             case "BID_RESPONSE":
@@ -1056,6 +1158,25 @@ public class HomeController implements Initializable {
                 bidAlert.showAndWait();
 
                 loadInitialItems();
+                requestMyBidHistory();
+                break;
+
+            case "MY_BID_HISTORY_RESPONSE":
+                updateBidHistoryFromPayload(message.getPayload());
+                break;
+
+            case "AUCTION_RESULT_NOTIFICATION":
+                String notification = String.valueOf(message.getPayload());
+                notifications.add(notification);
+
+                Alert resultAlert = new Alert(Alert.AlertType.INFORMATION);
+                resultAlert.setTitle("Thông báo đấu giá");
+                resultAlert.setHeaderText("Kết quả đấu giá");
+                resultAlert.setContentText(notification);
+                resultAlert.showAndWait();
+
+                loadInitialItems();
+                requestMyBidHistory();
                 break;
 
             case "ITEM_UPDATE":
@@ -1078,6 +1199,14 @@ public class HomeController implements Initializable {
                 loadInitialItems();
                 break;
 
+            case "TOP_UP_RESPONSE":
+                handleTopUpResponse(message.getPayload());
+                break;
+
+            case "ACCOUNT_INFO_RESPONSE":
+                handleAccountInfoResponse(message.getPayload());
+                break;
+
             case "SYSTEM_NOTIFICATION":
                 System.out.println("Server: " + message.getPayload());
                 break;
@@ -1085,6 +1214,124 @@ public class HomeController implements Initializable {
             default:
                 System.out.println("Unknown server message: " + message.getAction());
                 break;
+        }
+    }
+
+    private void requestMyBidHistory() {
+        if (out == null || currentUser == null) {
+            return;
+        }
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                synchronized (out) {
+                    out.writeObject(new Message("GET_MY_BID_HISTORY", currentUser.getId()));
+                    out.flush();
+                }
+                return null;
+            }
+        };
+
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void updateBidHistoryFromPayload(Object payload) {
+        bidHistory.clear();
+
+        if (payload instanceof List<?>) {
+            for (Object row : (List<?>) payload) {
+                if (!(row instanceof Object[])) {
+                    continue;
+                }
+
+                Object[] data = (Object[]) row;
+
+                try {
+                    String itemId = String.valueOf(data[0]);
+                    String itemName = String.valueOf(data[1]);
+                    String itemType = String.valueOf(data[2]);
+                    double bidAmount = ((Number) data[3]).doubleValue();
+                    java.time.LocalDateTime bidTime = (java.time.LocalDateTime) data[4];
+                    String auctionStatus = String.valueOf(data[5]);
+                    String result = String.valueOf(data[6]);
+
+                    bidHistory.add(new BidHistoryController.BidHistoryRecord(
+                            itemId,
+                            itemName,
+                            itemType,
+                            bidAmount,
+                            bidTime,
+                            auctionStatus,
+                            result
+                    ));
+                } catch (Exception e) {
+                    System.err.println("Không đọc được một dòng lịch sử đấu giá: " + e.getMessage());
+                }
+            }
+        }
+
+        if (bidHistoryViewPaneController != null) {
+            bidHistoryViewPaneController.updateData(bidHistory);
+        }
+    }
+
+    private void handleAccountInfoResponse(Object payload) {
+        if (payload instanceof User) {
+            currentUser = (User) payload;
+            ClientApp.setCurrentUser(currentUser);
+            updateUserInfoLabel();
+
+            if (accountViewPaneController != null) {
+                accountViewPaneController.updateUser(currentUser);
+            }
+        }
+    }
+
+    private void handleTopUpResponse(Object payload) {
+        if (!(payload instanceof Object[])) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Nạp tiền");
+            alert.setHeaderText("Phản hồi từ server");
+            alert.setContentText(String.valueOf(payload));
+            alert.showAndWait();
+            return;
+        }
+
+        Object[] data = (Object[]) payload;
+        boolean success = Boolean.TRUE.equals(data[0]);
+        String message = String.valueOf(data[1]);
+
+        if (success && data.length > 2 && data[2] instanceof User) {
+            currentUser = (User) data[2];
+            ClientApp.setCurrentUser(currentUser);
+            updateUserInfoLabel();
+
+            if (accountViewPaneController != null) {
+                accountViewPaneController.updateUser(currentUser);
+            }
+        }
+
+        Alert alert = new Alert(success ? Alert.AlertType.INFORMATION : Alert.AlertType.WARNING);
+        alert.setTitle("Nạp tiền");
+        alert.setHeaderText(success ? "Nạp tiền thành công" : "Nạp tiền thất bại");
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void onCurrentUserUpdated(User updatedUser) {
+        if (updatedUser == null) {
+            return;
+        }
+
+        currentUser = updatedUser;
+        ClientApp.setCurrentUser(updatedUser);
+        updateUserInfoLabel();
+
+        if (accountViewPaneController != null) {
+            accountViewPaneController.updateUser(updatedUser);
         }
     }
 

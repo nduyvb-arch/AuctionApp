@@ -5,7 +5,6 @@ import org.example.common.model.item.AuctionStatus;
 import org.example.common.model.item.Electronic;
 import org.example.common.model.item.Item;
 import org.example.common.model.item.Vehicle;
-import org.example.common.model.user.Bidder;
 import org.example.common.model.user.User;
 import org.example.server.data.DatabaseManager;
 import org.slf4j.Logger;
@@ -16,6 +15,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -198,11 +198,15 @@ public class AuctionManager {
 
         User bidder = UserManager.getInstance().findUserById(bidderId);
 
-        if (bidder == null || !(bidder instanceof Bidder)) {
+        if (bidder == null) {
             return "Lỗi: Không tìm thấy tài khoản người đấu giá hợp lệ.";
         }
 
-        double userBalance = ((Bidder) bidder).getBalance();
+        if (!"bidder".equalsIgnoreCase(bidder.getRole())) {
+            return "Lỗi: Chỉ người đấu giá mới được đặt giá.";
+        }
+
+        double userBalance = bidder.getBalance();
 
         if (userBalance < bidAmount) {
             return "Lỗi: Số dư của bạn (" + userBalance + ") không đủ để đặt mức giá này.";
@@ -219,8 +223,72 @@ public class AuctionManager {
         targetItem.setCurrentWinnerId(bidderId);
         targetItem.setCurrentPrice(bidAmount);
         updateItemDB(targetItem);
+        insertBidRecord(itemId, bidderId, bidAmount);
 
         return "Đặt giá thành công! Bạn đang dẫn đầu với mức giá " + bidAmount + " cho sản phẩm " + targetItem.getItemName();
+    }
+
+
+
+    private void insertBidRecord(String itemId, String bidderId, double bidAmount) {
+        String sql = "INSERT INTO bids (item_id, user_id, bid_amount) VALUES (?, ?, ?)";
+
+        try (
+                Connection conn = DatabaseManager.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)
+        ) {
+            pstmt.setInt(1, Integer.parseInt(itemId));
+            pstmt.setInt(2, Integer.parseInt(bidderId));
+            pstmt.setDouble(3, bidAmount);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            logger.error("Lỗi lưu lịch sử bid: {}", e.getMessage(), e);
+        }
+    }
+
+    public synchronized List<Object[]> getBidHistoryForUser(String userId) {
+        checkAndCloseExpiredAuctions();
+
+        List<Object[]> result = new ArrayList<>();
+
+        String sql = "SELECT b.item_id, i.name, i.type, b.bid_amount, b.bid_time, i.status, i.current_winner_id " +
+                "FROM bids b JOIN items i ON b.item_id = i.id " +
+                "WHERE b.user_id = ? ORDER BY b.bid_time DESC";
+
+        try (
+                Connection conn = DatabaseManager.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)
+        ) {
+            pstmt.setInt(1, Integer.parseInt(userId));
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String itemId = rs.getString("item_id");
+                    String itemName = rs.getString("name");
+                    String itemType = rs.getString("type");
+                    double bidAmount = rs.getDouble("bid_amount");
+                    Timestamp bidTimestamp = rs.getTimestamp("bid_time");
+                    LocalDateTime bidTime = bidTimestamp == null ? LocalDateTime.now() : bidTimestamp.toLocalDateTime();
+                    String status = rs.getString("status");
+                    String winnerId = rs.getString("current_winner_id");
+
+                    String displayResult;
+                    if ("ACTIVE".equals(status)) {
+                        displayResult = String.valueOf(userId).equals(winnerId) ? "Đang dẫn đầu" : "Đang diễn ra";
+                    } else if ("CLOSED".equals(status)) {
+                        displayResult = String.valueOf(userId).equals(winnerId) ? "Thắng" : "Thua";
+                    } else {
+                        displayResult = "Chờ";
+                    }
+
+                    result.add(new Object[]{itemId, itemName, itemType, bidAmount, bidTime, status, displayResult});
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Lỗi lấy lịch sử đấu giá: {}", e.getMessage(), e);
+        }
+
+        return result;
     }
 
     public synchronized List<String> checkAndCloseExpiredAuctions() {
@@ -234,9 +302,15 @@ public class AuctionManager {
                 item.setStatus(AuctionStatus.CLOSED);
                 updateItemDB(item);
 
-                String msg = item.getCurrentWinnerId() != null
-                        ? "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] đã thuộc về " + item.getCurrentWinnerId() + " với giá " + item.getCurrentPrice()
-                        : "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] không có ai đặt giá";
+                String msg;
+
+                if (item.getCurrentWinnerId() != null && !item.getCurrentWinnerId().isEmpty()) {
+                    UserManager.getInstance().addBalance(item.getSellerId(), item.getCurrentPrice());
+                    msg = "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] đã có người thắng là user #"
+                            + item.getCurrentWinnerId() + " với giá " + item.getCurrentPrice() + " VNĐ.";
+                } else {
+                    msg = "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] không có ai đặt giá.";
+                }
 
                 notifications.add(msg);
             }

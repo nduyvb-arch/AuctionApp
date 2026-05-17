@@ -58,7 +58,7 @@ public class UserManager {
                         user = new Bidder(id, username, password, balance);
                         break;
                     case "seller":
-                        user = new Seller(id, username, password);
+                        user = new Seller(id, username, password, balance);
                         break;
                     case "admin":
                         user = new Admin(id, username, password);
@@ -115,10 +115,17 @@ public class UserManager {
 
             User newUser;
             switch (role.toLowerCase()) {
-                case "bidder": newUser = new Bidder(newId, username, hashedPassword, 0.0); break;
-                case "seller": newUser = new Seller(newId, username, hashedPassword); break;
-                case "admin":  newUser = new Admin(newId, username, hashedPassword); break;
-                default: return "Loại tài khoản không hợp lệ";
+                case "bidder":
+                    newUser = new Bidder(newId, username, hashedPassword, 0.0);
+                    break;
+                case "seller":
+                    newUser = new Seller(newId, username, hashedPassword);
+                    break;
+                case "admin":
+                    newUser = new Admin(newId, username, hashedPassword);
+                    break;
+                default:
+                    return "Loại tài khoản không hợp lệ";
             }
             users.add(newUser);
             logger.info("Tạo tài khoản thành công: {}", username);
@@ -192,11 +199,7 @@ public class UserManager {
 
             pstmt.setString(1, updatedUser.getPassword());
 
-            if (updatedUser instanceof Bidder) {
-                pstmt.setDouble(2, ((Bidder) updatedUser).getBalance());
-            } else {
-                pstmt.setDouble(2, 0.0);
-            }
+            pstmt.setDouble(2, updatedUser.getBalance());
 
             pstmt.setString(3, updatedUser.getId());
             int affectedRows = pstmt.executeUpdate();
@@ -234,10 +237,10 @@ public class UserManager {
                         User updatedUser;
                         switch (newRole.toLowerCase()) {
                             case "bidder":
-                                updatedUser = new Bidder(user.getId(), user.getUsername(), user.getPassword(), 0.0);
+                                updatedUser = new Bidder(user.getId(), user.getUsername(), user.getPassword(), user.getBalance());
                                 break;
                             case "seller":
-                                updatedUser = new Seller(user.getId(), user.getUsername(), user.getPassword());
+                                updatedUser = new Seller(user.getId(), user.getUsername(), user.getPassword(), user.getBalance());
                                 break;
                             case "admin":
                                 updatedUser = new Admin(user.getId(), user.getUsername(), user.getPassword());
@@ -275,7 +278,59 @@ public class UserManager {
         }
     }
 
-    public void closeConnection() {
-        DatabaseManager.closeConnection();
+    public synchronized User topUpBalance(String userId, double amount, String method) {
+        if (userId == null || userId.isBlank() || amount <= 0) {
+            return null;
+        }
+
+        boolean success = addBalance(userId, amount);
+
+        if (!success) {
+            return null;
+        }
+
+        return findUserById(userId);
+    }
+
+    public synchronized boolean addBalance(String userId, double amount) {
+        if (userId == null || userId.isBlank() || amount <= 0) {
+            System.out.println("ADD BALANCE FAILED: userId hoặc amount không hợp lệ");
+            return false;
+        }
+
+        String sql = "UPDATE users SET balance = balance + ? WHERE id = ?";
+
+        try (
+                Connection conn = DatabaseManager.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)
+        ) {
+            pstmt.setDouble(1, amount);
+            pstmt.setInt(2, Integer.parseInt(userId));
+
+            int affectedRows = pstmt.executeUpdate();
+
+            System.out.println("ADD BALANCE affectedRows = " + affectedRows);
+
+            if (affectedRows <= 0) {
+                System.out.println("Không tìm thấy user trong database với id = " + userId);
+                return false;
+            }
+
+            User user = findUserById(userId);
+
+            if (user != null) {
+                user.setBalance(user.getBalance() + amount);
+                System.out.println("Balance mới trong RAM = " + user.getBalance());
+            } else {
+                System.out.println("Không tìm thấy user trong list RAM với id = " + userId);
+                return false;
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            logger.error("Lỗi cộng tiền cho user {}: {}", userId, e.getMessage(), e);
+            return false;
+        }
     }
 }
