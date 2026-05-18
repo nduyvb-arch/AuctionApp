@@ -1,19 +1,24 @@
 package org.example.client.controllers;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
-import javafx.scene.layout.AnchorPane;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Font;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import org.example.client.ClientApp;
 import org.example.common.Message;
 import org.example.common.model.item.Item;
@@ -23,34 +28,34 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.URL;
 import java.text.NumberFormat;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.ResourceBundle;
 import java.util.stream.Collectors;
+import javafx.util.Duration;
 
 /**
  * Controller chính của HomeMenu.fxml.
- * Quản lý:
- *   - Sidebar / navigation
- *   - Top bar (tiêu đề trang, thông tin user)
- *   - Home View (danh sách sản phẩm, bộ lọc)
- *   - Dữ liệu dùng chung: items, watchlistItemIds
  *
- * Các màn hình con (Watchlist, BidHistory) được tách thành FXML + Controller riêng
- * và nhúng vào HomeMenu.fxml qua {@code <fx:include>}.
- * HomeController giao tiếp với chúng thông qua {@link WatchlistController}
- * và {@link BidHistoryController}.
+ * Đã bỏ Watchlist:
+ * - Trang chủ hiển thị toàn bộ sản phẩm.
+ * - Card sản phẩm chỉ hiện: tên sản phẩm, giá cao nhất hiện tại, số lần đặt giá.
+ * - Bấm vào card sẽ mở popup chi tiết, có thông tin sản phẩm, khung ảnh và nút đặt giá.
  */
 public class HomeController implements Initializable {
 
     // ═══════════════════════════════════════════════════════════
     // SIDEBAR COMPONENTS
     // ═══════════════════════════════════════════════════════════
-    @FXML private VBox    sidebarMenu;
-    @FXML private Label   currentRoleLabel;
-    @FXML private Button  roleSwitcherButton;
+    @FXML private VBox sidebarMenu;
+    @FXML private Label currentRoleLabel;
+    @FXML private Button roleSwitcherButton;
 
-    // MENU ITEMS
     @FXML private Button homeMenuItem;
-    @FXML private Button watchlistMenuItem;
     @FXML private Button bidHistoryMenuItem;
     @FXML private Button addItemMenuItem;
     @FXML private Button myItemsMenuItem;
@@ -59,7 +64,6 @@ public class HomeController implements Initializable {
     @FXML private Button notificationsMenuItem;
     @FXML private Button logoutButton;
 
-    // MENU LABELS
     @FXML private Label bidderMenuLabel;
     @FXML private Label sellerMenuLabel;
 
@@ -72,102 +76,100 @@ public class HomeController implements Initializable {
     // ═══════════════════════════════════════════════════════════
     // HOME VIEW COMPONENTS
     // ═══════════════════════════════════════════════════════════
-    @FXML private VBox              homeView;
-    @FXML private TextField         searchTextField;
-    @FXML private ComboBox<String>  filterComboBox;
-    @FXML private ComboBox<String>  sortComboBox;
-    @FXML private Button            refreshButton;
-    @FXML private FlowPane          itemFlowPane;
+    @FXML private VBox homeView;
+    @FXML private TextField searchTextField;
+    @FXML private ComboBox<String> filterComboBox;
+    @FXML private ComboBox<String> sortComboBox;
+    @FXML private Button refreshButton;
+    @FXML private FlowPane itemFlowPane;
 
     // ═══════════════════════════════════════════════════════════
-    // SUB-VIEW ROOTS (được inject từ fx:include)
-    // Quy tắc đặt tên: fx:id="watchlistViewPane"
-    //   → @FXML VBox watchlistViewPane          (root node)
-    //   → @FXML WatchlistController watchlistViewPaneController (controller)
+    // SUB-VIEWS
     // ═══════════════════════════════════════════════════════════
-    @FXML private VBox                 watchlistViewPane;
-    @FXML private WatchlistController  watchlistViewPaneController;
+    @FXML private VBox bidHistoryViewPane;
+    @FXML private BidHistoryController bidHistoryViewPaneController;
 
-    @FXML private VBox                  bidHistoryViewPane;
-    @FXML private BidHistoryController  bidHistoryViewPaneController;
+    @FXML private VBox addItemViewPane;
+    @FXML private AddItemViewController addItemViewPaneController;
 
-    @FXML private VBox                   addItemViewPane;
-    @FXML private AddItemViewController  addItemViewPaneController;
+    @FXML private VBox myItemsViewPane;
+    @FXML private MyItemsController myItemsViewPaneController;
 
-    @FXML private VBox                   myItemsViewPane;
-    @FXML private MyItemsController      myItemsViewPaneController;
-
-    @FXML private VBox                   salesHistoryViewPane;
+    @FXML private VBox salesHistoryViewPane;
     @FXML private SalesHistoryController salesHistoryViewPaneController;
 
-    // CONTENT CONTAINER (bọc tất cả views)
+    @FXML private VBox accountViewPane;
+    @FXML private AccountViewController accountViewPaneController;
+
     @FXML private VBox contentContainer;
 
     // ═══════════════════════════════════════════════════════════
     // SHARED DATA
     // ═══════════════════════════════════════════════════════════
-    private List<Item>    items            = new ArrayList<>();
-    private Set<String>   watchlistItemIds = new HashSet<>();
+    private final List<Item> items = new ArrayList<>();
+    private final List<BidHistoryController.BidHistoryRecord> bidHistory = new ArrayList<>();
+    private final List<String> notifications = new ArrayList<>();
 
-    // Bid history được quản lý bởi BidHistoryController;
-    // HomeController giữ reference để có thể thêm record khi cần.
-    private List<BidHistoryController.BidHistoryRecord> bidHistory = new ArrayList<>();
+    private ObjectOutputStream out;
+    private ObjectInputStream in;
+    private User currentUser;
+    private boolean sellerMode;
 
-    private ObjectOutputStream  out;
-    private ObjectInputStream   in;
-    private User                currentUser;
-    private boolean             sellerMode;
-
-    private static final NumberFormat currencyFormat =
-            NumberFormat.getInstance(new Locale("vi_VN"));
+    private static final NumberFormat currencyFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
 
     // ═══════════════════════════════════════════════════════════
     // INITIALIZE
     // ═══════════════════════════════════════════════════════════
-
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        // 1. Thông tin người dùng
         currentUser = ClientApp.getCurrentUser();
+
         if (currentUser != null) {
             sellerMode = "seller".equalsIgnoreCase(currentUser.getRole());
             updateUserInfoLabel();
             updateUIBasedOnRole();
         }
 
-        // 2. Streams giao tiếp với server
         out = ClientApp.getOutputStream();
-        in  = ClientApp.getInputStream();
+        in = ClientApp.getInputStream();
 
-        // 3. Thiết lập bộ lọc cho Home View
         setupHomeViewFilters();
 
-        // 4. Ẩn các sub-view, chỉ hiện Home View mặc định
         setViewState(homeView, true);
-        setViewState(watchlistViewPane, false);
         setViewState(bidHistoryViewPane, false);
         setViewState(addItemViewPane, false);
         setViewState(myItemsViewPane, false);
         setViewState(salesHistoryViewPane, false);
+        setViewState(accountViewPane, false);
+        setViewState(accountViewPane, false);
 
-        // 5. Khởi động các sub-controllers với dữ liệu dùng chung
-        watchlistViewPaneController.setup(items, watchlistItemIds, out, in, currentUser);
-        bidHistoryViewPaneController.setup(bidHistory);
-        addItemViewPaneController.setup(out, currentUser, this::loadInitialItems);
-        myItemsViewPaneController.setup(items, out, currentUser, this::loadInitialItems);
-        salesHistoryViewPaneController.setup(items, currentUser, this::loadInitialItems);
+        if (bidHistoryViewPaneController != null) {
+            bidHistoryViewPaneController.setup(bidHistory);
+        }
 
-        // 6. Lắng nghe cập nhật/phản hồi từ server qua một luồng đọc duy nhất
+        if (addItemViewPaneController != null) {
+            addItemViewPaneController.setup(out, currentUser, this::loadInitialItems);
+        }
+
+        if (myItemsViewPaneController != null) {
+            myItemsViewPaneController.setup(items, out, currentUser, this::loadInitialItems);
+        }
+
+        if (salesHistoryViewPaneController != null) {
+            salesHistoryViewPaneController.setup(items, currentUser, this::loadInitialItems);
+        }
+
+        if (accountViewPaneController != null) {
+            accountViewPaneController.setup(out, currentUser, this::onCurrentUserUpdated);
+        }
+
         listenForServerUpdates();
-
-        // 7. Tải danh sách sản phẩm từ server
         loadInitialItems();
     }
 
     // ═══════════════════════════════════════════════════════════
     // CHUYỂN MÀN HÌNH
     // ═══════════════════════════════════════════════════════════
-
     @FXML
     private void switchToHomeView() {
         showView(homeView);
@@ -176,18 +178,14 @@ public class HomeController implements Initializable {
     }
 
     @FXML
-    private void switchToWatchlistView() {
-        showView(watchlistViewPane);
-        pageTitle.setText("⭐ Danh sách theo dõi");
-        // Cập nhật dữ liệu mới nhất trước khi hiển thị
-        watchlistViewPaneController.updateData(items, watchlistItemIds);
-    }
-
-    @FXML
     private void switchToBidHistoryView() {
         showView(bidHistoryViewPane);
-        pageTitle.setText("📊 Lịch sử đấu giá");
-        bidHistoryViewPaneController.refreshBidHistoryView();
+        pageTitle.setText("Lịch sử đấu giá");
+        requestMyBidHistory();
+
+        if (bidHistoryViewPaneController != null) {
+            bidHistoryViewPaneController.refreshBidHistoryView();
+        }
     }
 
     @FXML
@@ -199,42 +197,57 @@ public class HomeController implements Initializable {
     @FXML
     private void switchToMyItemsView() {
         showView(myItemsViewPane);
-        pageTitle.setText("📦 Sản phẩm của tôi");
-        myItemsViewPaneController.updateData(items);
+        pageTitle.setText("Sản phẩm của tôi");
+
+        if (myItemsViewPaneController != null) {
+            myItemsViewPaneController.updateData(items);
+        }
     }
 
     @FXML
     private void switchToSalesHistoryView() {
         showView(salesHistoryViewPane);
-        pageTitle.setText("💰 Lịch sử bán hàng");
-        salesHistoryViewPaneController.updateData(items);
+        pageTitle.setText("Lịch sử bán hàng");
+
+        if (salesHistoryViewPaneController != null) {
+            salesHistoryViewPaneController.updateData(items);
+        }
     }
 
     @FXML
     private void switchToAccountView() {
-        pageTitle.setText("👤 Tài khoản");
-        hideAllViews();
-        // TODO: Implement Account View
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Tài Khoản");
-        alert.setHeaderText("Chức năng này sẽ được cải thiện");
-        alert.setContentText("Hiện tại, đang phát triển.");
-        alert.showAndWait();
+        showView(accountViewPane);
+        pageTitle.setText("Tài khoản");
+
+        if (accountViewPaneController != null) {
+            accountViewPaneController.updateUser(currentUser);
+        }
     }
 
     @FXML
     private void switchToNotificationsView() {
-        pageTitle.setText("🔔 Thông báo");
-        hideAllViews();
-        // TODO: Implement Notifications View
+        pageTitle.setText("Thông báo");
+
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Thông Báo");
-        alert.setHeaderText("Chức năng này sẽ được cải thiện");
-        alert.setContentText("Hiện tại, đang phát triển.");
+        alert.setTitle("Thông báo");
+        alert.setHeaderText("Thông báo của bạn");
+
+        if (notifications.isEmpty()) {
+            alert.setContentText("Chưa có thông báo nào.");
+        } else {
+            StringBuilder builder = new StringBuilder();
+
+            for (int i = notifications.size() - 1; i >= 0; i--) {
+                builder.append("• ").append(notifications.get(i)).append("\n\n");
+            }
+
+            alert.setContentText(builder.toString());
+        }
+
+        alert.getDialogPane().setPrefWidth(600);
         alert.showAndWait();
     }
 
-    /** Ẩn tất cả views con, rồi hiện {@code view}. */
     private void showView(VBox view) {
         hideAllViews();
         setViewState(view, true);
@@ -242,37 +255,45 @@ public class HomeController implements Initializable {
 
     private void hideAllViews() {
         setViewState(homeView, false);
-        setViewState(watchlistViewPane, false);
         setViewState(bidHistoryViewPane, false);
         setViewState(addItemViewPane, false);
         setViewState(myItemsViewPane, false);
         setViewState(salesHistoryViewPane, false);
+        setViewState(accountViewPane, false);
+        setViewState(accountViewPane, false);
     }
 
-    /**
-     * visible=false chỉ làm node biến mất nhưng vẫn có thể chiếm layout trong VBox.
-     * managed=false giúp VBox bỏ qua node đó khi tính toán vị trí/khoảng trống.
-     */
     private void setViewState(VBox view, boolean active) {
-        if (view == null) return;
+        if (view == null) {
+            return;
+        }
+
         view.setVisible(active);
         view.setManaged(active);
     }
 
     // ═══════════════════════════════════════════════════════════
-    // HOME VIEW – SETUP, TẢI DỮ LIỆU, LỌC & SẮP XẾP
+    // HOME VIEW
     // ═══════════════════════════════════════════════════════════
-
     private void setupHomeViewFilters() {
         ObservableList<String> statuses = FXCollections.observableArrayList(
-                "Tất cả", "Chờ", "Đang diễn ra", "Đã kết thúc", "Bị hủy"
+                "Tất cả",
+                "Chờ",
+                "Đang diễn ra",
+                "Đã kết thúc",
+                "Bị hủy"
         );
+
         filterComboBox.setItems(statuses);
         filterComboBox.setValue("Tất cả");
 
         ObservableList<String> sorts = FXCollections.observableArrayList(
-                "Mặc định", "Giá thấp → cao", "Giá cao → thấp", "Sắp hết hạn"
+                "Mặc định",
+                "Giá thấp → cao",
+                "Giá cao → thấp",
+                "Sắp hết hạn"
         );
+
         sortComboBox.setItems(sorts);
         sortComboBox.setValue("Mặc định");
 
@@ -287,7 +308,11 @@ public class HomeController implements Initializable {
     }
 
     private void loadInitialItems() {
-        Task<Void> task = new Task<Void>() {
+        if (out == null) {
+            return;
+        }
+
+        Task<Void> task = new Task<>() {
             @Override
             protected Void call() throws Exception {
                 synchronized (out) {
@@ -297,18 +322,23 @@ public class HomeController implements Initializable {
                 return null;
             }
         };
+
         Thread thread = new Thread(task);
         thread.setDaemon(true);
         thread.start();
     }
 
     private void applyHomeFiltersAndSort() {
-        String searchText   = searchTextField.getText().toLowerCase();
+        String searchText = searchTextField.getText() == null
+                ? ""
+                : searchTextField.getText().toLowerCase();
+
         String statusFilter = filterComboBox.getValue();
-        String sortOption   = sortComboBox.getValue();
+        String sortOption = sortComboBox.getValue();
 
         List<Item> filtered = items.stream()
-                .filter(item -> item.getItemName().toLowerCase().contains(searchText))
+                .filter(item -> item.getItemName() != null
+                        && item.getItemName().toLowerCase().contains(searchText))
                 .filter(item -> applyStatusFilter(item, statusFilter))
                 .collect(Collectors.toList());
 
@@ -317,29 +347,57 @@ public class HomeController implements Initializable {
     }
 
     private boolean applyStatusFilter(Item item, String filter) {
-        if ("Tất cả".equals(filter))          return true;
-        if ("Chờ".equals(filter))             return "PENDING".equals(item.getStatus().name());
-        if ("Đang diễn ra".equals(filter))    return "ACTIVE".equals(item.getStatus().name());
-        if ("Đã kết thúc".equals(filter))     return "CLOSED".equals(item.getStatus().name());
-        if ("Bị hủy".equals(filter))          return "CANCELED".equals(item.getStatus().name());
+        if (filter == null || "Tất cả".equals(filter)) {
+            return true;
+        }
+
+        String status = item.getStatus() == null ? "" : item.getStatus().name();
+
+        if ("Chờ".equals(filter)) {
+            return "PENDING".equals(status);
+        }
+
+        if ("Đang diễn ra".equals(filter)) {
+            return "ACTIVE".equals(status);
+        }
+
+        if ("Đã kết thúc".equals(filter)) {
+            return "CLOSED".equals(status);
+        }
+
+        if ("Bị hủy".equals(filter)) {
+            return "CANCELED".equals(status);
+        }
+
         return true;
     }
 
     private void applySorting(List<Item> itemList, String sortOption) {
+        if (sortOption == null) {
+            return;
+        }
+
         switch (sortOption) {
             case "Giá thấp → cao":
                 itemList.sort(Comparator.comparingDouble(Item::getCurrentPrice));
                 break;
+
             case "Giá cao → thấp":
                 itemList.sort(Comparator.comparingDouble(Item::getCurrentPrice).reversed());
                 break;
+
             case "Sắp hết hạn":
                 itemList.sort((a, b) -> {
-                    if (a.getEndTime() == null) return 1;
-                    if (b.getEndTime() == null) return -1;
+                    if (a.getEndTime() == null) {
+                        return 1;
+                    }
+                    if (b.getEndTime() == null) {
+                        return -1;
+                    }
                     return a.getEndTime().compareTo(b.getEndTime());
                 });
                 break;
+
             default:
                 break;
         }
@@ -347,231 +405,689 @@ public class HomeController implements Initializable {
 
     private void displayItems(List<Item> itemsToDisplay) {
         itemFlowPane.getChildren().clear();
+
+        if (itemsToDisplay.isEmpty()) {
+            Label emptyLabel = new Label("Chưa có sản phẩm phù hợp.");
+            emptyLabel.setStyle(
+                    "-fx-text-fill: #64748b;" +
+                            "-fx-font-size: 15;" +
+                            "-fx-padding: 30;"
+            );
+            itemFlowPane.getChildren().add(emptyLabel);
+            return;
+        }
+
         for (Item item : itemsToDisplay) {
             itemFlowPane.getChildren().add(createItemCard(item));
         }
     }
 
     // ═══════════════════════════════════════════════════════════
-    // TẠO THẺ SẢN PHẨM (Home View)
+    // CARD SẢN PHẨM
     // ═══════════════════════════════════════════════════════════
-
     private Node createItemCard(Item item) {
-        AnchorPane pane = new AnchorPane();
-        pane.setStyle("-fx-border-color: #e2e8f0; -fx-border-radius: 12; " +
-                "-fx-background-color: white; -fx-padding: 15;");
-        pane.setPrefSize(220, 280);
+        VBox card = new VBox(12);
+        card.setPrefSize(250, 175);
+        card.setAlignment(Pos.TOP_LEFT);
+        card.setPadding(new Insets(18));
+        card.setStyle(getNormalCardStyle());
 
-        // Status Badge
-        Label statusBadge = new Label(getStatusText(item.getStatus().name()));
-        statusBadge.setStyle("-fx-background-color: " + getStatusColor(item.getStatus().name()) +
-                "; -fx-text-fill: white; -fx-padding: 5 10; -fx-border-radius: 5; -fx-font-size: 10;");
-        AnchorPane.setTopAnchor(statusBadge, 12.0);
-        AnchorPane.setRightAnchor(statusBadge, 12.0);
+        String displayStatus = getDisplayStatus(item);
 
-        // Item Name
+        Label statusBadge = new Label(getStatusText(displayStatus));
+        statusBadge.setStyle(
+                "-fx-background-color: " + getStatusColor(displayStatus) + ";" +
+                        "-fx-text-fill: white;" +
+                        "-fx-padding: 4 10;" +
+                        "-fx-background-radius: 999;" +
+                        "-fx-font-size: 11;" +
+                        "-fx-font-weight: bold;"
+        );
+
         Label nameLabel = new Label(item.getItemName());
-        nameLabel.setFont(new Font("System Bold", 14));
         nameLabel.setWrapText(true);
-        AnchorPane.setTopAnchor(nameLabel, 50.0);
-        AnchorPane.setLeftAnchor(nameLabel, 12.0);
-        AnchorPane.setRightAnchor(nameLabel, 12.0);
+        nameLabel.setMaxWidth(215);
+        nameLabel.setStyle(
+                "-fx-text-fill: #0f172a;" +
+                        "-fx-font-size: 16;" +
+                        "-fx-font-weight: bold;"
+        );
 
-        // Item Type
-        Label typeLabel = new Label("Loại: " + item.getType());
-        typeLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11;");
-        AnchorPane.setTopAnchor(typeLabel, 95.0);
-        AnchorPane.setLeftAnchor(typeLabel, 12.0);
+        Label priceTitle = new Label("Giá cao nhất hiện tại");
+        priceTitle.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11;");
 
-        // Description
-        Label descLabel = new Label(item.getDescription().isEmpty()
-                ? "Không có mô tả" : item.getDescription());
-        descLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10;");
-        descLabel.setWrapText(true);
-        descLabel.setPrefHeight(40);
-        AnchorPane.setTopAnchor(descLabel, 115.0);
-        AnchorPane.setLeftAnchor(descLabel, 12.0);
-        AnchorPane.setRightAnchor(descLabel, 12.0);
+        Label priceLabel = new Label(currencyFormat.format(item.getCurrentPrice()) + " VNĐ");
+        priceLabel.setStyle(
+                "-fx-text-fill: #2563eb;" +
+                        "-fx-font-size: 18;" +
+                        "-fx-font-weight: bold;"
+        );
 
-        // Current Price
-        Label priceLabel = new Label("Giá hiện tại:");
-        priceLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11;");
-        AnchorPane.setTopAnchor(priceLabel, 160.0);
-        AnchorPane.setLeftAnchor(priceLabel, 12.0);
+        Label bidCountLabel = new Label("Số lần đặt giá: " + getEstimatedBidCount(item));
+        bidCountLabel.setStyle(
+                "-fx-text-fill: #475569;" +
+                        "-fx-font-size: 12;" +
+                        "-fx-background-color: #f1f5f9;" +
+                        "-fx-padding: 6 10;" +
+                        "-fx-background-radius: 999;"
+        );
 
-        Label priceValueLabel = new Label(
-                currencyFormat.format(item.getCurrentPrice()) + " VNĐ");
-        priceValueLabel.setFont(new Font("System Bold", 13));
-        priceValueLabel.setStyle("-fx-text-fill: #3b82f6;");
-        AnchorPane.setTopAnchor(priceValueLabel, 175.0);
-        AnchorPane.setLeftAnchor(priceValueLabel, 12.0);
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        // Bid Increment
-        Label incrementLabel = new Label(
-                "Mức tăng: +" + currencyFormat.format(item.getBidIncrement()) + " VNĐ");
-        incrementLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10;");
-        AnchorPane.setTopAnchor(incrementLabel, 195.0);
-        AnchorPane.setLeftAnchor(incrementLabel, 12.0);
+        Label hintLabel = new Label("Bấm để xem chi tiết");
+        hintLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11;");
 
-        // Bid Button
-        Button bidButton = new Button("🔨 Đặt giá");
-        bidButton.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-padding: 8 12; " +
-                "-fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: bold;");
-        bidButton.setOnAction(e -> openBidDialog(item));
-        AnchorPane.setBottomAnchor(bidButton, 12.0);
-        AnchorPane.setLeftAnchor(bidButton, 12.0);
-        AnchorPane.setRightAnchor(bidButton, 70.0);
+        card.getChildren().addAll(
+                statusBadge,
+                nameLabel,
+                priceTitle,
+                priceLabel,
+                bidCountLabel,
+                spacer,
+                hintLabel
+        );
 
-        // View Details Button
-        Button viewDetailsButton = new Button("📄");
-        viewDetailsButton.setFont(new Font("System Bold", 14));
-        viewDetailsButton.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; " +
-                "-fx-padding: 8 12; -fx-background-radius: 6; -fx-cursor: hand;");
-        AnchorPane.setBottomAnchor(viewDetailsButton, 12.0);
-        AnchorPane.setRightAnchor(viewDetailsButton, 35.0);
+        card.setOnMouseClicked(event -> showItemDetailDialog(item));
+        card.setOnMouseEntered(event -> card.setStyle(getHoverCardStyle()));
+        card.setOnMouseExited(event -> card.setStyle(getNormalCardStyle()));
 
-        // Watchlist Toggle Button
-        Button watchlistButton = new Button(watchlistItemIds.contains(item.getId()) ? "⭐" : "☆");
-        watchlistButton.setFont(new Font("System Bold", 14));
-        watchlistButton.setStyle("-fx-background-color: transparent; -fx-text-fill: " +
-                (watchlistItemIds.contains(item.getId()) ? "#f59e0b" : "#cbd5e1") +
-                "; -fx-padding: 8 12; -fx-cursor: hand;");
-        watchlistButton.setOnAction(e -> toggleWatchlist(item, watchlistButton));
-        AnchorPane.setBottomAnchor(watchlistButton, 12.0);
-        AnchorPane.setRightAnchor(watchlistButton, 12.0);
+        return card;
+    }
 
-        pane.getChildren().addAll(statusBadge, nameLabel, typeLabel, descLabel,
-                priceLabel, priceValueLabel, incrementLabel,
-                bidButton, viewDetailsButton, watchlistButton);
-        return pane;
+    private String getNormalCardStyle() {
+        return "-fx-background-color: white;" +
+                "-fx-background-radius: 18;" +
+                "-fx-border-color: #e2e8f0;" +
+                "-fx-border-radius: 18;" +
+                "-fx-effect: dropshadow(gaussian, rgba(15,23,42,0.10), 12, 0, 0, 4);" +
+                "-fx-cursor: hand;";
+    }
+
+    private String getHoverCardStyle() {
+        return "-fx-background-color: white;" +
+                "-fx-background-radius: 18;" +
+                "-fx-border-color: #3b82f6;" +
+                "-fx-border-radius: 18;" +
+                "-fx-effect: dropshadow(gaussian, rgba(37,99,235,0.22), 18, 0, 0, 6);" +
+                "-fx-cursor: hand;";
+    }
+
+    private int getEstimatedBidCount(Item item) {
+        if (item.getBidIncrement() <= 0) {
+            return 0;
+        }
+
+        double diff = item.getCurrentPrice() - item.getStartingPrice();
+
+        if (diff <= 0) {
+            return 0;
+        }
+
+        return Math.max(1, (int) Math.round(diff / item.getBidIncrement()));
     }
 
     private String getStatusText(String status) {
         switch (status) {
-            case "PENDING":  return "Chờ";
-            case "ACTIVE":   return "Đang diễn ra";
-            case "CLOSED":   return "Đã kết thúc";
-            case "CANCELED": return "Bị hủy";
-            default:         return status;
+            case "PENDING":
+                return "Chờ";
+            case "ACTIVE":
+                return "Đang diễn ra";
+            case "CLOSED":
+                return "Đã kết thúc";
+            case "CANCELED":
+                return "Bị hủy";
+            default:
+                return status == null || status.isBlank() ? "Không rõ" : status;
         }
     }
 
     private String getStatusColor(String status) {
         switch (status) {
-            case "PENDING":  return "#94a3b8";
-            case "ACTIVE":   return "#10b981";
-            case "CLOSED":   return "#8b5cf6";
-            case "CANCELED": return "#ef4444";
-            default:         return "#6b7280";
+            case "PENDING":
+                return "#94a3b8";
+            case "ACTIVE":
+                return "#10b981";
+            case "CLOSED":
+                return "#8b5cf6";
+            case "CANCELED":
+                return "#ef4444";
+            default:
+                return "#6b7280";
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // POPUP CHI TIẾT SẢN PHẨM
+    // ═══════════════════════════════════════════════════════════
+    private void showItemDetailDialog(Item item) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Chi tiết sản phẩm");
+        dialog.setHeaderText(null);
+
+        VBox root = new VBox(18);
+        root.setPadding(new Insets(24));
+        root.setPrefWidth(660);
+        root.setStyle("-fx-background-color: #f8fafc;");
+
+        HBox mainContent = new HBox(22);
+        mainContent.setAlignment(Pos.TOP_LEFT);
+
+        VBox imageBox = new VBox();
+        imageBox.setAlignment(Pos.CENTER);
+        imageBox.setPrefSize(230, 230);
+        imageBox.setMinSize(230, 230);
+        imageBox.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-background-radius: 18;" +
+                        "-fx-border-color: #e2e8f0;" +
+                        "-fx-border-radius: 18;"
+        );
+
+        if (item.getImagePath() != null && !item.getImagePath().isBlank()) {
+            try {
+                ImageView imageView = new ImageView(new Image(item.getImagePath(), true));
+                imageView.setFitWidth(210);
+                imageView.setFitHeight(210);
+                imageView.setPreserveRatio(true);
+                imageView.setSmooth(true);
+                imageBox.getChildren().add(imageView);
+            } catch (Exception e) {
+                imageBox.getChildren().add(createImagePlaceholder("Không tải được\nảnh sản phẩm"));
+            }
+        } else {
+            imageBox.getChildren().add(createImagePlaceholder("Chưa có ảnh\nsản phẩm"));
+        }
+
+        VBox infoBox = new VBox(12);
+        infoBox.setPrefWidth(380);
+
+        Label nameLabel = new Label(item.getItemName());
+        nameLabel.setWrapText(true);
+        nameLabel.setMaxWidth(230);
+        nameLabel.setStyle(
+                "-fx-text-fill: #0f172a;" +
+                        "-fx-font-size: 24;" +
+                        "-fx-font-weight: bold;"
+        );
+
+        String status = getDisplayStatus(item);
+
+        Label countdownLabel = new Label(getCountdownText(item));
+        countdownLabel.setStyle(getCountdownStyle(status));
+
+        HBox titleRow = new HBox(12);
+        titleRow.setAlignment(Pos.TOP_LEFT);
+
+        Region titleSpacer = new Region();
+        HBox.setHgrow(titleSpacer, Priority.ALWAYS);
+
+        titleRow.getChildren().addAll(nameLabel, titleSpacer, countdownLabel);
+
+        Label statusLabel = new Label(getStatusText(status));
+        statusLabel.setStyle(
+                "-fx-background-color: " + getStatusColor(status) + ";" +
+                        "-fx-text-fill: white;" +
+                        "-fx-padding: 5 12;" +
+                        "-fx-background-radius: 999;" +
+                        "-fx-font-size: 12;" +
+                        "-fx-font-weight: bold;"
+        );
+
+        Label typeLabel = createDetailLine("Loại sản phẩm", safeText(item.getType()));
+        Label startingPriceLabel = createDetailLine(
+                "Giá khởi điểm",
+                currencyFormat.format(item.getStartingPrice()) + " VNĐ"
+        );
+        Label currentPriceLabel = createDetailLine(
+                "Giá cao nhất hiện tại",
+                currencyFormat.format(item.getCurrentPrice()) + " VNĐ"
+        );
+        currentPriceLabel.setStyle(
+                "-fx-text-fill: #2563eb;" +
+                        "-fx-font-size: 15;" +
+                        "-fx-font-weight: bold;"
+        );
+
+        Label incrementLabel = createDetailLine(
+                "Bước giá tối thiểu",
+                currencyFormat.format(item.getBidIncrement()) + " VNĐ"
+        );
+
+        Label bidCountLabel = createDetailLine(
+                "Số lần đặt giá",
+                String.valueOf(getEstimatedBidCount(item))
+        );
+
+        Label endTimeLabel = createDetailLine(
+                "Thời gian kết thúc",
+                item.getEndTime() == null ? "Chưa thiết lập" : item.getEndTime().toString()
+        );
+
+        Label descriptionTitle = new Label("Mô tả sản phẩm");
+        descriptionTitle.setStyle(
+                "-fx-text-fill: #334155;" +
+                        "-fx-font-size: 13;" +
+                        "-fx-font-weight: bold;"
+        );
+
+        Label descriptionLabel = new Label(
+                item.getDescription() == null || item.getDescription().isBlank()
+                        ? "Không có mô tả."
+                        : item.getDescription()
+        );
+        descriptionLabel.setWrapText(true);
+        descriptionLabel.setMaxWidth(380);
+        descriptionLabel.setStyle(
+                "-fx-text-fill: #64748b;" +
+                        "-fx-font-size: 13;" +
+                        "-fx-background-color: white;" +
+                        "-fx-padding: 12;" +
+                        "-fx-background-radius: 12;" +
+                        "-fx-border-color: #e2e8f0;" +
+                        "-fx-border-radius: 12;"
+        );
+
+        Button bidButton = new Button("Đặt giá ngay");
+        bidButton.setPrefHeight(42);
+        bidButton.setMaxWidth(Double.MAX_VALUE);
+        bidButton.setStyle(
+                "-fx-background-color: #10b981;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-size: 14;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 10;" +
+                        "-fx-cursor: hand;"
+        );
+
+        bidButton.setOnAction(event -> {
+            /*
+             * Không mở dialog nhập giá ngay trong lúc dialog chi tiết đang đóng,
+             * vì một số phiên bản JavaFX sẽ bị lỗi focus làm TextField không gõ được.
+             */
+            dialog.close();
+            Platform.runLater(() -> openBidDialog(item));
+        });
+
+        if (!"ACTIVE".equals(status)) {
+            bidButton.setDisable(true);
+            bidButton.setText("Chỉ đặt giá khi phiên đang diễn ra");
+            bidButton.setStyle(
+                    "-fx-background-color: #cbd5e1;" +
+                            "-fx-text-fill: white;" +
+                            "-fx-font-size: 13;" +
+                            "-fx-font-weight: bold;" +
+                            "-fx-background-radius: 10;"
+            );
+        }
+
+        Timeline countdownTimeline = new Timeline(
+                new KeyFrame(Duration.seconds(1), event -> {
+                    String newStatus = getDisplayStatus(item);
+                    countdownLabel.setText(getCountdownText(item));
+                    countdownLabel.setStyle(getCountdownStyle(newStatus));
+                    statusLabel.setText(getStatusText(newStatus));
+                    statusLabel.setStyle(
+                            "-fx-background-color: " + getStatusColor(newStatus) + ";" +
+                                    "-fx-text-fill: white;" +
+                                    "-fx-padding: 5 12;" +
+                                    "-fx-background-radius: 999;" +
+                                    "-fx-font-size: 12;" +
+                                    "-fx-font-weight: bold;"
+                    );
+
+                    if (!"ACTIVE".equals(newStatus)) {
+                        bidButton.setDisable(true);
+                        bidButton.setText("Chỉ đặt giá khi phiên đang diễn ra");
+                        bidButton.setStyle(
+                                "-fx-background-color: #cbd5e1;" +
+                                        "-fx-text-fill: white;" +
+                                        "-fx-font-size: 13;" +
+                                        "-fx-font-weight: bold;" +
+                                        "-fx-background-radius: 10;"
+                        );
+                    }
+                })
+        );
+        countdownTimeline.setCycleCount(Timeline.INDEFINITE);
+        countdownTimeline.play();
+        dialog.setOnHidden(event -> countdownTimeline.stop());
+
+        infoBox.getChildren().addAll(
+                titleRow,
+                statusLabel,
+                typeLabel,
+                startingPriceLabel,
+                currentPriceLabel,
+                incrementLabel,
+                bidCountLabel,
+                endTimeLabel,
+                descriptionTitle,
+                descriptionLabel,
+                bidButton
+        );
+
+        mainContent.getChildren().addAll(imageBox, infoBox);
+        root.getChildren().add(mainContent);
+
+        dialog.getDialogPane().setContent(root);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.showAndWait();
+    }
+
+    private String getDisplayStatus(Item item) {
+        if (item == null || item.getStatus() == null) {
+            return "";
+        }
+
+        String status = item.getStatus().name();
+
+        if ("ACTIVE".equals(status) && item.getEndTime() != null && !LocalDateTime.now().isBefore(item.getEndTime())) {
+            return "CLOSED";
+        }
+
+        return status;
+    }
+
+    private String getCountdownText(Item item) {
+        String status = getDisplayStatus(item);
+
+        if (!"ACTIVE".equals(status)) {
+            if ("CLOSED".equals(status)) {
+                return "Đã kết thúc";
+            }
+
+            if ("PENDING".equals(status)) {
+                return "Chưa bắt đầu";
+            }
+
+            if ("CANCELED".equals(status)) {
+                return "Đã hủy";
+            }
+
+            return "Không khả dụng";
+        }
+
+        if (item.getEndTime() == null) {
+            return "Không có thời hạn";
+        }
+
+        long secondsLeft = java.time.Duration.between(LocalDateTime.now(), item.getEndTime()).getSeconds();
+
+        if (secondsLeft <= 0) {
+            return "Đã kết thúc";
+        }
+
+        long days = secondsLeft / 86400;
+        long hours = (secondsLeft % 86400) / 3600;
+        long minutes = (secondsLeft % 3600) / 60;
+        long seconds = secondsLeft % 60;
+
+        if (days > 0) {
+            return String.format("Còn %dd %02d:%02d:%02d", days, hours, minutes, seconds);
+        }
+
+        return String.format("Còn %02d:%02d:%02d", hours, minutes, seconds);
+    }
+
+    private String getCountdownStyle(String status) {
+        if ("ACTIVE".equals(status)) {
+            return "-fx-background-color: #dcfce7;" +
+                    "-fx-text-fill: #166534;" +
+                    "-fx-padding: 7 12;" +
+                    "-fx-background-radius: 999;" +
+                    "-fx-font-size: 12;" +
+                    "-fx-font-weight: bold;";
+        }
+
+        return "-fx-background-color: #e2e8f0;" +
+                "-fx-text-fill: #475569;" +
+                "-fx-padding: 7 12;" +
+                "-fx-background-radius: 999;" +
+                "-fx-font-size: 12;" +
+                "-fx-font-weight: bold;";
+    }
+
+    private Label createImagePlaceholder(String text) {
+        Label imagePlaceholder = new Label(text);
+        imagePlaceholder.setAlignment(Pos.CENTER);
+        imagePlaceholder.setStyle(
+                "-fx-text-fill: #94a3b8;" +
+                        "-fx-font-size: 14;" +
+                        "-fx-font-weight: bold;"
+        );
+        return imagePlaceholder;
+    }
+
+    private Label createDetailLine(String title, String value) {
+        Label label = new Label(title + ": " + value);
+        label.setWrapText(true);
+        label.setStyle(
+                "-fx-text-fill: #334155;" +
+                        "-fx-font-size: 13;"
+        );
+        return label;
+    }
+
+    private String safeText(String text) {
+        return text == null || text.isBlank() ? "Không có" : text;
     }
 
     // ═══════════════════════════════════════════════════════════
     // ĐẶT GIÁ
     // ═══════════════════════════════════════════════════════════
-
     private void openBidDialog(Item item) {
-        Dialog<Double> dialog = new Dialog<>();
-        dialog.setTitle("Đặt Giá - " + item.getItemName());
-        dialog.setHeaderText("Nhập mức giá mà bạn muốn đặt");
+        Dialog<Double> bidDialog = new Dialog<>();
+        bidDialog.setTitle("Đặt giá - " + item.getItemName());
+        bidDialog.setHeaderText(null);
+
+        double minBid = item.getCurrentPrice() + item.getBidIncrement();
+
+        VBox root = new VBox(14);
+        root.setPadding(new Insets(20));
+        root.setPrefWidth(420);
+        root.setStyle("-fx-background-color: #f8fafc;");
+
+        Label titleLabel = new Label("Nhập mức giá bạn muốn đặt");
+        titleLabel.setStyle(
+                "-fx-text-fill: #0f172a;" +
+                        "-fx-font-size: 20;" +
+                        "-fx-font-weight: bold;"
+        );
+
+        Label currentPriceLabel = new Label("Giá hiện tại: " + currencyFormat.format(item.getCurrentPrice()) + " VNĐ");
+        currentPriceLabel.setStyle("-fx-text-fill: #334155; -fx-font-size: 13;");
+
+        Label incrementLabel = new Label("Bước giá tối thiểu: " + currencyFormat.format(item.getBidIncrement()) + " VNĐ");
+        incrementLabel.setStyle("-fx-text-fill: #334155; -fx-font-size: 13;");
+
+        Label minBidLabel = new Label("Bạn cần đặt tối thiểu: " + currencyFormat.format(minBid) + " VNĐ");
+        minBidLabel.setStyle(
+                "-fx-text-fill: #2563eb;" +
+                        "-fx-font-size: 14;" +
+                        "-fx-font-weight: bold;"
+        );
 
         TextField amountField = new TextField();
-        amountField.setPromptText("Nhập giá tiền...");
-
-        ButtonType submitButton = new ButtonType("Xác nhận", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(submitButton, ButtonType.CANCEL);
-
-        VBox content = new VBox(10);
-        content.setPadding(new Insets(10));
-        content.getChildren().addAll(
-                new Label("Giá hiện tại: " + currencyFormat.format(item.getCurrentPrice()) + " VNĐ"),
-                new Label("Mức tăng tối thiểu: " + currencyFormat.format(item.getBidIncrement()) + " VNĐ"),
-                new Label("Nhập giá của bạn:"),
-                amountField
+        amountField.setPromptText("Ví dụ: " + currencyFormat.format(minBid));
+        amountField.setPrefHeight(42);
+        amountField.setEditable(true);
+        amountField.setDisable(false);
+        amountField.setFocusTraversable(true);
+        amountField.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #cbd5e1;" +
+                        "-fx-border-radius: 10;" +
+                        "-fx-background-radius: 10;" +
+                        "-fx-padding: 0 12;" +
+                        "-fx-font-size: 14;"
         );
-        dialog.getDialogPane().setContent(content);
 
-        Optional<Double> result = dialog.showAndWait();
+        Label errorLabel = new Label("");
+        errorLabel.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 12;");
+
+        root.getChildren().addAll(
+                titleLabel,
+                currentPriceLabel,
+                incrementLabel,
+                minBidLabel,
+                new Label("Số tiền đặt giá:"),
+                amountField,
+                errorLabel
+        );
+
+        ButtonType submitButtonType = new ButtonType("Xác nhận đặt giá", ButtonBar.ButtonData.OK_DONE);
+        bidDialog.getDialogPane().getButtonTypes().addAll(submitButtonType, ButtonType.CANCEL);
+        bidDialog.getDialogPane().setContent(root);
+
+        Button submitButton = (Button) bidDialog.getDialogPane().lookupButton(submitButtonType);
+        submitButton.setDisable(true);
+        submitButton.setStyle(
+                "-fx-background-color: #10b981;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 8;"
+        );
+
+        amountField.textProperty().addListener((observable, oldValue, newValue) -> {
+            String cleaned = newValue.replaceAll("[^0-9]", "");
+
+            if (!cleaned.equals(newValue)) {
+                amountField.setText(cleaned);
+                return;
+            }
+
+            if (cleaned.isBlank()) {
+                submitButton.setDisable(true);
+                errorLabel.setText("");
+                return;
+            }
+
+            try {
+                double amount = Double.parseDouble(cleaned);
+
+                if (amount < minBid) {
+                    submitButton.setDisable(true);
+                    errorLabel.setText("Giá phải từ " + currencyFormat.format(minBid) + " VNĐ trở lên.");
+                } else {
+                    submitButton.setDisable(false);
+                    errorLabel.setText("");
+                }
+            } catch (NumberFormatException e) {
+                submitButton.setDisable(true);
+                errorLabel.setText("Số tiền không hợp lệ.");
+            }
+        });
+
+        bidDialog.setOnShown(event -> Platform.runLater(() -> {
+            amountField.requestFocus();
+            amountField.positionCaret(amountField.getText().length());
+        }));
+
+        bidDialog.setResultConverter(buttonType -> {
+            if (buttonType == submitButtonType) {
+                String raw = amountField.getText().trim();
+
+                if (raw.isBlank()) {
+                    return null;
+                }
+
+                try {
+                    return Double.parseDouble(raw);
+                } catch (NumberFormatException e) {
+                    return null;
+                }
+            }
+
+            return null;
+        });
+
+        Optional<Double> result = bidDialog.showAndWait();
         result.ifPresent(amount -> submitBid(item.getId(), amount));
     }
 
     private void submitBid(String itemId, double bidAmount) {
-        Task<Void> task = new Task<Void>() {
+        if (out == null || currentUser == null) {
+            return;
+        }
+
+        Task<Void> task = new Task<>() {
             @Override
             protected Void call() throws Exception {
                 Object[] bidData = {itemId, bidAmount, currentUser.getId()};
+
                 synchronized (out) {
                     out.writeObject(new Message("BID", bidData));
                     out.flush();
                 }
+
                 return null;
             }
         };
+
         Thread thread = new Thread(task);
         thread.setDaemon(true);
         thread.start();
     }
 
     // ═══════════════════════════════════════════════════════════
-    // TOGGLE WATCHLIST (từ Home View)
-    // ═══════════════════════════════════════════════════════════
-
-    private void toggleWatchlist(Item item, Button button) {
-        if (watchlistItemIds.contains(item.getId())) {
-            watchlistItemIds.remove(item.getId());
-            button.setText("☆");
-            button.setStyle("-fx-background-color: transparent; -fx-text-fill: #cbd5e1; " +
-                    "-fx-padding: 8 12; -fx-cursor: hand;");
-        } else {
-            watchlistItemIds.add(item.getId());
-            button.setText("⭐");
-            button.setStyle("-fx-background-color: transparent; -fx-text-fill: #f59e0b; " +
-                    "-fx-padding: 8 12; -fx-cursor: hand;");
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════
     // ROLE SWITCHER
     // ═══════════════════════════════════════════════════════════
-
     private void updateUIBasedOnRole() {
         boolean isSeller = sellerMode;
         boolean isBidder = !sellerMode;
 
-        bidderMenuLabel.setVisible(isBidder);
-        bidderMenuLabel.setManaged(isBidder);
-        watchlistMenuItem.setVisible(isBidder);
-        watchlistMenuItem.setManaged(isBidder);
-        bidHistoryMenuItem.setVisible(isBidder);
-        bidHistoryMenuItem.setManaged(isBidder);
+        if (bidderMenuLabel != null) {
+            bidderMenuLabel.setVisible(isBidder);
+            bidderMenuLabel.setManaged(isBidder);
+        }
 
-        sellerMenuLabel.setVisible(isSeller);
-        sellerMenuLabel.setManaged(isSeller);
-        addItemMenuItem.setVisible(isSeller);
-        addItemMenuItem.setManaged(isSeller);
-        myItemsMenuItem.setVisible(isSeller);
-        myItemsMenuItem.setManaged(isSeller);
-        salesHistoryMenuItem.setVisible(isSeller);
-        salesHistoryMenuItem.setManaged(isSeller);
+        if (bidHistoryMenuItem != null) {
+            bidHistoryMenuItem.setVisible(isBidder);
+            bidHistoryMenuItem.setManaged(isBidder);
+        }
+
+        if (sellerMenuLabel != null) {
+            sellerMenuLabel.setVisible(isSeller);
+            sellerMenuLabel.setManaged(isSeller);
+        }
+
+        if (addItemMenuItem != null) {
+            addItemMenuItem.setVisible(isSeller);
+            addItemMenuItem.setManaged(isSeller);
+        }
+
+        if (myItemsMenuItem != null) {
+            myItemsMenuItem.setVisible(isSeller);
+            myItemsMenuItem.setManaged(isSeller);
+        }
+
+        if (salesHistoryMenuItem != null) {
+            salesHistoryMenuItem.setVisible(isSeller);
+            salesHistoryMenuItem.setManaged(isSeller);
+        }
 
         currentRoleLabel.setText(isSeller ? "Người bán" : "Người đấu giá");
-        roleSwitcherButton.setText(isSeller
-                ? "🔄 Chuyển sang Người đấu giá"
-                : "🔄 Chuyển sang Người bán");
+        roleSwitcherButton.setText(isSeller ? "Chuyển sang Người đấu giá" : "Chuyển sang Người bán");
+
         updateUserInfoLabel();
     }
 
     private void updateUserInfoLabel() {
-        if (currentUser == null) return;
-        userInfoLabel.setText("👤 " + currentUser.getUsername()
-                + " | Role: " + (sellerMode ? "seller" : "bidder"));
+        if (currentUser == null) {
+            return;
+        }
+
+        userInfoLabel.setText(currentUser.getUsername() + " | Role: " + (sellerMode ? "seller" : "bidder"));
     }
 
     @FXML
     public void onRoleSwitcherClicked() {
         sellerMode = !sellerMode;
+
         String newRole = sellerMode ? "seller" : "bidder";
         currentUser.setRole(newRole);
+
         updateUIBasedOnRole();
 
         if (sellerMode) {
@@ -580,7 +1096,11 @@ public class HomeController implements Initializable {
             switchToHomeView();
         }
 
-        Task<Void> task = new Task<Void>() {
+        if (out == null) {
+            return;
+        }
+
+        Task<Void> task = new Task<>() {
             @Override
             protected Void call() throws Exception {
                 synchronized (out) {
@@ -590,36 +1110,44 @@ public class HomeController implements Initializable {
                 return null;
             }
         };
+
         Thread thread = new Thread(task);
         thread.setDaemon(true);
         thread.start();
     }
 
     // ═══════════════════════════════════════════════════════════
-    // LẮNG NGHE CẬP NHẬT TỪ SERVER
+    // SERVER LISTENER
     // ═══════════════════════════════════════════════════════════
-
     private void listenForServerUpdates() {
-        Task<Void> task = new Task<Void>() {
+        if (in == null) {
+            return;
+        }
+
+        Task<Void> task = new Task<>() {
             @Override
             protected Void call() throws Exception {
                 while (true) {
                     Message message = (Message) in.readObject();
+
                     if (message != null) {
                         Platform.runLater(() -> handleServerMessage(message));
                     }
                 }
             }
         };
-        Thread t = new Thread(task);
-        t.setDaemon(true);
-        t.start();
+
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
     }
 
+    @SuppressWarnings("unchecked")
     private void handleServerMessage(Message message) {
         switch (message.getAction()) {
             case "GET_ALL_ITEMS_RESPONSE":
                 updateItemsFromServer((List<Item>) message.getPayload());
+                requestMyBidHistory();
                 break;
 
             case "BID_RESPONSE":
@@ -628,32 +1156,36 @@ public class HomeController implements Initializable {
                 bidAlert.setHeaderText("Phản hồi từ server");
                 bidAlert.setContentText(String.valueOf(message.getPayload()));
                 bidAlert.showAndWait();
+
                 loadInitialItems();
+                requestMyBidHistory();
+                break;
+
+            case "MY_BID_HISTORY_RESPONSE":
+                updateBidHistoryFromPayload(message.getPayload());
+                break;
+
+            case "AUCTION_RESULT_NOTIFICATION":
+                String notification = String.valueOf(message.getPayload());
+                notifications.add(notification);
+
+                Alert resultAlert = new Alert(Alert.AlertType.INFORMATION);
+                resultAlert.setTitle("Thông báo đấu giá");
+                resultAlert.setHeaderText("Kết quả đấu giá");
+                resultAlert.setContentText(notification);
+                resultAlert.showAndWait();
+
+                loadInitialItems();
+                requestMyBidHistory();
                 break;
 
             case "ITEM_UPDATE":
                 Item updatedItem = (Item) message.getPayload();
-                items.stream()
-                        .filter(i -> i.getId().equals(updatedItem.getId()))
-                        .findFirst()
-                        .ifPresent(i -> {
-                            items.remove(i);
-                            items.add(updatedItem);
-                            // Làm mới view đang hiện
-                            if (homeView.isVisible()) {
-                                applyHomeFiltersAndSort();
-                            }
-                            if (watchlistViewPane.isVisible()) {
-                                // watchlistItemIds đã là reference dùng chung → chỉ cần refresh
-                                watchlistViewPaneController.updateData(items, watchlistItemIds);
-                            }
-                            if (myItemsViewPane.isVisible()) {
-                                myItemsViewPaneController.updateData(items);
-                            }
-                            if (salesHistoryViewPane.isVisible()) {
-                                salesHistoryViewPaneController.updateData(items);
-                            }
-                        });
+
+                items.removeIf(item -> item.getId().equals(updatedItem.getId()));
+                items.add(updatedItem);
+
+                refreshCurrentViews();
                 break;
 
             case "NEW_ITEM_ADDED":
@@ -667,27 +1199,162 @@ public class HomeController implements Initializable {
                 loadInitialItems();
                 break;
 
+            case "TOP_UP_RESPONSE":
+                handleTopUpResponse(message.getPayload());
+                break;
+
+            case "ACCOUNT_INFO_RESPONSE":
+                handleAccountInfoResponse(message.getPayload());
+                break;
+
             case "SYSTEM_NOTIFICATION":
                 System.out.println("Server: " + message.getPayload());
+                break;
+
+            default:
+                System.out.println("Unknown server message: " + message.getAction());
                 break;
         }
     }
 
+    private void requestMyBidHistory() {
+        if (out == null || currentUser == null) {
+            return;
+        }
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                synchronized (out) {
+                    out.writeObject(new Message("GET_MY_BID_HISTORY", currentUser.getId()));
+                    out.flush();
+                }
+                return null;
+            }
+        };
+
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void updateBidHistoryFromPayload(Object payload) {
+        bidHistory.clear();
+
+        if (payload instanceof List<?>) {
+            for (Object row : (List<?>) payload) {
+                if (!(row instanceof Object[])) {
+                    continue;
+                }
+
+                Object[] data = (Object[]) row;
+
+                try {
+                    String itemId = String.valueOf(data[0]);
+                    String itemName = String.valueOf(data[1]);
+                    String itemType = String.valueOf(data[2]);
+                    double bidAmount = ((Number) data[3]).doubleValue();
+                    java.time.LocalDateTime bidTime = (java.time.LocalDateTime) data[4];
+                    String auctionStatus = String.valueOf(data[5]);
+                    String result = String.valueOf(data[6]);
+
+                    bidHistory.add(new BidHistoryController.BidHistoryRecord(
+                            itemId,
+                            itemName,
+                            itemType,
+                            bidAmount,
+                            bidTime,
+                            auctionStatus,
+                            result
+                    ));
+                } catch (Exception e) {
+                    System.err.println("Không đọc được một dòng lịch sử đấu giá: " + e.getMessage());
+                }
+            }
+        }
+
+        if (bidHistoryViewPaneController != null) {
+            bidHistoryViewPaneController.updateData(bidHistory);
+        }
+    }
+
+    private void handleAccountInfoResponse(Object payload) {
+        if (payload instanceof User) {
+            currentUser = (User) payload;
+            ClientApp.setCurrentUser(currentUser);
+            updateUserInfoLabel();
+
+            if (accountViewPaneController != null) {
+                accountViewPaneController.updateUser(currentUser);
+            }
+        }
+    }
+
+    private void handleTopUpResponse(Object payload) {
+        if (!(payload instanceof Object[])) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Nạp tiền");
+            alert.setHeaderText("Phản hồi từ server");
+            alert.setContentText(String.valueOf(payload));
+            alert.showAndWait();
+            return;
+        }
+
+        Object[] data = (Object[]) payload;
+        boolean success = Boolean.TRUE.equals(data[0]);
+        String message = String.valueOf(data[1]);
+
+        if (success && data.length > 2 && data[2] instanceof User) {
+            currentUser = (User) data[2];
+            ClientApp.setCurrentUser(currentUser);
+            updateUserInfoLabel();
+
+            if (accountViewPaneController != null) {
+                accountViewPaneController.updateUser(currentUser);
+            }
+        }
+
+        Alert alert = new Alert(success ? Alert.AlertType.INFORMATION : Alert.AlertType.WARNING);
+        alert.setTitle("Nạp tiền");
+        alert.setHeaderText(success ? "Nạp tiền thành công" : "Nạp tiền thất bại");
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void onCurrentUserUpdated(User updatedUser) {
+        if (updatedUser == null) {
+            return;
+        }
+
+        currentUser = updatedUser;
+        ClientApp.setCurrentUser(updatedUser);
+        updateUserInfoLabel();
+
+        if (accountViewPaneController != null) {
+            accountViewPaneController.updateUser(updatedUser);
+        }
+    }
 
     private void updateItemsFromServer(List<Item> fetchedItems) {
         items.clear();
-        items.addAll(fetchedItems);
 
-        if (homeView.isVisible()) {
+        if (fetchedItems != null) {
+            items.addAll(fetchedItems);
+        }
+
+        refreshCurrentViews();
+    }
+
+    private void refreshCurrentViews() {
+        if (homeView != null && homeView.isVisible()) {
             applyHomeFiltersAndSort();
         }
-        if (watchlistViewPane.isVisible()) {
-            watchlistViewPaneController.updateData(items, watchlistItemIds);
-        }
-        if (myItemsViewPane.isVisible()) {
+
+        if (myItemsViewPane != null && myItemsViewPane.isVisible() && myItemsViewPaneController != null) {
             myItemsViewPaneController.updateData(items);
         }
-        if (salesHistoryViewPane.isVisible()) {
+
+        if (salesHistoryViewPane != null && salesHistoryViewPane.isVisible() && salesHistoryViewPaneController != null) {
             salesHistoryViewPaneController.updateData(items);
         }
     }
@@ -695,10 +1362,10 @@ public class HomeController implements Initializable {
     // ═══════════════════════════════════════════════════════════
     // ĐĂNG XUẤT
     // ═══════════════════════════════════════════════════════════
-
     @FXML
     public void onLogoutClicked() {
         ClientApp.setCurrentUser(null);
+
         try {
             ClientApp.switchToLogin();
         } catch (Exception e) {
