@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class ClientApp extends Application {
@@ -43,6 +45,8 @@ public class ClientApp extends Application {
 
     private static volatile Consumer<Message> serverMessageHandler;
     private static volatile Thread serverListenerThread;
+
+    private static volatile CompletableFuture<byte[]> imageResponseFuture;
 
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 8888;
@@ -225,6 +229,13 @@ public class ClientApp extends Application {
                         continue;
                     }
 
+                    if ("GET_IMAGE_RESPONSE".equals(message.getAction())) {
+                        if (imageResponseFuture != null) {
+                            imageResponseFuture.complete((byte[]) message.getPayload());
+                        }
+                        continue;
+                    }
+
                     Platform.runLater(() -> {
                         Consumer<Message> handler = serverMessageHandler;
 
@@ -243,6 +254,26 @@ public class ClientApp extends Application {
 
         serverListenerThread.setDaemon(true);
         serverListenerThread.start();
+    }
+
+    public static byte[] getImageBytes(String imagePath) throws Exception {
+        if (outputStream == null || imagePath == null || imagePath.isBlank()) {
+            return null;
+        }
+
+        imageResponseFuture = new CompletableFuture<>();
+
+        synchronized (outputStream) {
+            outputStream.writeObject(new Message("GET_IMAGE", imagePath));
+            outputStream.flush();
+        }
+
+        try {
+            return imageResponseFuture.get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            logger.error("Lỗi hoặc timeout khi tải ảnh: {}", e.getMessage());
+            return null;
+        }
     }
 
     public static User getCurrentUser() {
