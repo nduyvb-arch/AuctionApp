@@ -1,5 +1,5 @@
 package org.example.client.controllers;
-
+import org.example.client.ClientApp;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
@@ -19,7 +19,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import org.example.client.ClientApp;
 import org.example.common.Message;
 import org.example.common.model.item.Item;
 import org.example.common.model.user.User;
@@ -123,25 +122,19 @@ public class HomeController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         currentUser = ClientApp.getCurrentUser();
-
-        if (currentUser != null) {
-            sellerMode = "seller".equalsIgnoreCase(currentUser.getRole());
-            updateUserInfoLabel();
-            updateUIBasedOnRole();
-        }
-
         out = ClientApp.getOutputStream();
         in = ClientApp.getInputStream();
 
+        /*
+         * RoleSelection.fxml lưu vai trò vào ClientApp.setSelectedRole(...).
+         * Không lấy currentUser.getRole() ở đây, vì User có thể vẫn là Bidder/Seller
+         * theo loại tài khoản trong DB, làm nút "Vào giao diện người bán" mở sai menu.
+         */
+        sellerMode = ClientApp.isSellerSelected();
+
         setupHomeViewFilters();
 
-        setViewState(homeView, true);
-        setViewState(bidHistoryViewPane, false);
-        setViewState(addItemViewPane, false);
-        setViewState(myItemsViewPane, false);
-        setViewState(salesHistoryViewPane, false);
-        setViewState(accountViewPane, false);
-        setViewState(accountViewPane, false);
+        hideAllViews();
 
         if (bidHistoryViewPaneController != null) {
             bidHistoryViewPaneController.setup(bidHistory);
@@ -161,6 +154,16 @@ public class HomeController implements Initializable {
 
         if (accountViewPaneController != null) {
             accountViewPaneController.setup(out, currentUser, this::onCurrentUserUpdated);
+        }
+
+        updateUIBasedOnRole();
+
+        if (ClientApp.shouldOpenAccountOnHomeLoad()) {
+            switchToAccountView();
+        } else if (sellerMode) {
+            switchToAddItemView();
+        } else {
+            switchToHomeView();
         }
 
         listenForServerUpdates();
@@ -248,9 +251,26 @@ public class HomeController implements Initializable {
         alert.showAndWait();
     }
 
+    @FXML
+    private void switchToRoleSelectionView() {
+        try {
+            ClientApp.switchToRoleSelection();
+        } catch (Exception e) {
+            showError("Không thể quay lại màn chọn vai trò", e.getMessage());
+        }
+    }
+
     private void showView(VBox view) {
         hideAllViews();
         setViewState(view, true);
+    }
+
+    private void showError(String title, String content) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(title);
+        alert.setContentText(content == null || content.isBlank() ? "Không rõ nguyên nhân." : content);
+        alert.showAndWait();
     }
 
     private void hideAllViews() {
@@ -259,7 +279,6 @@ public class HomeController implements Initializable {
         setViewState(addItemViewPane, false);
         setViewState(myItemsViewPane, false);
         setViewState(salesHistoryViewPane, false);
-        setViewState(accountViewPane, false);
         setViewState(accountViewPane, false);
     }
 
@@ -881,7 +900,9 @@ public class HomeController implements Initializable {
         bidDialog.setTitle("Đặt giá - " + item.getItemName());
         bidDialog.setHeaderText(null);
 
-        double minBid = item.getCurrentPrice() + item.getBidIncrement();
+        double minBid = item.getCurrentWinnerId() == null || item.getCurrentWinnerId().isBlank()
+                ? item.getStartingPrice()
+                : item.getCurrentPrice() + item.getBidIncrement();
 
         VBox root = new VBox(14);
         root.setPadding(new Insets(20));
@@ -1086,7 +1107,10 @@ public class HomeController implements Initializable {
         sellerMode = !sellerMode;
 
         String newRole = sellerMode ? "seller" : "bidder";
-        currentUser.setRole(newRole);
+        ClientApp.setSelectedRole(newRole);
+        if (currentUser != null) {
+            currentUser.setRole(newRole);
+        }
 
         updateUIBasedOnRole();
 
@@ -1124,22 +1148,8 @@ public class HomeController implements Initializable {
             return;
         }
 
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                while (true) {
-                    Message message = (Message) in.readObject();
-
-                    if (message != null) {
-                        Platform.runLater(() -> handleServerMessage(message));
-                    }
-                }
-            }
-        };
-
-        Thread thread = new Thread(task);
-        thread.setDaemon(true);
-        thread.start();
+        ClientApp.setServerMessageHandler(this::handleServerMessage);
+        ClientApp.startServerListenerIfNeeded();
     }
 
     @SuppressWarnings("unchecked")
@@ -1365,6 +1375,7 @@ public class HomeController implements Initializable {
     @FXML
     public void onLogoutClicked() {
         ClientApp.setCurrentUser(null);
+        ClientApp.closeConnection();
 
         try {
             ClientApp.switchToLogin();

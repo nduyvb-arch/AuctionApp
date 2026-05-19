@@ -1,5 +1,6 @@
 package org.example.client.controllers;
 
+import org.example.client.ClientApp;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -47,6 +48,9 @@ public class AccountViewController implements Initializable {
         this.currentUser = currentUser;
         this.userUpdateCallback = userUpdateCallback;
         updateUser(currentUser);
+
+        ClientApp.setServerMessageHandler(this::handleServerMessage);
+        ClientApp.startServerListenerIfNeeded();
     }
 
     public void updateUser(User user) {
@@ -210,18 +214,93 @@ public class AccountViewController implements Initializable {
                 out.flush();
             }
 
-            Platform.runLater(() -> {
-                if (refreshButton != null) {
-                    refreshButton.setDisable(false);
-                }
-            });
-
         } catch (Exception e) {
             if (refreshButton != null) {
                 refreshButton.setDisable(false);
             }
             showAlert(Alert.AlertType.ERROR, "Tài khoản", "Không thể làm mới tài khoản: " + e.getMessage());
         }
+    }
+
+    @FXML
+    private void onBackToRoleSelectionClicked() {
+        try {
+            ClientApp.setServerMessageHandler(null);
+            ClientApp.switchToRoleSelection();
+        } catch (Exception e) {
+            showAlert(Alert.AlertType.ERROR, "Tài khoản", "Không thể quay lại màn chọn vai trò: " + e.getMessage());
+        }
+    }
+
+    private void handleServerMessage(Message message) {
+        if (message == null) {
+            return;
+        }
+
+        switch (message.getAction()) {
+            case "TOP_UP_RESPONSE":
+                handleTopUpResponse(message.getPayload());
+                break;
+
+            case "ACCOUNT_INFO_RESPONSE":
+                handleAccountInfoResponse(message.getPayload());
+                break;
+
+            case "SYSTEM_NOTIFICATION":
+                System.out.println("Server: " + message.getPayload());
+                break;
+
+            default:
+                System.out.println("AccountView bỏ qua message: " + message.getAction());
+                break;
+        }
+    }
+
+    private void handleAccountInfoResponse(Object payload) {
+        if (refreshButton != null) {
+            refreshButton.setDisable(false);
+        }
+
+        if (payload instanceof User) {
+            User updatedUser = (User) payload;
+            ClientApp.setCurrentUser(updatedUser);
+            updateUser(updatedUser);
+
+            if (userUpdateCallback != null) {
+                userUpdateCallback.onUpdated(updatedUser);
+            }
+        }
+    }
+
+    private void handleTopUpResponse(Object payload) {
+        if (topUpButton != null) {
+            topUpButton.setDisable(false);
+        }
+
+        if (!(payload instanceof Object[])) {
+            showAlert(Alert.AlertType.INFORMATION, "Nạp tiền", String.valueOf(payload));
+            return;
+        }
+
+        Object[] data = (Object[]) payload;
+        boolean success = Boolean.TRUE.equals(data[0]);
+        String message = String.valueOf(data[1]);
+
+        if (success && data.length > 2 && data[2] instanceof User) {
+            User updatedUser = (User) data[2];
+            ClientApp.setCurrentUser(updatedUser);
+            updateUser(updatedUser);
+
+            if (userUpdateCallback != null) {
+                userUpdateCallback.onUpdated(updatedUser);
+            }
+        }
+
+        showAlert(
+                success ? Alert.AlertType.INFORMATION : Alert.AlertType.WARNING,
+                "Nạp tiền",
+                message
+        );
     }
 
     private String getRoleText(String role) {

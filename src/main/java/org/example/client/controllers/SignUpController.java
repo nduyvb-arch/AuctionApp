@@ -1,5 +1,5 @@
 package org.example.client.controllers;
-
+import org.example.client.ClientApp;
 import javafx.animation.PauseTransition;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -10,7 +10,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.util.Duration;
-import org.example.client.ClientApp;
 import org.example.common.Message;
 
 import java.io.IOException;
@@ -72,9 +71,18 @@ public class SignUpController implements Initializable {
         Task<String> signUpTask = new Task<>() {
             @Override
             protected String call() throws Exception {
-                // Lấy stream đã được thiết lập sẵn từ ClientApp
+                /*
+                 * Màn đăng ký được mở từ màn Login nên chưa chắc đã có kết nối server.
+                 * Chủ động tạo kết nối mới để tránh lỗi out/in bị null khi bấm Đăng ký.
+                 */
+                ClientApp.connectToServer();
+
                 var out = ClientApp.getOutputStream();
                 var in = ClientApp.getInputStream();
+
+                if (out == null || in == null) {
+                    throw new IOException("Không thể kết nối tới server.");
+                }
 
                 // Đóng gói dữ liệu và gửi yêu cầu đến server
                 String[] regData = {username, password, role};

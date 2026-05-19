@@ -333,4 +333,40 @@ public class UserManager {
             return false;
         }
     }
+
+    public synchronized boolean subtractBalance(String userId, double amount) {
+        if (userId == null || userId.isBlank() || amount <= 0) {
+            return false;
+        }
+
+        String sql = "UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?";
+
+        try (
+                Connection conn = DatabaseManager.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)
+        ) {
+            pstmt.setDouble(1, amount);
+            pstmt.setInt(2, Integer.parseInt(userId));
+            pstmt.setDouble(3, amount);
+
+            int affectedRows = pstmt.executeUpdate();
+
+            if (affectedRows <= 0) {
+                return false;
+            }
+
+            User user = findUserById(userId);
+
+            if (user != null) {
+                user.setBalance(user.getBalance() - amount);
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            logger.error("Lỗi trừ tiền user {}: {}", userId, e.getMessage(), e);
+            return false;
+        }
+    }
+
 }
