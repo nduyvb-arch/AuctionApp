@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox spacing="18" xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.client.controllers.admin.AdminStatsController">
+    <children>
+        <HBox alignment="CENTER_LEFT">
+            <children>
+                <Label text="Số liệu thống kê dựa trên dữ liệu sản phẩm hiện có" textFill="#475569" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Button text="Làm mới" onAction="#onRefreshClicked"
+                        style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 9 18; -fx-cursor: hand;" />
+            </children>
+        </HBox>
+
+        <GridPane hgap="18" vgap="18">
+            <children>
+                <VBox prefWidth="280" spacing="8" style="-fx-background-color: white; -fx-background-radius: 18; -fx-border-color: #e2e8f0; -fx-border-radius: 18; -fx-padding: 20; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 14, 0, 0, 4);" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                    <children>
+                        <Label text="Tổng tiền giao dịch đã kết thúc" textFill="#64748b" />
+                        <Label fx:id="totalTransactionLabel" text="0 VNĐ" textFill="#0f172a">
+                            <font><Font name="System Bold" size="24" /></font>
+                        </Label>
+                    </children>
+                </VBox>
+
+                <VBox prefWidth="280" spacing="8" style="-fx-background-color: white; -fx-background-radius: 18; -fx-border-color: #e2e8f0; -fx-border-radius: 18; -fx-padding: 20; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 14, 0, 0, 4);" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                    <children>
+                        <Label text="Giá hiện tại trung bình" textFill="#64748b" />
+                        <Label fx:id="averagePriceLabel" text="0 VNĐ" textFill="#2563eb">
+                            <font><Font name="System Bold" size="24" /></font>
+                        </Label>
+                    </children>
+                </VBox>
+
+                <VBox prefWidth="280" spacing="8" style="-fx-background-color: white; -fx-background-radius: 18; -fx-border-color: #e2e8f0; -fx-border-radius: 18; -fx-padding: 20; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 14, 0, 0, 4);" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                    <children>
+                        <Label text="Tỷ lệ phiên đang chạy" textFill="#64748b" />
+                        <Label fx:id="activeRateLabel" text="0%" textFill="#16a34a">
+                            <font><Font name="System Bold" size="24" /></font>
+                        </Label>
+                    </children>
+                </VBox>
+            </children>
+        </GridPane>
+
+        <VBox spacing="10" VBox.vgrow="ALWAYS"
+              style="-fx-background-color: white; -fx-background-radius: 18; -fx-border-color: #e2e8f0; -fx-border-radius: 18; -fx-padding: 16; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 14, 0, 0, 4);">
+            <children>
+                <Label text="Top sản phẩm theo giá hiện tại" textFill="#0f172a">
+                    <font><Font name="System Bold" size="16" /></font>
+                </Label>
+                <TableView fx:id="topItemsTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="nameColumn" text="Sản phẩm" prefWidth="360" />
+                        <TableColumn fx:id="priceColumn" text="Giá hiện tại" prefWidth="220" />
+                        <TableColumn fx:id="statusColumn" text="Trạng thái" prefWidth="180" />
+                    </columns>
+                </TableView>
+            </children>
+        </VBox>
+    </children>
+</VBox>

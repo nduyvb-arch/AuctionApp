@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.text.Normalizer;
 import java.util.function.Consumer;
 
 public class ClientApp extends Application {
@@ -131,6 +132,11 @@ public class ClientApp extends Application {
     }
 
     public static void switchToRoleSelection() throws Exception {
+        if (isAdminUser(currentUser)) {
+            switchToAdmin();
+            return;
+        }
+
         FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/RoleSelection.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
@@ -160,6 +166,14 @@ public class ClientApp extends Application {
 
         Scene scene = new Scene(root);
         applyScene(scene, "Hệ thống đấu giá - Tài khoản", 1000, 700, 1200, 800);
+    }
+
+    public static void switchToAdmin() throws Exception {
+        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/admin/AdminDashboard.fxml"));
+        Parent root = loader.load();
+        Scene scene = new Scene(root);
+
+        applyScene(scene, "Hệ thống đấu giá - Quản trị", 1100, 720, 1280, 820);
     }
 
     public static void switchToSignUp() throws Exception {
@@ -243,6 +257,28 @@ public class ClientApp extends Application {
 
         serverListenerThread.setDaemon(true);
         serverListenerThread.start();
+    }
+
+    public static boolean isAdminUser(User user) {
+        if (user == null || user.getRole() == null) {
+            return false;
+        }
+
+        String normalizedRole = Normalizer.normalize(user.getRole(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .trim()
+                .toLowerCase()
+                .replace("đ", "d")
+                .replace("_", "")
+                .replace("-", "")
+                .replaceAll("[\s\u00A0]+", "");
+
+        return "admin".equals(normalizedRole)
+                || "administrator".equals(normalizedRole)
+                || "superadmin".equals(normalizedRole)
+                || "root".equals(normalizedRole)
+                || "quantri".equals(normalizedRole)
+                || "quantrivien".equals(normalizedRole);
     }
 
     public static User getCurrentUser() {

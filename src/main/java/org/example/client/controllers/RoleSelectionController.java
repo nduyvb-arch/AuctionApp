@@ -1,5 +1,6 @@
 package org.example.client.controllers;
 import org.example.client.ClientApp;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
@@ -32,6 +33,19 @@ public class RoleSelectionController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         currentUser = ClientApp.getCurrentUser();
+
+        if (ClientApp.isAdminUser(currentUser)) {
+            Platform.runLater(() -> {
+                try {
+                    ClientApp.setSelectedRole("admin");
+                    ClientApp.switchToAdmin();
+                } catch (Exception e) {
+                    showError("Không thể mở giao diện admin", e.getMessage());
+                }
+            });
+            return;
+        }
+
         updateAccountInfo();
     }
 
