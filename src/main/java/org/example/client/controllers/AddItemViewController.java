@@ -13,11 +13,11 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
+import org.example.client.ClientApp; // ADDED
 import org.example.common.Message;
 import org.example.common.model.user.User;
 
 import java.io.File;
-import java.io.ObjectOutputStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.ResourceBundle;
@@ -39,7 +39,6 @@ public class AddItemViewController implements Initializable {
     @FXML private Button submitItemButton;
     @FXML private Button clearFormButton;
 
-    private ObjectOutputStream out;
     private User currentUser;
     private Runnable onItemCreated;
 
@@ -57,8 +56,8 @@ public class AddItemViewController implements Initializable {
         selectedImageLabel.setText("Chưa chọn ảnh");
     }
 
-    public void setup(ObjectOutputStream out, User currentUser, Runnable onItemCreated) {
-        this.out = out;
+    // 🔥 XÓA THAM SỐ out
+    public void setup(User currentUser, Runnable onItemCreated) {
         this.currentUser = currentUser;
         this.onItemCreated = onItemCreated;
     }
@@ -74,9 +73,7 @@ public class AddItemViewController implements Initializable {
 
         File selectedFile = fileChooser.showOpenDialog(chooseImageButton.getScene().getWindow());
 
-        if (selectedFile == null) {
-            return;
-        }
+        if (selectedFile == null) return;
 
         selectedImageFile = selectedFile;
         selectedImagePath = selectedFile.toURI().toString();
@@ -86,28 +83,23 @@ public class AddItemViewController implements Initializable {
             Image image = new Image(selectedImagePath, true);
             imagePreview.setImage(image);
         } catch (Exception e) {
-            showMessage("❌ Không thể đọc ảnh đã chọn.", false);
+            showMessage("Không thể đọc ảnh đã chọn.", false);
             selectedImageFile = null;
         }
     }
 
     @FXML
     private void onSubmitItemClicked() {
-        if (out == null || currentUser == null) {
-            showMessage("❌ Chưa có kết nối hoặc chưa đăng nhập.", false);
+        if (currentUser == null) {
+            showMessage("Chưa đăng nhập.", false);
             return;
         }
 
         String name = itemNameTextField.getText().trim();
         String description = itemDescriptionTextArea.getText().trim();
 
-        if (name.isEmpty()) {
-            showMessage("❌ Vui lòng nhập tên sản phẩm.", false);
-            return;
-        }
-
-        if (description.isEmpty()) {
-            showMessage("❌ Vui lòng nhập mô tả sản phẩm.", false);
+        if (name.isEmpty() || description.isEmpty()) {
+            showMessage("Vui lòng nhập đủ tên và mô tả sản phẩm.", false);
             return;
         }
 
@@ -117,7 +109,7 @@ public class AddItemViewController implements Initializable {
             int duration = durationSpinner.getValue();
 
             if (startPrice <= 0 || bidIncrement <= 0 || duration <= 0) {
-                showMessage("❌ Giá và thời gian đấu giá phải lớn hơn 0.", false);
+                showMessage("Giá và thời gian đấu giá phải lớn hơn 0.", false);
                 return;
             }
 
@@ -125,49 +117,31 @@ public class AddItemViewController implements Initializable {
             if (selectedImageFile != null) {
                 try {
                     imageBytes = Files.readAllBytes(selectedImageFile.toPath());
-
                     if (imageBytes.length > 5 * 1024 * 1024) {
-                        showMessage("❌ Kích thước ảnh quá lớn (tối đa 5MB).", false);
+                        showMessage("Kích thước ảnh quá lớn (tối đa 5MB).", false);
                         return;
                     }
                 } catch (Exception e) {
-                    showMessage("❌ Lỗi khi đọc file ảnh từ máy của bạn.", false);
+                    showMessage("Lỗi khi đọc file ảnh.", false);
                     return;
                 }
             }
 
-            /*
-             * Payload:
-             * [0] type, [1] name, [2] description, [3] startPrice,
-             * [4] bidIncrement, [5] sellerId, [6] duration, [7] imageBytes
-             */
             Object[] itemData = new Object[]{
-                    itemTypeComboBox.getValue(),
-                    name,
-                    description,
-                    startPrice,
-                    bidIncrement,
-                    currentUser.getId(),
-                    duration,
-                    imageBytes
+                    itemTypeComboBox.getValue(), name, description, startPrice,
+                    bidIncrement, currentUser.getId(), duration, imageBytes
             };
 
-            synchronized (out) {
-                out.writeObject(new Message("ADD_ITEM", itemData));
-                out.flush();
-            }
+            // 🔥 DÙNG CHUNG ĐƯỜNG ỐNG
+            ClientApp.sendMessage(new Message("ADD_ITEM", itemData));
 
-            showMessage("✅ Đã gửi yêu cầu đăng sản phẩm. Danh sách sẽ tự làm mới khi server phản hồi.", true);
+            showMessage("Đã gửi yêu cầu đăng sản phẩm. Danh sách sẽ tự làm mới.", true);
             clearForm();
 
-            if (onItemCreated != null) {
-                onItemCreated.run();
-            }
+            if (onItemCreated != null) onItemCreated.run();
 
         } catch (NumberFormatException e) {
-            showMessage("❌ Giá khởi điểm và bước giá phải là số hợp lệ.", false);
-        } catch (Exception e) {
-            showMessage("❌ Lỗi khi gửi yêu cầu: " + e.getMessage(), false);
+            showMessage("Giá khởi điểm và bước giá phải là số hợp lệ.", false);
         }
     }
 

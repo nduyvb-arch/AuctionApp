@@ -1,6 +1,6 @@
 package org.example.client.controllers;
 
-import org.example.client.ClientApp;
+import org.example.client.ClientApp; // ADDED
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -13,7 +13,6 @@ import javafx.scene.control.TextInputDialog;
 import org.example.common.Message;
 import org.example.common.model.user.User;
 
-import java.io.ObjectOutputStream;
 import java.net.URL;
 import java.text.NumberFormat;
 import java.util.Arrays;
@@ -33,24 +32,19 @@ public class AccountViewController implements Initializable {
     @FXML private Button topUpButton;
     @FXML private Button refreshButton;
 
-    private ObjectOutputStream out;
     private User currentUser;
     private UserUpdateCallback userUpdateCallback;
 
     private static final NumberFormat currencyFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
 
     @Override
-    public void initialize(URL url, ResourceBundle resourceBundle) {
-    }
+    public void initialize(URL url, ResourceBundle resourceBundle) {}
 
-    public void setup(ObjectOutputStream out, User currentUser, UserUpdateCallback userUpdateCallback) {
-        this.out = out;
+    // XÓA THAM SỐ out
+    public void setup(User currentUser, UserUpdateCallback userUpdateCallback) {
         this.currentUser = currentUser;
         this.userUpdateCallback = userUpdateCallback;
         updateUser(currentUser);
-
-        ClientApp.setServerMessageHandler(this::handleServerMessage);
-        ClientApp.startServerListenerIfNeeded();
     }
 
     public void updateUser(User user) {
@@ -58,11 +52,9 @@ public class AccountViewController implements Initializable {
 
         if (user == null) {
             usernameLabel.setText("Chưa đăng nhập");
-            userIdLabel.setText("-");
-            roleLabel.setText("-");
-            balanceLabel.setText("0 VNĐ");
-            statusLabel.setText("-");
-            noteLabel.setText("Bạn cần đăng nhập để xem thông tin tài khoản.");
+            userIdLabel.setText("-"); roleLabel.setText("-");
+            balanceLabel.setText("0 VNĐ"); statusLabel.setText("-");
+            noteLabel.setText("Bạn cần đăng nhập để xem thông tin.");
             return;
         }
 
@@ -73,9 +65,9 @@ public class AccountViewController implements Initializable {
         statusLabel.setText(user.isBanned() ? "Đang bị khóa" : "Đang hoạt động");
 
         if ("seller".equalsIgnoreCase(user.getRole())) {
-            noteLabel.setText("Số dư bao gồm tiền nạp và tiền nhận được từ các phiên đấu giá đã kết thúc.");
+            noteLabel.setText("Số dư bao gồm tiền nạp và nhận được từ đấu giá.");
         } else {
-            noteLabel.setText("Bạn có thể nạp tiền để tham gia đặt giá trong các phiên đấu giá đang diễn ra.");
+            noteLabel.setText("Nạp tiền để tham gia đặt giá.");
         }
     }
 
@@ -86,60 +78,24 @@ public class AccountViewController implements Initializable {
             return;
         }
 
-        ChoiceDialog<String> methodDialog = new ChoiceDialog<>(
-                "Chuyển khoản ngân hàng",
-                Arrays.asList("Chuyển khoản ngân hàng", "Ví điện tử", "Mô phỏng nạp tiền")
-        );
+        ChoiceDialog<String> methodDialog = new ChoiceDialog<>("Chuyển khoản", Arrays.asList("Chuyển khoản", "Ví điện tử"));
         methodDialog.setTitle("Nạp tiền");
-        methodDialog.setHeaderText("Chọn phương thức nạp tiền");
-        methodDialog.setContentText("Phương thức:");
-
         Optional<String> methodResult = methodDialog.showAndWait();
-
-        if (methodResult.isEmpty()) {
-            return;
-        }
+        if (methodResult.isEmpty()) return;
 
         TextInputDialog amountDialog = new TextInputDialog();
         amountDialog.setTitle("Nạp tiền");
-        amountDialog.setHeaderText("Nhập số tiền muốn nạp");
         amountDialog.setContentText("Số tiền (VNĐ):");
-
-        Platform.runLater(() -> {
-            if (amountDialog.getEditor() != null) {
-                amountDialog.getEditor().requestFocus();
-            }
-        });
-
         Optional<String> amountResult = amountDialog.showAndWait();
-
-        if (amountResult.isEmpty()) {
-            return;
-        }
+        if (amountResult.isEmpty()) return;
 
         try {
-            String raw = amountResult.get()
-                    .trim()
-                    .replace(".", "")
-                    .replace(",", "");
-
-            double amount = Double.parseDouble(raw);
-
+            double amount = Double.parseDouble(amountResult.get().trim().replace(".", ""));
             if (amount <= 0) {
-                showAlert(Alert.AlertType.WARNING, "Nạp tiền", "Số tiền nạp phải lớn hơn 0.");
+                showAlert(Alert.AlertType.WARNING, "Nạp tiền", "Số tiền nạp phải > 0.");
                 return;
             }
-
-            if ("Chuyển khoản ngân hàng".equals(methodResult.get())) {
-                boolean confirmed = showTransferInfo(amount);
-
-                if (!confirmed) {
-                    return;
-                }
-            }
-
             sendTopUpRequest(amount, methodResult.get());
-
         } catch (NumberFormatException e) {
             showAlert(Alert.AlertType.WARNING, "Nạp tiền", "Số tiền không hợp lệ.");
         }
@@ -150,188 +106,38 @@ public class AccountViewController implements Initializable {
         requestAccountInfoFromServer();
     }
 
-    private boolean showTransferInfo(double amount) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Thông tin chuyển khoản");
-        alert.setHeaderText("Chuyển khoản ngân hàng");
-
-        String content = "Ngân hàng: Auction Bank Demo\n"
-                + "Số tài khoản: 0123456789\n"
-                + "Chủ tài khoản: AUCTION APP\n"
-                + "Số tiền: " + currencyFormat.format(amount) + " VNĐ\n"
-                + "Nội dung: NAPTIEN " + currentUser.getId() + "\n\n"
-                + "Vì đây là bài tập/demo, bấm Xác nhận để mô phỏng giao dịch thành công.";
-
-        alert.setContentText(content);
-
-        Optional<ButtonType> result = alert.showAndWait();
-        return result.isPresent() && result.get() == ButtonType.OK;
-    }
-
+    // GỬI QUA ỐNG MỚI
     private void sendTopUpRequest(double amount, String method) {
-        if (out == null) {
-            showAlert(Alert.AlertType.ERROR, "Nạp tiền", "Không có kết nối tới server.");
-            return;
-        }
-
-        try {
-            if (topUpButton != null) {
-                topUpButton.setDisable(true);
-            }
-
-            Object[] payload = new Object[]{
-                    currentUser.getId(),
-                    amount,
-                    method
-            };
-
-            synchronized (out) {
-                out.writeObject(new Message("TOP_UP", payload));
-                out.flush();
-            }
-
-        } catch (Exception e) {
-            if (topUpButton != null) {
-                topUpButton.setDisable(false);
-            }
-            showAlert(Alert.AlertType.ERROR, "Nạp tiền", "Lỗi gửi yêu cầu nạp tiền: " + e.getMessage());
-        }
+        if (topUpButton != null) topUpButton.setDisable(true);
+        ClientApp.sendMessage(new Message("TOP_UP", new Object[]{currentUser.getId(), amount, method}));
     }
 
+    // GỬI QUA ỐNG MỚI
     private void requestAccountInfoFromServer() {
-        if (out == null || currentUser == null) {
-            updateUser(currentUser);
-            return;
-        }
-
-        try {
-            if (refreshButton != null) {
-                refreshButton.setDisable(true);
-            }
-
-            synchronized (out) {
-                out.writeObject(new Message("GET_ACCOUNT_INFO", currentUser.getId()));
-                out.flush();
-            }
-
-        } catch (Exception e) {
-            if (refreshButton != null) {
-                refreshButton.setDisable(false);
-            }
-            showAlert(Alert.AlertType.ERROR, "Tài khoản", "Không thể làm mới tài khoản: " + e.getMessage());
-        }
+        if (currentUser == null) return;
+        if (refreshButton != null) refreshButton.setDisable(true);
+        ClientApp.sendMessage(new Message("GET_ACCOUNT_INFO", currentUser.getId()));
     }
 
     @FXML
     private void onBackToRoleSelectionClicked() {
-        try {
-            ClientApp.setServerMessageHandler(null);
-            ClientApp.switchToRoleSelection();
-        } catch (Exception e) {
-            showAlert(Alert.AlertType.ERROR, "Tài khoản", "Không thể quay lại màn chọn vai trò: " + e.getMessage());
-        }
-    }
-
-    private void handleServerMessage(Message message) {
-        if (message == null) {
-            return;
-        }
-
-        switch (message.getAction()) {
-            case "TOP_UP_RESPONSE":
-                handleTopUpResponse(message.getPayload());
-                break;
-
-            case "ACCOUNT_INFO_RESPONSE":
-                handleAccountInfoResponse(message.getPayload());
-                break;
-
-            case "SYSTEM_NOTIFICATION":
-                System.out.println("Server: " + message.getPayload());
-                break;
-
-            default:
-                System.out.println("AccountView bỏ qua message: " + message.getAction());
-                break;
-        }
-    }
-
-    private void handleAccountInfoResponse(Object payload) {
-        if (refreshButton != null) {
-            refreshButton.setDisable(false);
-        }
-
-        if (payload instanceof User) {
-            User updatedUser = (User) payload;
-            ClientApp.setCurrentUser(updatedUser);
-            updateUser(updatedUser);
-
-            if (userUpdateCallback != null) {
-                userUpdateCallback.onUpdated(updatedUser);
-            }
-        }
-    }
-
-    private void handleTopUpResponse(Object payload) {
-        if (topUpButton != null) {
-            topUpButton.setDisable(false);
-        }
-
-        if (!(payload instanceof Object[])) {
-            showAlert(Alert.AlertType.INFORMATION, "Nạp tiền", String.valueOf(payload));
-            return;
-        }
-
-        Object[] data = (Object[]) payload;
-        boolean success = Boolean.TRUE.equals(data[0]);
-        String message = String.valueOf(data[1]);
-
-        if (success && data.length > 2 && data[2] instanceof User) {
-            User updatedUser = (User) data[2];
-            ClientApp.setCurrentUser(updatedUser);
-            updateUser(updatedUser);
-
-            if (userUpdateCallback != null) {
-                userUpdateCallback.onUpdated(updatedUser);
-            }
-        }
-
-        showAlert(
-                success ? Alert.AlertType.INFORMATION : Alert.AlertType.WARNING,
-                "Nạp tiền",
-                message
-        );
+        try { ClientApp.switchToRoleSelection(); }
+        catch (Exception e) { showAlert(Alert.AlertType.ERROR, "Tài khoản", e.getMessage()); }
     }
 
     private String getRoleText(String role) {
-        if (role == null) {
-            return "Không rõ";
-        }
-
+        if (role == null) return "Không rõ";
         switch (role.toLowerCase()) {
-            case "bidder":
-                return "Người đấu giá";
-
-            case "seller":
-                return "Người bán";
-
-            case "admin":
-                return "Quản trị viên";
-
-            default:
-                return role;
+            case "bidder": return "Người đấu giá";
+            case "seller": return "Người bán";
+            case "admin": return "Quản trị viên";
+            default: return role;
         }
     }
 
     private void showAlert(Alert.AlertType type, String title, String content) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(content);
-        alert.showAndWait();
+        Alert alert = new Alert(type); alert.setTitle(title); alert.setContentText(content); alert.showAndWait();
     }
 
-    public interface UserUpdateCallback {
-        void onUpdated(User updatedUser);
-    }
+    public interface UserUpdateCallback { void onUpdated(User updatedUser); }
 }

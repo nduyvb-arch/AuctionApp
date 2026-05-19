@@ -42,6 +42,11 @@ public class NetworkClient {
     // Hàm kết nối tới server ( chạy 1 lần khi bật App )
     public void connect(String serverAddress, int port)
     {
+        if (socket != null && socket.isClosed())
+        {
+            logger.info("Mạng đã được kết nối, không cần kết nối lại");
+            return;
+        }
         try
         {
             socket = new Socket(serverAddress, port);
@@ -64,7 +69,7 @@ public class NetworkClient {
         }
     }
 
-    public void sendMessage(Message message)
+    public synchronized void sendMessage(Message message)
     {
         if (out != null)
         {
@@ -72,6 +77,7 @@ public class NetworkClient {
             {
                 out.writeObject(message);
                 out.flush();
+                out.reset();
             }
             catch(IOException e)
             {

@@ -1,8 +1,8 @@
 package org.example.client.controllers;
+
 import org.example.client.ClientApp;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
@@ -14,7 +14,6 @@ import javafx.util.Duration;
 import org.example.common.Message;
 import org.example.common.model.user.User;
 
-import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 
@@ -42,6 +41,7 @@ public class LoginController implements Initializable {
 
     @FXML
     public void onLoginButtonClicked() {
+        ClientApp.startServerListenerIfNeeded();
         String username = usernameField.getText().trim();
         String password = passwordField.getText();
 
@@ -53,64 +53,53 @@ public class LoginController implements Initializable {
         loginButton.setDisable(true);
         loginButton.setText("Đang đăng nhập...");
 
-        Task<User> loginTask = new Task<>() {
-            @Override
-            protected User call() throws Exception {
-                ClientApp.connectToServer();
+        // 1. Giao phó việc nghe ngóng cho "Trưởng phòng"
+        ClientApp.setServerMessageHandler(message -> {
+            if ("LOGIN_RESPONSE".equals(message.getAction())) {
+                User user = (User) message.getPayload();
 
-                var out = ClientApp.getOutputStream();
-                var in = ClientApp.getInputStream();
-
-                String[] loginData = {username, password};
-                Message loginMsg = new Message("LOGIN", loginData);
-
-                out.writeObject(loginMsg);
-                out.flush();
-
-                Message responseMsg = (Message) in.readObject();
-
-                if (responseMsg != null && "LOGIN_RESPONSE".equals(responseMsg.getAction())) {
-                    User user = (User) responseMsg.getPayload();
-
+                // Đẩy dữ liệu về luồng giao diện chính để xử lý UI
+                Platform.runLater(() -> {
                     if (user != null) {
-                        return user;
+                        ClientApp.setCurrentUser(user);
+                        ClientApp.setSelectedRole("bidder");
+                        System.out.println("Đăng nhập thành công: " + user.getUsername());
+
+                        try {
+                            ClientApp.switchToRoleSelection();
+                        } catch (Exception e) {
+                            showError("Lỗi chuyển màn hình: " + e.getMessage());
+                            resetLoginButton();
+                        }
+                    } else {
+                        // Nâng cấp: Báo lỗi chung cho cả sai mật khẩu và bị Admin khóa mõm
+                        showError("Tài khoản không tồn tại, sai mật khẩu, hoặc đã bị khóa!");
+                        resetLoginButton();
                     }
-
-                    ClientApp.closeConnection();
-                    throw new SecurityException("Tên đăng nhập hoặc mật khẩu không đúng");
-                }
-
-                ClientApp.closeConnection();
-                throw new IOException("Phản hồi từ server không hợp lệ.");
+                });
             }
-        };
+        });
 
-        loginTask.setOnSucceeded(event -> Platform.runLater(() -> {
-            User user = loginTask.getValue();
-            ClientApp.setCurrentUser(user);
-            ClientApp.setSelectedRole("bidder");
-            System.out.println("Đăng nhập thành công: " + user.getUsername());
-
-            try {
-                ClientApp.switchToRoleSelection();
-            } catch (Exception e) {
-                showError("Lỗi chuyển màn hình: " + e.getMessage());
-                loginButton.setDisable(false);
-                loginButton.setText("Đăng nhập");
+        // 2. Gửi gói tin đi an toàn bằng ống nước chính quy
+        try {
+            // Mở kết nối nếu chưa có, và nhớ KÍCH HOẠT luồng nghe ngóng
+            if (ClientApp.getOutputStream() == null) {
+                ClientApp.connectToServer();
+                ClientApp.startServerListenerIfNeeded();
             }
-        }));
 
-        loginTask.setOnFailed(event -> Platform.runLater(() -> {
-            Throwable exception = loginTask.getException();
-            showError(exception.getMessage());
-            loginButton.setDisable(false);
-            loginButton.setText("Đăng nhập");
-            ClientApp.closeConnection();
-        }));
+            String[] loginData = {username, password};
+            ClientApp.sendMessage(new Message("LOGIN", loginData));
 
-        Thread loginThread = new Thread(loginTask);
-        loginThread.setDaemon(true);
-        loginThread.start();
+        } catch (Exception e) {
+            showError("Lỗi kết nối tới Server: Server chưa mở hoặc mạng rớt!");
+            resetLoginButton();
+        }
+    }
+
+    private void resetLoginButton() {
+        loginButton.setDisable(false);
+        loginButton.setText("Đăng nhập");
     }
 
     @FXML
@@ -125,6 +114,7 @@ public class LoginController implements Initializable {
     @FXML
     public void onForgotPasswordClicked() {
         // Chức năng quên mật khẩu nếu bạn muốn hoàn thiện sau.
+        showError("Chức năng đang được nâng cấp!");
     }
 
     private void showError(String message) {
