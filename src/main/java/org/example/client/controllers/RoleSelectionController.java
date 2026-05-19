@@ -1,8 +1,8 @@
 package org.example.client.controllers;
+
 import org.example.client.ClientApp;
 import org.example.common.Message;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
@@ -83,28 +83,29 @@ public class RoleSelectionController implements Initializable {
     }
 
     private void openHomeWithRole(String role) {
-        try {
-            // Gửi SWITCH_ROLE lên server để cập nhật database
-            ObjectOutputStream out = ClientApp.getOutputStream();
-            if (out != null) {
-                out.reset();
-                out.writeObject(new Message("SWITCH_ROLE", role));
-                out.flush();
-
-                // Đọc response (blocking)
-                ObjectInputStream in = ClientApp.getInputStream();
-                Message response = (Message) in.readObject();
-
-                if (!"success".equals(response.getPayload())) {
-                    showError("Lỗi", "Không thể chuyển vai trò: " + response.getPayload());
-                    return;
-                }
+        // 1. Cài đặt tai nghe đón phản hồi từ Server
+        ClientApp.setServerMessageHandler(message -> {
+            if ("SWITCH_ROLE_RESPONSE".equals(message.getAction())) {
+                Platform.runLater(() -> {
+                    if ("success".equals(message.getPayload())) {
+                        try {
+                            ClientApp.setSelectedRole(role);
+                            ClientApp.switchToHome();
+                        } catch (Exception e) {
+                            showError("Lỗi giao diện", "Không thể mở trang chủ: " + e.getMessage());
+                        }
+                    } else {
+                        showError("Lỗi", "Không thể chuyển vai trò: " + message.getPayload());
+                    }
+                });
             }
+        });
 
-            ClientApp.setSelectedRole(role);
-            ClientApp.switchToHome();
+        // 2. Gửi lệnh chuyển vai trò một cách an toàn
+        try {
+            ClientApp.sendMessage(new Message("SWITCH_ROLE", role));
         } catch (Exception e) {
-            showError("Không thể mở trang chủ", e.getMessage());
+            showError("Lỗi mạng", "Không thể gửi yêu cầu: " + e.getMessage());
         }
     }
 

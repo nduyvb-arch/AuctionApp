@@ -159,7 +159,7 @@ public class ClientApp extends Application {
             org.example.client.controllers.AccountViewController accountController =
                     (org.example.client.controllers.AccountViewController) controller;
 
-            accountController.setup(outputStream, currentUser, ClientApp::setCurrentUser);
+            accountController.setup(currentUser, ClientApp::setCurrentUser);
         }
 
         Scene scene = new Scene(root);
@@ -263,10 +263,8 @@ public class ClientApp extends Application {
 
         imageResponseFuture = new CompletableFuture<>();
 
-        synchronized (outputStream) {
-            outputStream.writeObject(new Message("GET_IMAGE", imagePath));
-            outputStream.flush();
-        }
+        // Dùng hàm sendMessage mới tạo thay cho cục synchronized cũ
+        sendMessage(new Message("GET_IMAGE", imagePath));
 
         try {
             return imageResponseFuture.get(5, TimeUnit.SECONDS);
@@ -294,6 +292,18 @@ public class ClientApp extends Application {
             return;
         }
         selectedRole = role.trim().toLowerCase();
+    }
+
+    public static synchronized void sendMessage(Message message) {
+        try {
+            if (outputStream != null && socket != null && !socket.isClosed()) {
+                outputStream.reset(); // Dọn rác ống nước
+                outputStream.writeObject(message);
+                outputStream.flush();
+            }
+        } catch (IOException e) {
+            logger.error("Lỗi khi gửi tin nhắn tới Server: {}", e.getMessage());
+        }
     }
 
     public static boolean isSellerSelected() {
