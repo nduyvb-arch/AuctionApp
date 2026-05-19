@@ -75,10 +75,12 @@ public class DatabaseManager {
                     + "current_winner_id INT, "
                     + "status VARCHAR(20) NOT NULL DEFAULT 'PENDING', "
                     + "end_time DATETIME, "
+                    + "image_path TEXT, "
                     + "FOREIGN KEY (seller_id) REFERENCES users(id), "
                     + "FOREIGN KEY (current_winner_id) REFERENCES users(id)"
                     + ")";
             stmt.execute(sqlItems);
+            ensureItemsImagePathColumn(stmt);
 
             // 3. Bảng Bids
             String sqlBids = "CREATE TABLE IF NOT EXISTS bids ("
@@ -95,6 +97,23 @@ public class DatabaseManager {
             logger.info("Đã khởi tạo/kiểm tra CSDL thành công!");
         } catch (SQLException e) {
             logger.error("Lỗi khi tự động tạo bảng: {}", e.getMessage(), e);
+        }
+    }
+
+    private static void ensureItemsImagePathColumn(Statement stmt) {
+        try {
+            stmt.execute("ALTER TABLE items ADD COLUMN image_path TEXT");
+            logger.info("Đã thêm cột image_path vào bảng items.");
+        } catch (SQLException e) {
+            /*
+             * MySQL trả mã lỗi 1060 hoặc SQLState 42S21 khi cột đã tồn tại.
+             * Đây không phải lỗi thật, vì app có thể đang chạy trên database đã được nâng cấp.
+             */
+            if (e.getErrorCode() == 1060 || "42S21".equals(e.getSQLState())) {
+                return;
+            }
+
+            logger.warn("Không thể kiểm tra/thêm cột image_path: {}", e.getMessage());
         }
     }
 

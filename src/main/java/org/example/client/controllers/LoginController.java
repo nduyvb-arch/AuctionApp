@@ -1,5 +1,5 @@
 package org.example.client.controllers;
-
+import org.example.client.ClientApp;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -11,9 +11,8 @@ import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.util.Duration;
-import org.example.client.ClientApp;
-import org.example.common.model.user.User;
 import org.example.common.Message;
+import org.example.common.model.user.User;
 
 import java.io.IOException;
 import java.net.URL;
@@ -23,12 +22,16 @@ public class LoginController implements Initializable {
 
     @FXML
     private TextField usernameField;
+
     @FXML
     private PasswordField passwordField;
+
     @FXML
     private Label errorLabel;
+
     @FXML
     private CheckBox rememberCheckbox;
+
     @FXML
     private Button loginButton;
 
@@ -54,11 +57,13 @@ public class LoginController implements Initializable {
             @Override
             protected User call() throws Exception {
                 ClientApp.connectToServer();
+
                 var out = ClientApp.getOutputStream();
                 var in = ClientApp.getInputStream();
 
                 String[] loginData = {username, password};
                 Message loginMsg = new Message("LOGIN", loginData);
+
                 out.writeObject(loginMsg);
                 out.flush();
 
@@ -66,49 +71,46 @@ public class LoginController implements Initializable {
 
                 if (responseMsg != null && "LOGIN_RESPONSE".equals(responseMsg.getAction())) {
                     User user = (User) responseMsg.getPayload();
+
                     if (user != null) {
                         return user;
-                    } else {
-                        ClientApp.closeConnection();
-                        throw new SecurityException("Tên đăng nhập hoặc mật khẩu không đúng");
                     }
-                } else {
+
                     ClientApp.closeConnection();
-                    throw new IOException("Phản hồi từ server không hợp lệ.");
+                    throw new SecurityException("Tên đăng nhập hoặc mật khẩu không đúng");
                 }
+
+                ClientApp.closeConnection();
+                throw new IOException("Phản hồi từ server không hợp lệ.");
             }
         };
 
-        // Xử lý khi đăng nhập thành công
-        loginTask.setOnSucceeded(event -> {
-            // SỬA LỖI: Chuyển toàn bộ logic cập nhật UI vào Platform.runLater
-            Platform.runLater(() -> {
-                User user = loginTask.getValue();
-                ClientApp.setCurrentUser(user);
-                System.out.println("Đăng nhập thành công: " + user.getUsername());
-                try {
-                    ClientApp.switchToHome();
-                } catch (Exception e) {
-                    showError("Lỗi chuyển màn hình: " + e.getMessage());
-                    loginButton.setDisable(false);
-                    loginButton.setText("Đăng nhập");
-                }
-            });
-        });
+        loginTask.setOnSucceeded(event -> Platform.runLater(() -> {
+            User user = loginTask.getValue();
+            ClientApp.setCurrentUser(user);
+            ClientApp.setSelectedRole("bidder");
+            System.out.println("Đăng nhập thành công: " + user.getUsername());
 
-        // Xử lý khi đăng nhập thất bại
-        loginTask.setOnFailed(event -> {
-            // Cập nhật UI cũng cần Platform.runLater để đảm bảo an toàn
-            Platform.runLater(() -> {
-                Throwable exception = loginTask.getException();
-                showError(exception.getMessage());
+            try {
+                ClientApp.switchToRoleSelection();
+            } catch (Exception e) {
+                showError("Lỗi chuyển màn hình: " + e.getMessage());
                 loginButton.setDisable(false);
                 loginButton.setText("Đăng nhập");
-                ClientApp.closeConnection();
-            });
-        });
+            }
+        }));
 
-        new Thread(loginTask).start();
+        loginTask.setOnFailed(event -> Platform.runLater(() -> {
+            Throwable exception = loginTask.getException();
+            showError(exception.getMessage());
+            loginButton.setDisable(false);
+            loginButton.setText("Đăng nhập");
+            ClientApp.closeConnection();
+        }));
+
+        Thread loginThread = new Thread(loginTask);
+        loginThread.setDaemon(true);
+        loginThread.start();
     }
 
     @FXML
@@ -122,12 +124,13 @@ public class LoginController implements Initializable {
 
     @FXML
     public void onForgotPasswordClicked() {
-        // ...
+        // Chức năng quên mật khẩu nếu bạn muốn hoàn thiện sau.
     }
 
     private void showError(String message) {
         errorLabel.setText(message);
         errorLabel.setStyle("-fx-text-fill: #d32f2f; -fx-font-size: 12;");
+
         PauseTransition pause = new PauseTransition(Duration.seconds(5));
         pause.setOnFinished(event -> errorLabel.setText(""));
         pause.play();

@@ -1,11 +1,13 @@
 package org.example.client;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import org.example.common.Message;
 import org.example.common.model.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +16,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.function.Consumer;
 
 public class ClientApp extends Application {
 
@@ -22,20 +25,46 @@ public class ClientApp extends Application {
     private static Stage primaryStage;
     private static User currentUser;
 
+    private static boolean openAccountOnHomeLoad = false;
+
+    public static void setOpenAccountOnHomeLoad(boolean value) {
+        openAccountOnHomeLoad = value;
+    }
+
+    public static boolean shouldOpenAccountOnHomeLoad() {
+        boolean result = openAccountOnHomeLoad;
+        openAccountOnHomeLoad = false;
+        return result;
+    }
+
     private static Socket socket;
     private static ObjectOutputStream outputStream;
     private static ObjectInputStream inputStream;
+
+    private static volatile Consumer<Message> serverMessageHandler;
+    private static volatile Thread serverListenerThread;
+
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 8888;
+
+    /**
+     * Vai trò người dùng chọn ở màn RoleSelection.
+     * Không phụ thuộc cứng vào getRole() của tài khoản, vì màn này dùng để chọn luồng giao diện.
+     */
+    private static String selectedRole = "bidder";
 
     @Override
     public void start(final Stage stage) throws Exception {
         primaryStage = stage;
+
         Image icon = new Image(getClass().getResourceAsStream("/images/logo.png"));
         primaryStage.getIcons().add(icon);
 
         switchToLogin();
-        stage.setResizable(false);
+
+        stage.setResizable(true);
+        stage.setMinWidth(1000);
+        stage.setMinHeight(700);
 
         stage.setOnCloseRequest(event -> {
             closeConnection();
@@ -47,6 +76,7 @@ public class ClientApp extends Application {
 
     public static void connectToServer() throws IOException {
         closeConnection();
+
         try {
             logger.info("Đang tạo kết nối mới tới server tại {}:{}", SERVER_ADDRESS, SERVER_PORT);
             socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
@@ -60,11 +90,19 @@ public class ClientApp extends Application {
     }
 
     public static void closeConnection() {
+        serverMessageHandler = null;
+
         try {
             if (socket != null && !socket.isClosed()) {
                 logger.info("Đang đóng kết nối...");
-                if (outputStream != null) outputStream.close();
-                if (inputStream != null) inputStream.close();
+
+                if (outputStream != null) {
+                    outputStream.close();
+                }
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+
                 socket.close();
                 logger.info("Đã đóng kết nối thành công.");
             }
@@ -74,6 +112,7 @@ public class ClientApp extends Application {
             socket = null;
             outputStream = null;
             inputStream = null;
+            serverListenerThread = null;
         }
     }
 
@@ -87,24 +126,123 @@ public class ClientApp extends Application {
         FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/LoginMenu.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
-        primaryStage.setTitle("Hệ thống đấu giá - Đăng nhập");
-        primaryStage.setScene(scene);
+
+        applyScene(scene, "Hệ thống đấu giá - Đăng nhập", 1000, 700, 1200, 800);
+    }
+
+    public static void switchToRoleSelection() throws Exception {
+        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/RoleSelection.fxml"));
+        Parent root = loader.load();
+        Scene scene = new Scene(root);
+
+        applyScene(scene, "Hệ thống đấu giá - Chọn vai trò", 1000, 700, 1200, 800);
     }
 
     public static void switchToHome() throws Exception {
         FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/HomeMenu.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
-        primaryStage.setTitle("Hệ thống đấu giá - Trang chủ");
-        primaryStage.setScene(scene);
+
+        applyScene(scene, "Hệ thống đấu giá - Trang chủ", 1000, 700, 1200, 800);
     }
-    
+
+    public static void switchToAccount() throws Exception {
+        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/AccountView.fxml"));
+        Parent root = loader.load();
+
+        Object controller = loader.getController();
+        if (controller instanceof org.example.client.controllers.AccountViewController) {
+            org.example.client.controllers.AccountViewController accountController =
+                    (org.example.client.controllers.AccountViewController) controller;
+
+            accountController.setup(outputStream, currentUser, ClientApp::setCurrentUser);
+        }
+
+        Scene scene = new Scene(root);
+        applyScene(scene, "Hệ thống đấu giá - Tài khoản", 1000, 700, 1200, 800);
+    }
+
     public static void switchToSignUp() throws Exception {
         FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/SignUpMenu.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
-        primaryStage.setTitle("Hệ thống đấu giá - Đăng ký");
+
+        applyScene(scene, "Hệ thống đấu giá - Đăng ký", 1000, 700, 1200, 800);
+    }
+
+    private static void applyScene(Scene scene, String title,
+                                   double minWidth, double minHeight,
+                                   double defaultWidth, double defaultHeight) {
+        boolean wasMaximized = primaryStage.isMaximized();
+        double previousWidth = primaryStage.getWidth();
+        double previousHeight = primaryStage.getHeight();
+        double previousX = primaryStage.getX();
+        double previousY = primaryStage.getY();
+        boolean hadPreviousSize = previousWidth > 0 && previousHeight > 0;
+
+        primaryStage.setTitle(title);
         primaryStage.setScene(scene);
+        primaryStage.setResizable(true);
+        primaryStage.setMinWidth(minWidth);
+        primaryStage.setMinHeight(minHeight);
+
+        if (wasMaximized) {
+            Platform.runLater(() -> primaryStage.setMaximized(true));
+            return;
+        }
+
+        if (hadPreviousSize) {
+            primaryStage.setWidth(Math.max(previousWidth, minWidth));
+            primaryStage.setHeight(Math.max(previousHeight, minHeight));
+            primaryStage.setX(previousX);
+            primaryStage.setY(previousY);
+        } else {
+            primaryStage.setWidth(defaultWidth);
+            primaryStage.setHeight(defaultHeight);
+            primaryStage.centerOnScreen();
+        }
+    }
+
+    public static void setServerMessageHandler(Consumer<Message> handler) {
+        serverMessageHandler = handler;
+    }
+
+    public static void startServerListenerIfNeeded() {
+        if (inputStream == null || socket == null || socket.isClosed()) {
+            return;
+        }
+
+        if (serverListenerThread != null && serverListenerThread.isAlive()) {
+            return;
+        }
+
+        serverListenerThread = new Thread(() -> {
+            while (socket != null && !socket.isClosed() && inputStream != null) {
+                try {
+                    Message message = (Message) inputStream.readObject();
+
+                    if (message == null) {
+                        continue;
+                    }
+
+                    Platform.runLater(() -> {
+                        Consumer<Message> handler = serverMessageHandler;
+
+                        if (handler != null) {
+                            handler.accept(message);
+                        }
+                    });
+                } catch (Exception e) {
+                    if (socket != null && !socket.isClosed()) {
+                        logger.warn("Dừng lắng nghe server: {}", e.getMessage());
+                    }
+                    break;
+                }
+            }
+        }, "client-server-listener");
+
+        serverListenerThread.setDaemon(true);
+        serverListenerThread.start();
     }
 
     public static User getCurrentUser() {
@@ -113,6 +251,22 @@ public class ClientApp extends Application {
 
     public static void setCurrentUser(User user) {
         currentUser = user;
+    }
+
+    public static String getSelectedRole() {
+        return selectedRole;
+    }
+
+    public static void setSelectedRole(String role) {
+        if (role == null || role.isBlank()) {
+            selectedRole = "bidder";
+            return;
+        }
+        selectedRole = role.trim().toLowerCase();
+    }
+
+    public static boolean isSellerSelected() {
+        return "seller".equalsIgnoreCase(selectedRole);
     }
 
     public static ObjectOutputStream getOutputStream() {

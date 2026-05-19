@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane prefHeight="800.0" prefWidth="1200.0"
+            style="-fx-background-color: linear-gradient(to bottom right, #eff6ff, #f8fafc);"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.client.controllers.RoleSelectionController">
+    <children>
+        <!-- TITLE BAR -->
+        <HBox alignment="CENTER_LEFT" prefHeight="72.0" spacing="16.0"
+              style="-fx-background-color: white; -fx-padding: 16 28; -fx-border-color: #e2e8f0; -fx-border-width: 0 0 1 0;"
+              AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+            <children>
+                <VBox spacing="2.0">
+                    <children>
+                        <Label text="Chọn vai trò sử dụng" textFill="#0f172a">
+                            <font>
+                                <Font name="System Bold" size="22.0" />
+                            </font>
+                        </Label>
+                        <Label text="Chọn khu vực làm việc trước khi vào hệ thống" textFill="#64748b">
+                            <font>
+                                <Font size="12.0" />
+                            </font>
+                        </Label>
+                    </children>
+                </VBox>
+
+                <Region HBox.hgrow="ALWAYS" />
+
+                <Label fx:id="userInfoLabel" text="Xin chào" textFill="#334155">
+                    <font>
+                        <Font name="System Bold" size="13.0" />
+                    </font>
+                </Label>
+
+                <Button fx:id="accountButton" mnemonicParsing="false" onAction="#onAccountClicked"
+                        style="-fx-background-color: #e0f2fe; -fx-text-fill: #0369a1; -fx-padding: 9 16; -fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 10; -fx-cursor: hand;"
+                        text="Tài khoản" />
+
+                <Button mnemonicParsing="false" onAction="#onLogoutClicked"
+                        style="-fx-background-color: #fee2e2; -fx-text-fill: #b91c1c; -fx-padding: 9 16; -fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 10; -fx-cursor: hand;"
+                        text="Đăng xuất" />
+            </children>
+        </HBox>
+
+        <!-- MAIN CONTENT -->
+        <VBox alignment="CENTER" spacing="28.0"
+              AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+              AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="72.0">
+            <children>
+                <VBox alignment="CENTER" spacing="8.0">
+                    <children>
+                        <Label text="Bạn muốn vào hệ thống với vai trò nào?" textFill="#0f172a">
+                            <font>
+                                <Font name="System Bold" size="32.0" />
+                            </font>
+                        </Label>
+                    </children>
+                </VBox>
+
+                <HBox alignment="CENTER" spacing="28.0">
+                    <children>
+                        <!-- BIDDER CARD -->
+                        <VBox prefHeight="330.0" prefWidth="360.0" spacing="18.0"
+                              style="-fx-background-color: white; -fx-background-radius: 24; -fx-border-color: #dbeafe; -fx-border-radius: 24; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.13), 20, 0, 0, 8);">
+                            <padding>
+                                <Insets bottom="26.0" left="26.0" right="26.0" top="26.0" />
+                            </padding>
+                            <children>
+                                <Label text="🛒" textFill="#2563eb">
+                                    <font>
+                                        <Font size="46.0" />
+                                    </font>
+                                </Label>
+                                <Label text="Người đấu giá" textFill="#0f172a">
+                                    <font>
+                                        <Font name="System Bold" size="24.0" />
+                                    </font>
+                                </Label>
+                                <Label maxWidth="300.0" text="Xem sản phẩm đang đấu giá, theo dõi giá hiện tại và đặt giá cho sản phẩm bạn quan tâm." textFill="#64748b" wrapText="true">
+                                    <font>
+                                        <Font size="13.0" />
+                                    </font>
+                                </Label>
+                                <Separator />
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label text="• Xem danh sách sản phẩm" textFill="#475569" />
+                                        <Label text="• Xem chi tiết phiên đấu giá" textFill="#475569" />
+                                        <Label text="• Đặt giá và xem lịch sử đấu giá" textFill="#475569" />
+                                    </children>
+                                </VBox>
+                                <Region VBox.vgrow="ALWAYS" />
+                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#onBidderClicked"
+                                        prefHeight="46.0"
+                                        style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-size: 14; -fx-font-weight: bold; -fx-background-radius: 12; -fx-cursor: hand;"
+                                        text="Vào giao diện người đấu giá" />
+                            </children>
+                        </VBox>
+
+                        <!-- SELLER CARD -->
+                        <VBox prefHeight="330.0" prefWidth="360.0" spacing="18.0"
+                              style="-fx-background-color: white; -fx-background-radius: 24; -fx-border-color: #dcfce7; -fx-border-radius: 24; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.13), 20, 0, 0, 8);">
+                            <padding>
+                                <Insets bottom="26.0" left="26.0" right="26.0" top="26.0" />
+                            </padding>
+                            <children>
+                                <Label text="🏷" textFill="#16a34a">
+                                    <font>
+                                        <Font size="46.0" />
+                                    </font>
+                                </Label>
+                                <Label text="Người bán" textFill="#0f172a">
+                                    <font>
+                                        <Font name="System Bold" size="24.0" />
+                                    </font>
+                                </Label>
+                                <Label maxWidth="300.0" text="Đăng sản phẩm mới, quản lý sản phẩm của bạn và xem lịch sử bán hàng." textFill="#64748b" wrapText="true">
+                                    <font>
+                                        <Font size="13.0" />
+                                    </font>
+                                </Label>
+                                <Separator />
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label text="• Đăng sản phẩm đấu giá" textFill="#475569" />
+                                        <Label text="• Quản lý sản phẩm của tôi" textFill="#475569" />
+                                        <Label text="• Xem lịch sử bán hàng" textFill="#475569" />
+                                    </children>
+                                </VBox>
+                                <Region VBox.vgrow="ALWAYS" />
+                                <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#onSellerClicked"
+                                        prefHeight="46.0"
+                                        style="-fx-background-color: #16a34a; -fx-text-fill: white; -fx-font-size: 14; -fx-font-weight: bold; -fx-background-radius: 12; -fx-cursor: hand;"
+                                        text="Vào giao diện người bán" />
+                            </children>
+                        </VBox>
+                    </children>
+                </HBox>
+
+                <!-- ACCOUNT SUMMARY -->
+                <HBox alignment="CENTER" spacing="16.0"
+                      style="-fx-background-color: rgba(255,255,255,0.85); -fx-background-radius: 18; -fx-border-color: #e2e8f0; -fx-border-radius: 18; -fx-padding: 16 22;">
+                    <children>
+                        <Label text="Tài khoản:" textFill="#64748b" />
+                        <Label fx:id="accountNameLabel" text="..." textFill="#0f172a">
+                            <font>
+                                <Font name="System Bold" size="13.0" />
+                            </font>
+                        </Label>
+                        <Separator orientation="VERTICAL" />
+                        <Label text="Số dư:" textFill="#64748b" />
+                        <Label fx:id="balanceLabel" text="0 VNĐ" textFill="#2563eb">
+                            <font>
+                                <Font name="System Bold" size="13.0" />
+                            </font>
+                        </Label>
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+    </children>
+</AnchorPane>

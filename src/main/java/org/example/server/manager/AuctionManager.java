@@ -68,6 +68,13 @@ public class AuctionManager {
                 String sellerId = rs.getString("seller_id");
                 String statusStr = rs.getString("status");
                 String endTimeStr = rs.getString("end_time");
+                String imagePath = null;
+
+                try {
+                    imagePath = rs.getString("image_path");
+                } catch (SQLException ignored) {
+                    // Database cũ chưa có cột image_path thì bỏ qua, app vẫn chạy bình thường.
+                }
 
                 Item item = createItemByType(type, name, description, startingPrice, bidIncrement);
 
@@ -76,6 +83,7 @@ public class AuctionManager {
                 item.setCurrentWinnerId(currentWinnerId);
                 item.setSellerId(sellerId);
                 item.setStatus(AuctionStatus.valueOf(statusStr));
+                item.setImagePath(imagePath);
 
                 if (endTimeStr != null && !endTimeStr.isEmpty()) {
                     item.setEndTime(LocalDateTime.parse(endTimeStr, DB_TIME_FORMAT));
@@ -94,7 +102,8 @@ public class AuctionManager {
     }
 
     public synchronized void addItem(Item item) {
-        String sql = "INSERT INTO items (name, description, type, start_price, bid_increment, current_price, status, seller_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO items (name, description, type, start_price, bid_increment, current_price, status, seller_id, image_path) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (
                 Connection conn = DatabaseManager.getConnection();
@@ -113,6 +122,8 @@ public class AuctionManager {
             } else {
                 pstmt.setNull(8, java.sql.Types.INTEGER);
             }
+
+            pstmt.setString(9, item.getImagePath());
 
             int affectedRows = pstmt.executeUpdate();
 
@@ -137,7 +148,7 @@ public class AuctionManager {
     }
 
     private void updateItemDB(Item item) {
-        String sql = "UPDATE items SET current_price = ?, current_winner_id = ?, status = ?, end_time = ? WHERE id = ?";
+        String sql = "UPDATE items SET current_price = ?, current_winner_id = ?, status = ?, end_time = ?, image_path = ? WHERE id = ?";
 
         try (
                 Connection conn = DatabaseManager.getConnection();
@@ -153,7 +164,8 @@ public class AuctionManager {
 
             pstmt.setString(3, item.getStatus().name());
             pstmt.setString(4, item.getEndTime() != null ? item.getEndTime().format(DB_TIME_FORMAT) : null);
-            pstmt.setInt(5, Integer.parseInt(item.getId()));
+            pstmt.setString(5, item.getImagePath());
+            pstmt.setInt(6, Integer.parseInt(item.getId()));
             pstmt.executeUpdate();
 
         } catch (SQLException e) {
@@ -196,6 +208,10 @@ public class AuctionManager {
             return "Lỗi: Phiên đấu giá đã kết thúc.";
         }
 
+        if (bidderId != null && bidderId.equals(targetItem.getSellerId())) {
+            return "Lỗi: Người bán không được đặt giá sản phẩm của chính mình.";
+        }
+
         User bidder = UserManager.getInstance().findUserById(bidderId);
 
         if (bidder == null) {
@@ -206,18 +222,43 @@ public class AuctionManager {
             return "Lỗi: Chỉ người đấu giá mới được đặt giá.";
         }
 
-        double userBalance = bidder.getBalance();
+        String previousWinnerId = targetItem.getCurrentWinnerId();
+        double previousPrice = targetItem.getCurrentPrice();
 
-        if (userBalance < bidAmount) {
-            return "Lỗi: Số dư của bạn (" + userBalance + ") không đủ để đặt mức giá này.";
-        }
-
-        double minRequiredBid = targetItem.getCurrentWinnerId() == null || targetItem.getCurrentWinnerId().isEmpty()
+        double minRequiredBid = previousWinnerId == null || previousWinnerId.isEmpty()
                 ? targetItem.getStartingPrice()
-                : targetItem.getCurrentPrice() + targetItem.getBidIncrement();
+                : previousPrice + targetItem.getBidIncrement();
 
         if (bidAmount < minRequiredBid) {
             return "Lỗi: Giá thấp nhất có thể đặt hiện tại là: " + minRequiredBid;
+        }
+
+        boolean sameLeadingBidder = previousWinnerId != null && previousWinnerId.equals(bidderId);
+        double amountToReserve = sameLeadingBidder ? bidAmount - previousPrice : bidAmount;
+
+        if (amountToReserve <= 0) {
+            return "Lỗi: Mức giá mới phải cao hơn giá hiện tại.";
+        }
+
+        if (bidder.getBalance() < amountToReserve) {
+            return "Lỗi: Số dư khả dụng của bạn (" + bidder.getBalance()
+                    + ") không đủ để đặt mức giá này. Cần thêm: " + amountToReserve;
+        }
+
+        boolean deducted = UserManager.getInstance().subtractBalance(bidderId, amountToReserve);
+
+        if (!deducted) {
+            return "Lỗi: Số dư của bạn không đủ hoặc không thể giữ tiền đặt giá.";
+        }
+
+        if (!sameLeadingBidder && previousWinnerId != null && !previousWinnerId.isEmpty()) {
+            boolean refunded = UserManager.getInstance().addBalance(previousWinnerId, previousPrice);
+
+            if (!refunded) {
+                // Hoàn lại cho người vừa đặt nếu không thể trả tiền cho người đang dẫn trước.
+                UserManager.getInstance().addBalance(bidderId, amountToReserve);
+                return "Lỗi: Không thể hoàn tiền cho người đặt giá trước đó. Vui lòng thử lại.";
+            }
         }
 
         targetItem.setCurrentWinnerId(bidderId);
@@ -225,7 +266,9 @@ public class AuctionManager {
         updateItemDB(targetItem);
         insertBidRecord(itemId, bidderId, bidAmount);
 
-        return "Đặt giá thành công! Bạn đang dẫn đầu với mức giá " + bidAmount + " cho sản phẩm " + targetItem.getItemName();
+        return "Đặt giá thành công! Hệ thống đã giữ " + amountToReserve
+                + " VNĐ từ tài khoản của bạn. Bạn đang dẫn đầu với mức giá " + bidAmount
+                + " cho sản phẩm " + targetItem.getItemName();
     }
 
 
@@ -305,6 +348,10 @@ public class AuctionManager {
                 String msg;
 
                 if (item.getCurrentWinnerId() != null && !item.getCurrentWinnerId().isEmpty()) {
+                    /*
+                     * Tiền của người thắng đã được giữ ngay khi đặt giá.
+                     * Khi phiên kết thúc chỉ cần chuyển số tiền đó cho người bán, không trừ người thắng lần nữa.
+                     */
                     UserManager.getInstance().addBalance(item.getSellerId(), item.getCurrentPrice());
                     msg = "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] đã có người thắng là user #"
                             + item.getCurrentWinnerId() + " với giá " + item.getCurrentPrice() + " VNĐ.";
@@ -330,8 +377,13 @@ public class AuctionManager {
             return "Phiên đấu giá chưa bắt đầu hoặc đã kết thúc!";
         }
 
+        if (targetItem.getCurrentWinnerId() != null && !targetItem.getCurrentWinnerId().isEmpty()) {
+            UserManager.getInstance().addBalance(targetItem.getCurrentWinnerId(), targetItem.getCurrentPrice());
+            targetItem.setCurrentWinnerId(null);
+        }
+
         targetItem.setEndTime(LocalDateTime.now().minusSeconds(1));
-        targetItem.setStatus(AuctionStatus.CLOSED);
+        targetItem.setStatus(AuctionStatus.CANCELED);
         updateItemDB(targetItem);
 
         return "success";
