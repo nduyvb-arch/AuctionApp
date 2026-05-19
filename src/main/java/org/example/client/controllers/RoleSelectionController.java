@@ -1,5 +1,8 @@
 package org.example.client.controllers;
 import org.example.client.ClientApp;
+import org.example.common.Message;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
@@ -81,24 +84,28 @@ public class RoleSelectionController implements Initializable {
 
     private void openHomeWithRole(String role) {
         try {
+            // Gửi SWITCH_ROLE lên server để cập nhật database
+            ObjectOutputStream out = ClientApp.getOutputStream();
+            if (out != null) {
+                out.reset();
+                out.writeObject(new Message("SWITCH_ROLE", role));
+                out.flush();
+
+                // Đọc response (blocking)
+                ObjectInputStream in = ClientApp.getInputStream();
+                Message response = (Message) in.readObject();
+
+                if (!"success".equals(response.getPayload())) {
+                    showError("Lỗi", "Không thể chuyển vai trò: " + response.getPayload());
+                    return;
+                }
+            }
+
             ClientApp.setSelectedRole(role);
             ClientApp.switchToHome();
         } catch (Exception e) {
             showError("Không thể mở trang chủ", e.getMessage());
         }
-    }
-
-    private String formatRole(String role) {
-        if (role == null || role.isBlank()) {
-            return "Không rõ";
-        }
-        if ("seller".equalsIgnoreCase(role)) {
-            return "Người bán";
-        }
-        if ("bidder".equalsIgnoreCase(role)) {
-            return "Người đấu giá";
-        }
-        return role;
     }
 
     private void showInfo(String title, String content) {

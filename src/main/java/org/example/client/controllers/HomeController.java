@@ -23,6 +23,7 @@ import org.example.common.Message;
 import org.example.common.model.item.Item;
 import org.example.common.model.user.User;
 
+import java.io.ByteArrayInputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.URL;
@@ -511,6 +512,36 @@ public class HomeController implements Initializable {
         card.setOnMouseEntered(event -> card.setStyle(getHoverCardStyle()));
         card.setOnMouseExited(event -> card.setStyle(getNormalCardStyle()));
 
+        // SỬA LỖI: Tải và hiển thị ảnh
+        if (item.getImagePath() != null && !item.getImagePath().isBlank()) {
+            Task<byte[]> loadImageTask = new Task<>() {
+                @Override
+                protected byte[] call() throws Exception {
+                    return ClientApp.getImageBytes(item.getImagePath());
+                }
+            };
+            loadImageTask.setOnSucceeded(e -> {
+                byte[] imageBytes = loadImageTask.getValue();
+                if (imageBytes != null && imageBytes.length > 0) {
+                    ImageView imageView = new ImageView(new Image(new ByteArrayInputStream(imageBytes)));
+                    imageView.setFitWidth(100); // Kích thước ảnh trong card
+                    imageView.setFitHeight(100);
+                    imageView.setPreserveRatio(true);
+                    imageView.setSmooth(true);
+                    card.getChildren().add(0, imageView); // Thêm ảnh vào đầu card
+                } else {
+                    card.getChildren().add(0, createImagePlaceholder("Không tải được ảnh"));
+                }
+            });
+            loadImageTask.setOnFailed(e -> {
+                System.err.println("Lỗi tải ảnh cho item " + item.getId() + ": " + loadImageTask.getException().getMessage());
+                card.getChildren().add(0, createImagePlaceholder("Lỗi tải ảnh"));
+            });
+            new Thread(loadImageTask).start();
+        } else {
+            card.getChildren().add(0, createImagePlaceholder("Chưa có ảnh"));
+        }
+
         return card;
     }
 
@@ -603,17 +634,32 @@ public class HomeController implements Initializable {
                         "-fx-border-radius: 18;"
         );
 
+        // SỬA LỖI: Tải và hiển thị ảnh trong dialog
         if (item.getImagePath() != null && !item.getImagePath().isBlank()) {
-            try {
-                ImageView imageView = new ImageView(new Image(item.getImagePath(), true));
-                imageView.setFitWidth(210);
-                imageView.setFitHeight(210);
-                imageView.setPreserveRatio(true);
-                imageView.setSmooth(true);
-                imageBox.getChildren().add(imageView);
-            } catch (Exception e) {
-                imageBox.getChildren().add(createImagePlaceholder("Không tải được\nảnh sản phẩm"));
-            }
+            Task<byte[]> loadImageTask = new Task<>() {
+                @Override
+                protected byte[] call() throws Exception {
+                    return ClientApp.getImageBytes(item.getImagePath());
+                }
+            };
+            loadImageTask.setOnSucceeded(e -> {
+                byte[] imageBytes = loadImageTask.getValue();
+                if (imageBytes != null && imageBytes.length > 0) {
+                    ImageView imageView = new ImageView(new Image(new ByteArrayInputStream(imageBytes)));
+                    imageView.setFitWidth(210);
+                    imageView.setFitHeight(210);
+                    imageView.setPreserveRatio(true);
+                    imageView.setSmooth(true);
+                    imageBox.getChildren().add(imageView);
+                } else {
+                    imageBox.getChildren().add(createImagePlaceholder("Không tải được ảnh"));
+                }
+            });
+            loadImageTask.setOnFailed(e -> {
+                System.err.println("Lỗi tải ảnh cho item " + item.getId() + ": " + loadImageTask.getException().getMessage());
+                imageBox.getChildren().add(createImagePlaceholder("Lỗi tải ảnh"));
+            });
+            new Thread(loadImageTask).start();
         } else {
             imageBox.getChildren().add(createImagePlaceholder("Chưa có ảnh\nsản phẩm"));
         }
@@ -1110,6 +1156,7 @@ public class HomeController implements Initializable {
         ClientApp.setSelectedRole(newRole);
         if (currentUser != null) {
             currentUser.setRole(newRole);
+            ClientApp.setCurrentUser(currentUser); // Đảm bảo ClientApp.currentUser được cập nhật
         }
 
         updateUIBasedOnRole();

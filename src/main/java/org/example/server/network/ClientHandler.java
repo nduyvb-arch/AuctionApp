@@ -8,15 +8,21 @@ import org.example.server.manager.UserManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.UUID;
 
 public class ClientHandler implements Runnable, Observer {
 
     private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
+    private static final String IMAGE_DIR = "images"; // Thư mục lưu ảnh trong repo
 
     private Socket clientSocket;
     private AuctionNotifier notifier;
@@ -27,6 +33,11 @@ public class ClientHandler implements Runnable, Observer {
     public ClientHandler(Socket clientSocket, AuctionNotifier notifier) {
         this.clientSocket = clientSocket;
         this.notifier = notifier;
+        // Đảm bảo thư mục lưu ảnh tồn tại
+        File imageFolder = new File(IMAGE_DIR);
+        if (!imageFolder.exists()) {
+            imageFolder.mkdirs();
+        }
     }
 
     @Override
@@ -194,44 +205,64 @@ public class ClientHandler implements Runnable, Observer {
                         String desc = (String) itemData[2];
                         double startPrice = (Double) itemData[3];
                         double increment = (Double) itemData[4];
-                        String sellerId = (String) itemData[5];
+                        String sellerId = String.valueOf(itemData[5]);
+                        int addDuration = (Integer) itemData[6];
+                        byte[] imageBytes = (byte[]) itemData[7]; // Lấy bytes của ảnh
 
-                        /*
-                         * itemData[6] là duration do AddItemViewController gửi lên.
-                         * Code server hiện tại chưa tự start auction ở đây, nên giữ nguyên luồng cũ.
-                         *
-                         * itemData[7] là imagePath mới thêm.
-                         */
-                        String imagePath = null;
-                        if (itemData.length > 7 && itemData[7] != null) {
-                            imagePath = (String) itemData[7];
+                        String savedImagePath = null;
+                        if (imageBytes != null && imageBytes.length > 0) {
+                            try {
+                                String fileName = UUID.randomUUID().toString() + ".png"; // Tạo tên file duy nhất
+                                File imageFile = new File(IMAGE_DIR, fileName);
+                                try (FileOutputStream fos = new FileOutputStream(imageFile)) {
+                                    fos.write(imageBytes);
+                                }
+                                savedImagePath = IMAGE_DIR + "/" + fileName; // Đường dẫn tương đối
+                                logger.info("Đã lưu ảnh sản phẩm vào: {}", savedImagePath);
+                            } catch (IOException e) {
+                                logger.error("Lỗi khi lưu ảnh sản phẩm: {}", e.getMessage(), e);
+                            }
                         }
 
                         Item newItem;
-
                         switch (type.toLowerCase()) {
                             case "art":
                                 newItem = new org.example.common.model.item.Art(name, type, desc, startPrice, increment);
                                 break;
-
                             case "vehicle":
                                 newItem = new org.example.common.model.item.Vehicle(name, type, desc, startPrice, increment);
                                 break;
-
                             default:
                                 newItem = new org.example.common.model.item.Electronic(name, type, desc, startPrice, increment);
                                 break;
                         }
 
                         newItem.setSellerId(sellerId);
-                        newItem.setImagePath(imagePath);
+                        newItem.setEndTime(LocalDateTime.now().plusMinutes(addDuration));
+                        newItem.setImagePath(savedImagePath); // Gán đường dẫn ảnh đã lưu
 
                         AuctionManager.getInstance().addItem(newItem);
-
                         sendMessage(new Message("ADD_ITEM_RESPONSE", "Đăng sản phẩm thành công! Mã SP: " + newItem.getId()));
                         notifier.notifyObservers(new Message("NEW_ITEM_ADDED", null));
                         break;
 
+                    case "GET_IMAGE":
+                        String imagePath = (String) inputMessage.getPayload();
+                        byte[] imageData = null;
+                        if (imagePath != null && !imagePath.isBlank()) {
+                            try {
+                                File imageFile = new File(imagePath);
+                                if (imageFile.exists()) {
+                                    imageData = Files.readAllBytes(imageFile.toPath());
+                                } else {
+                                    logger.warn("Không tìm thấy tệp ảnh: {}", imagePath);
+                                }
+                            } catch (IOException e) {
+                                logger.error("Lỗi khi đọc tệp ảnh: {}", e.getMessage(), e);
+                            }
+                        }
+                        sendMessage(new Message("GET_IMAGE_RESPONSE", imageData));
+                        break;
 
                     case "CANCEL_AUCTION":
                         if (currentUser == null || !"admin".equals(currentUser.getRole())) {

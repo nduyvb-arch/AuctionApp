@@ -83,7 +83,7 @@ public class AuctionManager {
                 item.setCurrentWinnerId(currentWinnerId);
                 item.setSellerId(sellerId);
                 item.setStatus(AuctionStatus.valueOf(statusStr));
-                item.setImagePath(imagePath);
+                item.setImagePath(imagePath); // Gán imagePath
 
                 if (endTimeStr != null && !endTimeStr.isEmpty()) {
                     item.setEndTime(LocalDateTime.parse(endTimeStr, DB_TIME_FORMAT));
@@ -123,7 +123,7 @@ public class AuctionManager {
                 pstmt.setNull(8, java.sql.Types.INTEGER);
             }
 
-            pstmt.setString(9, item.getImagePath());
+            pstmt.setString(9, item.getImagePath()); // Gán imagePath
 
             int affectedRows = pstmt.executeUpdate();
 
@@ -164,7 +164,7 @@ public class AuctionManager {
 
             pstmt.setString(3, item.getStatus().name());
             pstmt.setString(4, item.getEndTime() != null ? item.getEndTime().format(DB_TIME_FORMAT) : null);
-            pstmt.setString(5, item.getImagePath());
+            pstmt.setString(5, item.getImagePath()); // Cập nhật imagePath
             pstmt.setInt(6, Integer.parseInt(item.getId()));
             pstmt.executeUpdate();
 
@@ -318,10 +318,8 @@ public class AuctionManager {
                     String displayResult;
                     if ("ACTIVE".equals(status)) {
                         displayResult = String.valueOf(userId).equals(winnerId) ? "Đang dẫn đầu" : "Đang diễn ra";
-                    } else if ("CLOSED".equals(status)) {
-                        displayResult = String.valueOf(userId).equals(winnerId) ? "Thắng" : "Thua";
                     } else {
-                        displayResult = "Chờ";
+                        displayResult = "Đã kết thúc";
                     }
 
                     result.add(new Object[]{itemId, itemName, itemType, bidAmount, bidTime, status, displayResult});

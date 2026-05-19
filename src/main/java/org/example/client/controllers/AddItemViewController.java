@@ -19,6 +19,7 @@ import org.example.common.model.user.User;
 import java.io.File;
 import java.io.ObjectOutputStream;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.ResourceBundle;
 
 public class AddItemViewController implements Initializable {
@@ -43,6 +44,7 @@ public class AddItemViewController implements Initializable {
     private Runnable onItemCreated;
 
     private String selectedImagePath;
+    private File selectedImageFile;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -76,6 +78,7 @@ public class AddItemViewController implements Initializable {
             return;
         }
 
+        selectedImageFile = selectedFile;
         selectedImagePath = selectedFile.toURI().toString();
         selectedImageLabel.setText(selectedFile.getName());
 
@@ -84,6 +87,7 @@ public class AddItemViewController implements Initializable {
             imagePreview.setImage(image);
         } catch (Exception e) {
             showMessage("❌ Không thể đọc ảnh đã chọn.", false);
+            selectedImageFile = null;
         }
     }
 
@@ -117,13 +121,25 @@ public class AddItemViewController implements Initializable {
                 return;
             }
 
+            byte[] imageBytes = null;
+            if (selectedImageFile != null) {
+                try {
+                    imageBytes = Files.readAllBytes(selectedImageFile.toPath());
+
+                    if (imageBytes.length > 5 * 1024 * 1024) {
+                        showMessage("❌ Kích thước ảnh quá lớn (tối đa 5MB).", false);
+                        return;
+                    }
+                } catch (Exception e) {
+                    showMessage("❌ Lỗi khi đọc file ảnh từ máy của bạn.", false);
+                    return;
+                }
+            }
+
             /*
-             * Payload cũ:
+             * Payload:
              * [0] type, [1] name, [2] description, [3] startPrice,
-             * [4] bidIncrement, [5] sellerId, [6] duration
-             *
-             * Payload mới thêm:
-             * [7] imagePath
+             * [4] bidIncrement, [5] sellerId, [6] duration, [7] imageBytes
              */
             Object[] itemData = new Object[]{
                     itemTypeComboBox.getValue(),
@@ -133,7 +149,7 @@ public class AddItemViewController implements Initializable {
                     bidIncrement,
                     currentUser.getId(),
                     duration,
-                    selectedImagePath
+                    imageBytes
             };
 
             synchronized (out) {
@@ -170,6 +186,7 @@ public class AddItemViewController implements Initializable {
         durationSpinner.getValueFactory().setValue(60);
 
         selectedImagePath = null;
+        selectedImageFile = null;
         selectedImageLabel.setText("Chưa chọn ảnh");
         imagePreview.setImage(null);
     }
