@@ -3,6 +3,7 @@ package org.example.client.controllers;
 import org.example.client.ClientApp;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
@@ -12,9 +13,11 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.util.Duration;
 import org.example.common.Message;
+import org.example.common.model.user.Admin;
 import org.example.common.model.user.User;
 
 import java.net.URL;
+import java.text.Normalizer;
 import java.util.ResourceBundle;
 
 public class LoginController implements Initializable {
@@ -41,7 +44,6 @@ public class LoginController implements Initializable {
 
     @FXML
     public void onLoginButtonClicked() {
-        ClientApp.startServerListenerIfNeeded();
         String username = usernameField.getText().trim();
         String password = passwordField.getText();
 
@@ -53,53 +55,116 @@ public class LoginController implements Initializable {
         loginButton.setDisable(true);
         loginButton.setText("Đang đăng nhập...");
 
-        // 1. Giao phó việc nghe ngóng cho "Trưởng phòng"
-        ClientApp.setServerMessageHandler(message -> {
-            if ("LOGIN_RESPONSE".equals(message.getAction())) {
-                User user = (User) message.getPayload();
+        Task<LoginResult> loginTask = new Task<>() {
+            @Override
+            protected LoginResult call() throws Exception {
+                if (ClientApp.getOutputStream() == null) {
+                    ClientApp.connectToServer();
+                    ClientApp.startServerListenerIfNeeded();
+                }
 
-                // Đẩy dữ liệu về luồng giao diện chính để xử lý UI
-                Platform.runLater(() -> {
-                    if (user != null) {
-                        ClientApp.setCurrentUser(user);
-                        ClientApp.setSelectedRole("bidder");
-                        System.out.println("Đăng nhập thành công: " + user.getUsername());
+                var out = ClientApp.getOutputStream();
+                var in = ClientApp.getInputStream();
 
-                        try {
-                            ClientApp.switchToRoleSelection();
-                        } catch (Exception e) {
-                            showError("Lỗi chuyển màn hình: " + e.getMessage());
-                            resetLoginButton();
-                        }
-                    } else {
-                        // Nâng cấp: Báo lỗi chung cho cả sai mật khẩu và bị Admin khóa mõm
-                        showError("Tài khoản không tồn tại, sai mật khẩu, hoặc đã bị khóa!");
-                        resetLoginButton();
-                    }
-                });
+                String[] loginData = {username, password};
+                Message loginMsg = new Message("LOGIN", loginData);
+
+                out.writeObject(loginMsg);
+                out.flush();
+
+                Message responseMsg = (Message) in.readObject();
+
+                if (responseMsg != null && "LOGIN_RESPONSE".equals(responseMsg.getAction())) {
+                    return parseLoginResponse(responseMsg.getPayload());
+                }
+
+                return new LoginResult(null, null);
             }
-        });
+        };
 
-        // 2. Gửi gói tin đi an toàn bằng ống nước chính quy
-        try {
-            // Mở kết nối nếu chưa có, và nhớ KÍCH HOẠT luồng nghe ngóng
-            if (ClientApp.getOutputStream() == null) {
-                ClientApp.connectToServer();
-                ClientApp.startServerListenerIfNeeded();
+        loginTask.setOnSucceeded(event -> Platform.runLater(() -> {
+            LoginResult result = loginTask.getValue();
+            User user = result.user;
+
+            if (user == null) {
+                showError("Tài khoản không tồn tại, sai mật khẩu, hoặc đã bị khóa!");
+                resetLoginButton();
+                return;
             }
 
-            String[] loginData = {username, password};
-            ClientApp.sendMessage(new Message("LOGIN", loginData));
+            ClientApp.setCurrentUser(user);
 
-        } catch (Exception e) {
+            String objectRole = normalizeRole(user.getRole());
+            String dbRole = normalizeRole(result.roleFromServer);
+
+            System.out.println("Đăng nhập thành công: " + user.getUsername());
+            System.out.println("Role object: " + objectRole + " | Role server/db: " + dbRole);
+
+            try {
+                if (user instanceof Admin || "admin".equals(objectRole) || "admin".equals(dbRole)) {
+                    ClientApp.setSelectedRole("admin");
+                    ClientApp.switchToAdmin();
+                } else {
+                    ClientApp.setSelectedRole("bidder");
+                    ClientApp.switchToRoleSelection();
+                }
+            } catch (Exception e) {
+                showError("Lỗi chuyển màn hình: " + e.getMessage());
+                resetLoginButton();
+            }
+        }));
+
+        loginTask.setOnFailed(event -> Platform.runLater(() -> {
             showError("Lỗi kết nối tới Server: Server chưa mở hoặc mạng rớt!");
             resetLoginButton();
-        }
+        }));
+
+        new Thread(loginTask).start();
     }
 
     private void resetLoginButton() {
         loginButton.setDisable(false);
         loginButton.setText("Đăng nhập");
+    }
+
+    private LoginResult parseLoginResponse(Object payload) {
+        if (payload instanceof Object[]) {
+            Object[] data = (Object[]) payload;
+            User user = data.length > 0 && data[0] instanceof User ? (User) data[0] : null;
+            String roleFromServer = data.length > 1 && data[1] != null ? String.valueOf(data[1]) : null;
+            return new LoginResult(user, roleFromServer);
+        }
+
+        if (payload instanceof User) {
+            return new LoginResult((User) payload, null);
+        }
+
+        return new LoginResult(null, null);
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null) {
+            return "";
+        }
+
+        String normalizedRole = Normalizer.normalize(role, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .trim()
+                .toLowerCase()
+                .replace("đ", "d")
+                .replace("_", "")
+                .replace("-", "")
+                .replaceAll("[\\s\u00A0]+", "");
+
+        if ("administrator".equals(normalizedRole)
+                || "superadmin".equals(normalizedRole)
+                || "root".equals(normalizedRole)
+                || "quantri".equals(normalizedRole)
+                || "quantrivien".equals(normalizedRole)) {
+            return "admin";
+        }
+
+        return normalizedRole;
     }
 
     @FXML
@@ -113,7 +178,6 @@ public class LoginController implements Initializable {
 
     @FXML
     public void onForgotPasswordClicked() {
-        // Chức năng quên mật khẩu nếu bạn muốn hoàn thiện sau.
         showError("Chức năng đang được nâng cấp!");
     }
 
@@ -124,5 +188,15 @@ public class LoginController implements Initializable {
         PauseTransition pause = new PauseTransition(Duration.seconds(5));
         pause.setOnFinished(event -> errorLabel.setText(""));
         pause.play();
+    }
+
+    private static class LoginResult {
+        private final User user;
+        private final String roleFromServer;
+
+        private LoginResult(User user, String roleFromServer) {
+            this.user = user;
+            this.roleFromServer = roleFromServer;
+        }
     }
 }

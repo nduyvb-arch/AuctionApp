@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox spacing="18" xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.client.controllers.admin.AdminOverviewController">
+    <children>
+        <HBox alignment="CENTER_LEFT">
+            <children>
+                <Label text="Tình hình hiện tại của hệ thống" textFill="#475569" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Button text="Làm mới" onAction="#onRefreshClicked"
+                        style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 9 18; -fx-cursor: hand;" />
+            </children>
+        </HBox>
+
+        <GridPane hgap="18" vgap="18">
+            <children>
+                <VBox prefWidth="230" spacing="8" style="-fx-background-color: white; -fx-background-radius: 18; -fx-border-color: #e2e8f0; -fx-border-radius: 18; -fx-padding: 20; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 14, 0, 0, 4);" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                    <children>
+                        <Label text="Tổng người dùng" textFill="#64748b" />
+                        <Label fx:id="totalUsersLabel" text="0" textFill="#0f172a">
+                            <font><Font name="System Bold" size="30" /></font>
+                        </Label>
+                    </children>
+                </VBox>
+
+                <VBox prefWidth="230" spacing="8" style="-fx-background-color: white; -fx-background-radius: 18; -fx-border-color: #e2e8f0; -fx-border-radius: 18; -fx-padding: 20; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 14, 0, 0, 4);" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                    <children>
+                        <Label text="Tổng sản phẩm" textFill="#64748b" />
+                        <Label fx:id="totalItemsLabel" text="0" textFill="#0f172a">
+                            <font><Font name="System Bold" size="30" /></font>
+                        </Label>
+                    </children>
+                </VBox>
+
+                <VBox prefWidth="230" spacing="8" style="-fx-background-color: white; -fx-background-radius: 18; -fx-border-color: #dbeafe; -fx-border-radius: 18; -fx-padding: 20; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 14, 0, 0, 4);" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                    <children>
+                        <Label text="Phiên đang chạy" textFill="#64748b" />
+                        <Label fx:id="activeAuctionsLabel" text="0" textFill="#2563eb">
+                            <font><Font name="System Bold" size="30" /></font>
+                        </Label>
+                    </children>
+                </VBox>
+
+                <VBox prefWidth="230" spacing="8" style="-fx-background-color: white; -fx-background-radius: 18; -fx-border-color: #dcfce7; -fx-border-radius: 18; -fx-padding: 20; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 14, 0, 0, 4);" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                    <children>
+                        <Label text="Phiên đang chờ" textFill="#64748b" />
+                        <Label fx:id="pendingAuctionsLabel" text="0" textFill="#16a34a">
+                            <font><Font name="System Bold" size="30" /></font>
+                        </Label>
+                    </children>
+                </VBox>
+
+                <VBox prefWidth="230" spacing="8" style="-fx-background-color: white; -fx-background-radius: 18; -fx-border-color: #fee2e2; -fx-border-radius: 18; -fx-padding: 20; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 14, 0, 0, 4);" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                    <children>
+                        <Label text="Đã kết thúc / hủy" textFill="#64748b" />
+                        <Label fx:id="closedAuctionsLabel" text="0" textFill="#dc2626">
+                            <font><Font name="System Bold" size="30" /></font>
+                        </Label>
+                    </children>
+                </VBox>
+
+                <VBox prefWidth="230" spacing="8" style="-fx-background-color: white; -fx-background-radius: 18; -fx-border-color: #e2e8f0; -fx-border-radius: 18; -fx-padding: 20; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 14, 0, 0, 4);" GridPane.columnIndex="2" GridPane.rowIndex="1">
+                    <children>
+                        <Label text="Tổng số dư user" textFill="#64748b" />
+                        <Label fx:id="totalBalanceLabel" text="0 VNĐ" textFill="#0f172a">
+                            <font><Font name="System Bold" size="22" /></font>
+                        </Label>
+                    </children>
+                </VBox>
+            </children>
+        </GridPane>
+
+        <VBox spacing="10" style="-fx-background-color: #eff6ff; -fx-background-radius: 18; -fx-padding: 18;">
+            <children>
+                <Label text="Luồng quản trị gợi ý" textFill="#0f172a">
+                    <font><Font name="System Bold" size="15" /></font>
+                </Label>
+                <Label text="1. Theo dõi tổng quan → 2. Kiểm tra người dùng bất thường → 3. Kiểm tra sản phẩm/phiên đấu giá → 4. Hủy hoặc kết thúc phiên khi cần." wrapText="true" textFill="#475569" />
+            </children>
+        </VBox>
+    </children>
+</VBox>

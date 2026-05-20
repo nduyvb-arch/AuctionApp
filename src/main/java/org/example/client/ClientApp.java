@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.text.Normalizer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -51,10 +52,6 @@ public class ClientApp extends Application {
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 8888;
 
-    /**
-     * Vai trò người dùng chọn ở màn RoleSelection.
-     * Không phụ thuộc cứng vào getRole() của tài khoản, vì màn này dùng để chọn luồng giao diện.
-     */
     private static String selectedRole = "bidder";
 
     @Override
@@ -135,6 +132,11 @@ public class ClientApp extends Application {
     }
 
     public static void switchToRoleSelection() throws Exception {
+        if (isAdminUser(currentUser)) {
+            switchToAdmin();
+            return;
+        }
+
         FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/RoleSelection.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
@@ -164,6 +166,14 @@ public class ClientApp extends Application {
 
         Scene scene = new Scene(root);
         applyScene(scene, "Hệ thống đấu giá - Tài khoản", 1000, 700, 1200, 800);
+    }
+
+    public static void switchToAdmin() throws Exception {
+        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/admin/AdminDashboard.fxml"));
+        Parent root = loader.load();
+        Scene scene = new Scene(root);
+
+        applyScene(scene, "Hệ thống đấu giá - Quản trị", 1100, 720, 1280, 820);
     }
 
     public static void switchToSignUp() throws Exception {
@@ -256,6 +266,28 @@ public class ClientApp extends Application {
         serverListenerThread.start();
     }
 
+    public static boolean isAdminUser(User user) {
+        if (user == null || user.getRole() == null) {
+            return false;
+        }
+
+        String normalizedRole = Normalizer.normalize(user.getRole(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .trim()
+                .toLowerCase()
+                .replace("đ", "d")
+                .replace("_", "")
+                .replace("-", "")
+                .replaceAll("[\\s\u00A0]+", "");
+
+        return "admin".equals(normalizedRole)
+                || "administrator".equals(normalizedRole)
+                || "superadmin".equals(normalizedRole)
+                || "root".equals(normalizedRole)
+                || "quantri".equals(normalizedRole)
+                || "quantrivien".equals(normalizedRole);
+    }
+
     public static byte[] getImageBytes(String imagePath) throws Exception {
         if (outputStream == null || imagePath == null || imagePath.isBlank()) {
             return null;
@@ -263,7 +295,6 @@ public class ClientApp extends Application {
 
         imageResponseFuture = new CompletableFuture<>();
 
-        // Dùng hàm sendMessage mới tạo thay cho cục synchronized cũ
         sendMessage(new Message("GET_IMAGE", imagePath));
 
         try {
@@ -297,7 +328,7 @@ public class ClientApp extends Application {
     public static synchronized void sendMessage(Message message) {
         try {
             if (outputStream != null && socket != null && !socket.isClosed()) {
-                outputStream.reset(); // Dọn rác ống nước
+                outputStream.reset();
                 outputStream.writeObject(message);
                 outputStream.flush();
             }

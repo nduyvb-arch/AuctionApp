@@ -61,6 +61,7 @@ public class DatabaseManager {
                     + "is_banned TINYINT(1) DEFAULT 0"
                     + ")";
             stmt.execute(sqlUsers);
+            ensureUsersRequiredColumns(stmt);
 
             // 2. Bảng Items
             String sqlItems = "CREATE TABLE IF NOT EXISTS items ("
@@ -97,6 +98,30 @@ public class DatabaseManager {
             logger.info("Đã khởi tạo/kiểm tra CSDL thành công!");
         } catch (SQLException e) {
             logger.error("Lỗi khi tự động tạo bảng: {}", e.getMessage(), e);
+        }
+    }
+
+    private static void ensureUsersRequiredColumns(Statement stmt) {
+        addColumnIfMissing(stmt, "users", "password", "VARCHAR(255) NOT NULL DEFAULT ''");
+        addColumnIfMissing(stmt, "users", "role", "VARCHAR(50) NOT NULL DEFAULT 'bidder'");
+        addColumnIfMissing(stmt, "users", "balance", "DECIMAL(15,2) DEFAULT 0.00");
+        addColumnIfMissing(stmt, "users", "is_banned", "TINYINT(1) DEFAULT 0");
+    }
+
+    private static void addColumnIfMissing(Statement stmt, String tableName, String columnName, String columnDefinition) {
+        try {
+            stmt.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnDefinition);
+            logger.info("Đã thêm cột {} vào bảng {}.", columnName, tableName);
+        } catch (SQLException e) {
+            /*
+             * MySQL trả mã lỗi 1060 hoặc SQLState 42S21 khi cột đã tồn tại.
+             * Đây không phải lỗi thật, vì app có thể đang chạy trên database đã đủ cột.
+             */
+            if (e.getErrorCode() == 1060 || "42S21".equals(e.getSQLState())) {
+                return;
+            }
+
+            logger.warn("Không thể kiểm tra/thêm cột {} vào bảng {}: {}", columnName, tableName, e.getMessage());
         }
     }
 

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox spacing="14" xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.client.controllers.admin.AdminItemsController">
+    <children>
+        <HBox alignment="CENTER_LEFT" spacing="10">
+            <children>
+                <TextField fx:id="searchField" promptText="Tìm sản phẩm, loại, người bán, trạng thái..."
+                           onKeyReleased="#onSearchChanged"
+                           prefWidth="400"
+                           style="-fx-background-color: white; -fx-background-radius: 10; -fx-border-color: #e2e8f0; -fx-border-radius: 10; -fx-padding: 10;" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Button text="Làm mới" onAction="#onRefreshClicked"
+                        style="-fx-background-color: #e2e8f0; -fx-text-fill: #334155; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 9 18; -fx-cursor: hand;" />
+                <Button text="Xem chi tiết" onAction="#onViewDetailClicked"
+                        style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 9 18; -fx-cursor: hand;" />
+                <Button text="Xóa sản phẩm" onAction="#onDeleteClicked"
+                        style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 9 18; -fx-cursor: hand;" />
+            </children>
+        </HBox>
+
+        <VBox spacing="10" VBox.vgrow="ALWAYS"
+              style="-fx-background-color: white; -fx-background-radius: 18; -fx-border-color: #e2e8f0; -fx-border-radius: 18; -fx-padding: 16; -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 14, 0, 0, 4);">
+            <children>
+                <Label text="Danh sách sản phẩm toàn hệ thống" textFill="#0f172a">
+                    <font><Font name="System Bold" size="16" /></font>
+                </Label>
+                <TableView fx:id="itemsTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="idColumn" text="Mã SP" prefWidth="90" />
+                        <TableColumn fx:id="nameColumn" text="Tên sản phẩm" prefWidth="220" />
+                        <TableColumn fx:id="typeColumn" text="Loại" prefWidth="110" />
+                        <TableColumn fx:id="sellerColumn" text="Người bán" prefWidth="110" />
+                        <TableColumn fx:id="priceColumn" text="Giá hiện tại" prefWidth="160" />
+                        <TableColumn fx:id="statusColumn" text="Trạng thái" prefWidth="130" />
+                        <TableColumn fx:id="winnerColumn" text="Người dẫn" prefWidth="110" />
+                    </columns>
+                </TableView>
+            </children>
+        </VBox>
+    </children>
+</VBox>

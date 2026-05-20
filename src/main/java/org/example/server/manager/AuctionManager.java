@@ -387,6 +387,82 @@ public class AuctionManager {
         return "success";
     }
 
+    public synchronized String endAuctionByAdmin(String itemId) {
+        Item targetItem = findItemById(itemId);
+
+        if (targetItem == null) {
+            return "Không tìm thấy sản phẩm này!";
+        }
+
+        if (targetItem.getStatus() != AuctionStatus.ACTIVE) {
+            return "Chỉ có thể kết thúc phiên đang diễn ra.";
+        }
+
+        targetItem.setStatus(AuctionStatus.CLOSED);
+        targetItem.setEndTime(LocalDateTime.now());
+        updateItemDB(targetItem);
+
+        if (targetItem.getCurrentWinnerId() != null && !targetItem.getCurrentWinnerId().isEmpty()) {
+            UserManager.getInstance().addBalance(targetItem.getSellerId(), targetItem.getCurrentPrice());
+            return "Đã kết thúc phiên đấu giá. Người thắng là user #" + targetItem.getCurrentWinnerId()
+                    + " với giá " + targetItem.getCurrentPrice() + " VNĐ.";
+        }
+
+        return "Đã kết thúc phiên đấu giá. Sản phẩm chưa có người đặt giá.";
+    }
+
+    public synchronized String deleteItemByAdmin(String itemId) {
+        Item targetItem = findItemById(itemId);
+
+        if (targetItem == null) {
+            return "Không tìm thấy sản phẩm này!";
+        }
+
+        if (targetItem.getStatus() == AuctionStatus.ACTIVE
+                && targetItem.getCurrentWinnerId() != null
+                && !targetItem.getCurrentWinnerId().isEmpty()) {
+            UserManager.getInstance().addBalance(targetItem.getCurrentWinnerId(), targetItem.getCurrentPrice());
+        }
+
+        String deleteBidsSql = "DELETE FROM bids WHERE item_id = ?";
+        String deleteItemSql = "DELETE FROM items WHERE id = ?";
+
+        try (Connection conn = DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (
+                    PreparedStatement deleteBidsStmt = conn.prepareStatement(deleteBidsSql);
+                    PreparedStatement deleteItemStmt = conn.prepareStatement(deleteItemSql)
+            ) {
+                int numericItemId = Integer.parseInt(itemId);
+
+                deleteBidsStmt.setInt(1, numericItemId);
+                deleteBidsStmt.executeUpdate();
+
+                deleteItemStmt.setInt(1, numericItemId);
+                int affectedRows = deleteItemStmt.executeUpdate();
+
+                if (affectedRows <= 0) {
+                    conn.rollback();
+                    return "Không thể xóa sản phẩm khỏi database.";
+                }
+
+                conn.commit();
+                auctionItems.removeIf(item -> item.getId().equals(itemId));
+                return "Đã xóa sản phẩm thành công.";
+            } catch (Exception e) {
+                conn.rollback();
+                logger.error("Lỗi xóa sản phẩm {}: {}", itemId, e.getMessage(), e);
+                return "Lỗi khi xóa sản phẩm: " + e.getMessage();
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (Exception e) {
+            logger.error("Lỗi kết nối khi xóa sản phẩm {}: {}", itemId, e.getMessage(), e);
+            return "Lỗi khi xóa sản phẩm: " + e.getMessage();
+        }
+    }
+
     private Item findItemById(String itemId) {
         return auctionItems.stream()
                 .filter(item -> item.getId().equals(itemId))

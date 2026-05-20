@@ -56,8 +56,15 @@ public class ClientHandler implements Runnable, Observer {
                     case "LOGIN":
                         String[] loginData = (String[]) inputMessage.getPayload();
                         User loggedInUser = UserManager.getInstance().login(loginData[0], loginData[1]);
+                        String normalizedRoleFromDb = UserManager.getInstance().getNormalizedRoleFromDB(loginData[0]);
                         currentUser = loggedInUser;
-                        sendMessage(new Message("LOGIN_RESPONSE", loggedInUser));
+
+                        logger.info("LOGIN user={} objectRole={} dbRole={}",
+                                loginData[0],
+                                loggedInUser == null ? null : loggedInUser.getRole(),
+                                normalizedRoleFromDb);
+
+                        sendMessage(new Message("LOGIN_RESPONSE", new Object[]{loggedInUser, normalizedRoleFromDb}));
                         break;
 
                     case "REGISTER":
@@ -264,8 +271,117 @@ public class ClientHandler implements Runnable, Observer {
                         sendMessage(new Message("GET_IMAGE_RESPONSE", imageData));
                         break;
 
+                    case "GET_ALL_USERS":
+                        if (currentUser == null || !"admin".equalsIgnoreCase(currentUser.getRole())) {
+                            sendMessage(new Message("GET_ALL_USERS_RESPONSE", new ArrayList<User>()));
+                            break;
+                        }
+                        sendMessage(new Message("GET_ALL_USERS_RESPONSE", new ArrayList<>(UserManager.getInstance().getAllUsers())));
+                        break;
+
+                    case "BAN_USER":
+                        if (currentUser == null || !"admin".equalsIgnoreCase(currentUser.getRole())) {
+                            sendMessage(new Message("BAN_USER_RESPONSE", "Cảnh báo: Chỉ admin mới có quyền khóa tài khoản."));
+                            break;
+                        }
+                        String banUserId = (String) inputMessage.getPayload();
+                        String banResult = UserManager.getInstance().banUser(banUserId);
+                        sendMessage(new Message("BAN_USER_RESPONSE", "success".equals(banResult) ? "Đã khóa tài khoản thành công." : banResult));
+                        break;
+
+                    case "UNBAN_USER":
+                        if (currentUser == null || !"admin".equalsIgnoreCase(currentUser.getRole())) {
+                            sendMessage(new Message("UNBAN_USER_RESPONSE", "Cảnh báo: Chỉ admin mới có quyền mở khóa tài khoản."));
+                            break;
+                        }
+                        String unbanUserId = (String) inputMessage.getPayload();
+                        String unbanResult = UserManager.getInstance().unbanUser(unbanUserId);
+                        sendMessage(new Message("UNBAN_USER_RESPONSE", "success".equals(unbanResult) ? "Đã mở khóa tài khoản thành công." : unbanResult));
+                        break;
+
+                    case "GET_ALL_ITEMS_ADMIN":
+                        if (currentUser == null || !"admin".equalsIgnoreCase(currentUser.getRole())) {
+                            sendMessage(new Message("GET_ALL_ITEMS_ADMIN_RESPONSE", new ArrayList<Item>()));
+                            break;
+                        }
+
+                        java.util.List<String> adminClosedNotifications = AuctionManager.getInstance().checkAndCloseExpiredAuctions();
+
+                        for (String notification : adminClosedNotifications) {
+                            notifier.notifyObservers(new Message("AUCTION_RESULT_NOTIFICATION", notification));
+                        }
+
+                        sendMessage(new Message(
+                                "GET_ALL_ITEMS_ADMIN_RESPONSE",
+                                new ArrayList<>(AuctionManager.getInstance().getAllItems())
+                        ));
+                        break;
+
+                    case "CANCEL_AUCTION_ADMIN":
+                        if (currentUser == null || !"admin".equalsIgnoreCase(currentUser.getRole())) {
+                            sendMessage(new Message("CANCEL_AUCTION_RESPONSE", "Cảnh báo: Chỉ admin mới có quyền hủy phiên đấu giá."));
+                            break;
+                        }
+
+                        String adminCancelItemId = (String) inputMessage.getPayload();
+                        String adminCancelResult = AuctionManager.getInstance().cancelAuctionByAdmin(adminCancelItemId);
+
+                        if ("success".equals(adminCancelResult)) {
+                            logger.info("Admin {} đã hủy phiên đấu giá mã {}", currentUser.getUsername(), adminCancelItemId);
+                            sendMessage(new Message("CANCEL_AUCTION_RESPONSE", "Đã hủy phiên đấu giá thành công."));
+                            notifier.notifyObservers(new Message("SYSTEM_NOTIFICATION", "⚠️ [ADMIN] Phiên đấu giá mã " + adminCancelItemId + " đã bị hủy."));
+
+                            Item adminCanceledItem = AuctionManager.getInstance().getAllItems().stream()
+                                    .filter(i -> i.getId().equals(adminCancelItemId))
+                                    .findFirst()
+                                    .orElse(null);
+
+                            if (adminCanceledItem != null) {
+                                notifier.notifyObservers(new Message("ITEM_UPDATE", adminCanceledItem));
+                            } else {
+                                notifier.notifyObservers(new Message("NEW_ITEM_ADDED", null));
+                            }
+                        } else {
+                            sendMessage(new Message("CANCEL_AUCTION_RESPONSE", adminCancelResult));
+                        }
+                        break;
+
+                    case "END_AUCTION_ADMIN":
+                        if (currentUser == null || !"admin".equalsIgnoreCase(currentUser.getRole())) {
+                            sendMessage(new Message("END_AUCTION_ADMIN_RESPONSE", "Cảnh báo: Chỉ admin mới có quyền kết thúc phiên đấu giá."));
+                            break;
+                        }
+
+                        String endItemId = (String) inputMessage.getPayload();
+                        String endResult = AuctionManager.getInstance().endAuctionByAdmin(endItemId);
+                        sendMessage(new Message("END_AUCTION_ADMIN_RESPONSE", endResult));
+
+                        Item endedItem = AuctionManager.getInstance().getAllItems().stream()
+                                .filter(i -> i.getId().equals(endItemId))
+                                .findFirst()
+                                .orElse(null);
+
+                        if (endedItem != null) {
+                            notifier.notifyObservers(new Message("ITEM_UPDATE", endedItem));
+                        } else {
+                            notifier.notifyObservers(new Message("NEW_ITEM_ADDED", null));
+                        }
+                        break;
+
+                    case "DELETE_ITEM_ADMIN":
+                        if (currentUser == null || !"admin".equalsIgnoreCase(currentUser.getRole())) {
+                            sendMessage(new Message("DELETE_ITEM_ADMIN_RESPONSE", "Cảnh báo: Chỉ admin mới có quyền xóa sản phẩm."));
+                            break;
+                        }
+
+                        String deleteItemId = (String) inputMessage.getPayload();
+                        String deleteResult = AuctionManager.getInstance().deleteItemByAdmin(deleteItemId);
+                        sendMessage(new Message("DELETE_ITEM_ADMIN_RESPONSE", deleteResult));
+                        notifier.notifyObservers(new Message("NEW_ITEM_ADDED", null));
+                        break;
+
                     case "CANCEL_AUCTION":
-                        if (currentUser == null || !"admin".equals(currentUser.getRole())) {
+                        if (currentUser == null || !"admin".equalsIgnoreCase(currentUser.getRole())) {
                             sendMessage(new Message("CANCEL_AUCTION_RESPONSE", "Cảnh báo: Chỉ admin mới có quyền hủy phiên đấu giá"));
                             break;
                         }
