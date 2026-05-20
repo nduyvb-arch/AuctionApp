@@ -17,20 +17,14 @@ import java.util.ResourceBundle;
 
 public class RoleSelectionController implements Initializable {
 
-    @FXML
-    private Label userInfoLabel;
-
-    @FXML
-    private Label accountNameLabel;
-
-    @FXML
-    private Label balanceLabel;
-
-    @FXML
-    private Button accountButton;
+    @FXML private Label userInfoLabel;
+    @FXML private Label accountNameLabel;
+    @FXML private Label balanceLabel;
+    @FXML private Button accountButton;
 
     private User currentUser;
     private final NumberFormat currencyFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
+    private String selectedRoleForSwitch;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -48,6 +42,8 @@ public class RoleSelectionController implements Initializable {
             return;
         }
 
+        // Đăng ký handler để xử lý các phản hồi từ server
+        ClientApp.setServerMessageHandler(this::handleServerMessage);
         updateAccountInfo();
     }
 
@@ -58,10 +54,27 @@ public class RoleSelectionController implements Initializable {
             balanceLabel.setText("0 VNĐ");
             return;
         }
-
         userInfoLabel.setText("Xin chào, " + currentUser.getUsername());
         accountNameLabel.setText(currentUser.getUsername());
         balanceLabel.setText(currencyFormat.format(currentUser.getBalance()) + " VNĐ");
+    }
+
+    private void handleServerMessage(Message message) {
+        if (!"SWITCH_ROLE_RESPONSE".equals(message.getAction())) {
+            return;
+        }
+
+        if ("success".equals(message.getPayload())) {
+            try {
+                // Chuyển màn hình với vai trò đã được chọn trước đó
+                ClientApp.setSelectedRole(selectedRoleForSwitch);
+                ClientApp.switchToHome();
+            } catch (Exception e) {
+                showError("Lỗi giao diện", "Không thể mở trang chủ: " + e.getMessage());
+            }
+        } else {
+            showError("Lỗi", "Không thể chuyển vai trò: " + message.getPayload());
+        }
     }
 
     @FXML
@@ -77,7 +90,9 @@ public class RoleSelectionController implements Initializable {
     @FXML
     private void onAccountClicked() {
         try {
-            ClientApp.switchToAccount();
+            // Đánh dấu để khi quay lại từ màn hình account, sẽ mở lại màn hình role selection
+            ClientApp.setOpenAccountOnHomeLoad(true);
+            ClientApp.switchToHome();
         } catch (Exception e) {
             showError("Không thể mở tài khoản", e.getMessage());
         }
@@ -86,9 +101,6 @@ public class RoleSelectionController implements Initializable {
     @FXML
     private void onLogoutClicked() {
         try {
-            ClientApp.setSelectedRole("bidder");
-            ClientApp.setCurrentUser(null);
-            ClientApp.closeConnection();
             ClientApp.switchToLogin();
         } catch (Exception e) {
             showError("Không thể đăng xuất", e.getMessage());
@@ -96,45 +108,19 @@ public class RoleSelectionController implements Initializable {
     }
 
     private void openHomeWithRole(String role) {
-        // 1. Cài đặt tai nghe đón phản hồi từ Server
-        ClientApp.setServerMessageHandler(message -> {
-            if ("SWITCH_ROLE_RESPONSE".equals(message.getAction())) {
-                Platform.runLater(() -> {
-                    if ("success".equals(message.getPayload())) {
-                        try {
-                            ClientApp.setSelectedRole(role);
-                            ClientApp.switchToHome();
-                        } catch (Exception e) {
-                            showError("Lỗi giao diện", "Không thể mở trang chủ: " + e.getMessage());
-                        }
-                    } else {
-                        showError("Lỗi", "Không thể chuyển vai trò: " + message.getPayload());
-                    }
-                });
-            }
-        });
-
-        // 2. Gửi lệnh chuyển vai trò một cách an toàn
-        try {
-            ClientApp.sendMessage(new Message("SWITCH_ROLE", role));
-        } catch (Exception e) {
-            showError("Lỗi mạng", "Không thể gửi yêu cầu: " + e.getMessage());
-        }
-    }
-
-    private void showInfo(String title, String content) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(content);
-        alert.showAndWait();
+        // Lưu lại vai trò đã chọn để sử dụng sau khi server phản hồi
+        this.selectedRoleForSwitch = role;
+        // Gửi yêu cầu chuyển vai trò tới server
+        ClientApp.sendMessage(new Message("SWITCH_ROLE", role));
     }
 
     private void showError(String title, String content) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(title);
-        alert.setContentText(content);
-        alert.showAndWait();
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle(title);
+            alert.setHeaderText(title);
+            alert.setContentText(content);
+            alert.showAndWait();
+        });
     }
 }
