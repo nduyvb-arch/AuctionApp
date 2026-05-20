@@ -17,6 +17,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.text.Normalizer;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class ClientApp extends Application {
@@ -44,6 +46,8 @@ public class ClientApp extends Application {
 
     private static volatile Consumer<Message> serverMessageHandler;
     private static volatile Thread serverListenerThread;
+
+    private static volatile CompletableFuture<byte[]> imageResponseFuture;
 
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 8888;
@@ -161,7 +165,7 @@ public class ClientApp extends Application {
             org.example.client.controllers.AccountViewController accountController =
                     (org.example.client.controllers.AccountViewController) controller;
 
-            accountController.setup(outputStream, currentUser, ClientApp::setCurrentUser);
+            accountController.setup(currentUser, ClientApp::setCurrentUser);
         }
 
         Scene scene = new Scene(root);
@@ -239,6 +243,13 @@ public class ClientApp extends Application {
                         continue;
                     }
 
+                    if ("GET_IMAGE_RESPONSE".equals(message.getAction())) {
+                        if (imageResponseFuture != null) {
+                            imageResponseFuture.complete((byte[]) message.getPayload());
+                        }
+                        continue;
+                    }
+
                     Platform.runLater(() -> {
                         Consumer<Message> handler = serverMessageHandler;
 
@@ -279,6 +290,22 @@ public class ClientApp extends Application {
                 || "root".equals(normalizedRole)
                 || "quantri".equals(normalizedRole)
                 || "quantrivien".equals(normalizedRole);
+    public static byte[] getImageBytes(String imagePath) throws Exception {
+        if (outputStream == null || imagePath == null || imagePath.isBlank()) {
+            return null;
+        }
+
+        imageResponseFuture = new CompletableFuture<>();
+
+        // Dùng hàm sendMessage mới tạo thay cho cục synchronized cũ
+        sendMessage(new Message("GET_IMAGE", imagePath));
+
+        try {
+            return imageResponseFuture.get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            logger.error("Lỗi hoặc timeout khi tải ảnh: {}", e.getMessage());
+            return null;
+        }
     }
 
     public static User getCurrentUser() {
@@ -299,6 +326,18 @@ public class ClientApp extends Application {
             return;
         }
         selectedRole = role.trim().toLowerCase();
+    }
+
+    public static synchronized void sendMessage(Message message) {
+        try {
+            if (outputStream != null && socket != null && !socket.isClosed()) {
+                outputStream.reset(); // Dọn rác ống nước
+                outputStream.writeObject(message);
+                outputStream.flush();
+            }
+        } catch (IOException e) {
+            logger.error("Lỗi khi gửi tin nhắn tới Server: {}", e.getMessage());
+        }
     }
 
     public static boolean isSellerSelected() {

@@ -76,12 +76,12 @@ public class DatabaseManager {
                     + "current_winner_id INT, "
                     + "status VARCHAR(20) NOT NULL DEFAULT 'PENDING', "
                     + "end_time DATETIME, "
-                    + "image_path TEXT, "
+                    + "image_path TEXT, " // Thêm cột image_path
                     + "FOREIGN KEY (seller_id) REFERENCES users(id), "
                     + "FOREIGN KEY (current_winner_id) REFERENCES users(id)"
                     + ")";
             stmt.execute(sqlItems);
-            ensureItemsImagePathColumn(stmt);
+            ensureItemsImagePathColumn(stmt); // Đảm bảo cột image_path tồn tại
 
             // 3. Bảng Bids
             String sqlBids = "CREATE TABLE IF NOT EXISTS bids ("
@@ -130,14 +130,11 @@ public class DatabaseManager {
             stmt.execute("ALTER TABLE items ADD COLUMN image_path TEXT");
             logger.info("Đã thêm cột image_path vào bảng items.");
         } catch (SQLException e) {
-            /*
-             * MySQL trả mã lỗi 1060 hoặc SQLState 42S21 khi cột đã tồn tại.
-             * Đây không phải lỗi thật, vì app có thể đang chạy trên database đã được nâng cấp.
-             */
+            // MySQL trả mã lỗi 1060 hoặc SQLState 42S21 khi cột đã tồn tại.
+            // Đây không phải lỗi thật, vì app có thể đang chạy trên database đã được nâng cấp.
             if (e.getErrorCode() == 1060 || "42S21".equals(e.getSQLState())) {
                 return;
             }
-
             logger.warn("Không thể kiểm tra/thêm cột image_path: {}", e.getMessage());
         }
     }

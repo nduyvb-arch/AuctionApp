@@ -23,8 +23,7 @@ import org.example.common.Message;
 import org.example.common.model.item.Item;
 import org.example.common.model.user.User;
 
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.ByteArrayInputStream;
 import java.net.URL;
 import java.text.NumberFormat;
 import java.time.LocalDateTime;
@@ -37,14 +36,6 @@ import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 import javafx.util.Duration;
 
-/**
- * Controller chính của HomeMenu.fxml.
- *
- * Đã bỏ Watchlist:
- * - Trang chủ hiển thị toàn bộ sản phẩm.
- * - Card sản phẩm chỉ hiện: tên sản phẩm, giá cao nhất hiện tại, số lần đặt giá.
- * - Bấm vào card sẽ mở popup chi tiết, có thông tin sản phẩm, khung ảnh và nút đặt giá.
- */
 public class HomeController implements Initializable {
 
     // ═══════════════════════════════════════════════════════════
@@ -109,8 +100,6 @@ public class HomeController implements Initializable {
     private final List<BidHistoryController.BidHistoryRecord> bidHistory = new ArrayList<>();
     private final List<String> notifications = new ArrayList<>();
 
-    private ObjectOutputStream out;
-    private ObjectInputStream in;
     private User currentUser;
     private boolean sellerMode;
 
@@ -122,14 +111,6 @@ public class HomeController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         currentUser = ClientApp.getCurrentUser();
-        out = ClientApp.getOutputStream();
-        in = ClientApp.getInputStream();
-
-        /*
-         * RoleSelection.fxml lưu vai trò vào ClientApp.setSelectedRole(...).
-         * Không lấy currentUser.getRole() ở đây, vì User có thể vẫn là Bidder/Seller
-         * theo loại tài khoản trong DB, làm nút "Vào giao diện người bán" mở sai menu.
-         */
         sellerMode = ClientApp.isSellerSelected();
 
         setupHomeViewFilters();
@@ -140,12 +121,13 @@ public class HomeController implements Initializable {
             bidHistoryViewPaneController.setup(bidHistory);
         }
 
+        // 🔥 Đã xóa ClientApp.getOutputStream() cho 3 đàn em
         if (addItemViewPaneController != null) {
-            addItemViewPaneController.setup(out, currentUser, this::loadInitialItems);
+            addItemViewPaneController.setup(currentUser, this::loadInitialItems);
         }
 
         if (myItemsViewPaneController != null) {
-            myItemsViewPaneController.setup(items, out, currentUser, this::loadInitialItems);
+            myItemsViewPaneController.setup(items, currentUser, this::loadInitialItems);
         }
 
         if (salesHistoryViewPaneController != null) {
@@ -153,7 +135,7 @@ public class HomeController implements Initializable {
         }
 
         if (accountViewPaneController != null) {
-            accountViewPaneController.setup(out, currentUser, this::onCurrentUserUpdated);
+            accountViewPaneController.setup(currentUser, this::onCurrentUserUpdated);
         }
 
         updateUIBasedOnRole();
@@ -326,25 +308,9 @@ public class HomeController implements Initializable {
         loadInitialItems();
     }
 
+    // 🔥 FIX 1: Lấy danh sách sản phẩm (Bỏ Task)
     private void loadInitialItems() {
-        if (out == null) {
-            return;
-        }
-
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                synchronized (out) {
-                    out.writeObject(new Message("GET_ALL_ITEMS", null));
-                    out.flush();
-                }
-                return null;
-            }
-        };
-
-        Thread thread = new Thread(task);
-        thread.setDaemon(true);
-        thread.start();
+        ClientApp.sendMessage(new Message("GET_ALL_ITEMS", null));
     }
 
     private void applyHomeFiltersAndSort() {
@@ -442,7 +408,7 @@ public class HomeController implements Initializable {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // CARD SẢN PHẨM
+    // CARD SẢN PHẨM & POPUP (NGUYÊN BẢN 100%)
     // ═══════════════════════════════════════════════════════════
     private Node createItemCard(Item item) {
         VBox card = new VBox(12);
@@ -511,6 +477,34 @@ public class HomeController implements Initializable {
         card.setOnMouseEntered(event -> card.setStyle(getHoverCardStyle()));
         card.setOnMouseExited(event -> card.setStyle(getNormalCardStyle()));
 
+        if (item.getImagePath() != null && !item.getImagePath().isBlank()) {
+            Task<byte[]> loadImageTask = new Task<>() {
+                @Override
+                protected byte[] call() throws Exception {
+                    return ClientApp.getImageBytes(item.getImagePath());
+                }
+            };
+            loadImageTask.setOnSucceeded(e -> {
+                byte[] imageBytes = loadImageTask.getValue();
+                if (imageBytes != null && imageBytes.length > 0) {
+                    ImageView imageView = new ImageView(new Image(new ByteArrayInputStream(imageBytes)));
+                    imageView.setFitWidth(100);
+                    imageView.setFitHeight(100);
+                    imageView.setPreserveRatio(true);
+                    imageView.setSmooth(true);
+                    card.getChildren().add(0, imageView);
+                } else {
+                    card.getChildren().add(0, createImagePlaceholder("Không tải được ảnh"));
+                }
+            });
+            loadImageTask.setOnFailed(e -> {
+                card.getChildren().add(0, createImagePlaceholder("Lỗi tải ảnh"));
+            });
+            new Thread(loadImageTask).start();
+        } else {
+            card.getChildren().add(0, createImagePlaceholder("Chưa có ảnh"));
+        }
+
         return card;
     }
 
@@ -576,9 +570,6 @@ public class HomeController implements Initializable {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // POPUP CHI TIẾT SẢN PHẨM
-    // ═══════════════════════════════════════════════════════════
     private void showItemDetailDialog(Item item) {
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("Chi tiết sản phẩm");
@@ -604,16 +595,29 @@ public class HomeController implements Initializable {
         );
 
         if (item.getImagePath() != null && !item.getImagePath().isBlank()) {
-            try {
-                ImageView imageView = new ImageView(new Image(item.getImagePath(), true));
-                imageView.setFitWidth(210);
-                imageView.setFitHeight(210);
-                imageView.setPreserveRatio(true);
-                imageView.setSmooth(true);
-                imageBox.getChildren().add(imageView);
-            } catch (Exception e) {
-                imageBox.getChildren().add(createImagePlaceholder("Không tải được\nảnh sản phẩm"));
-            }
+            Task<byte[]> loadImageTask = new Task<>() {
+                @Override
+                protected byte[] call() throws Exception {
+                    return ClientApp.getImageBytes(item.getImagePath());
+                }
+            };
+            loadImageTask.setOnSucceeded(e -> {
+                byte[] imageBytes = loadImageTask.getValue();
+                if (imageBytes != null && imageBytes.length > 0) {
+                    ImageView imageView = new ImageView(new Image(new ByteArrayInputStream(imageBytes)));
+                    imageView.setFitWidth(210);
+                    imageView.setFitHeight(210);
+                    imageView.setPreserveRatio(true);
+                    imageView.setSmooth(true);
+                    imageBox.getChildren().add(imageView);
+                } else {
+                    imageBox.getChildren().add(createImagePlaceholder("Không tải được ảnh"));
+                }
+            });
+            loadImageTask.setOnFailed(e -> {
+                imageBox.getChildren().add(createImagePlaceholder("Lỗi tải ảnh"));
+            });
+            new Thread(loadImageTask).start();
         } else {
             imageBox.getChildren().add(createImagePlaceholder("Chưa có ảnh\nsản phẩm"));
         }
@@ -720,10 +724,6 @@ public class HomeController implements Initializable {
         );
 
         bidButton.setOnAction(event -> {
-            /*
-             * Không mở dialog nhập giá ngay trong lúc dialog chi tiết đang đóng,
-             * vì một số phiên bản JavaFX sẽ bị lỗi focus làm TextField không gõ được.
-             */
             dialog.close();
             Platform.runLater(() -> openBidDialog(item));
         });
@@ -1027,28 +1027,11 @@ public class HomeController implements Initializable {
         result.ifPresent(amount -> submitBid(item.getId(), amount));
     }
 
+    // 🔥 FIX 2: Đặt giá an toàn (Bỏ Task)
     private void submitBid(String itemId, double bidAmount) {
-        if (out == null || currentUser == null) {
-            return;
-        }
-
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                Object[] bidData = {itemId, bidAmount, currentUser.getId()};
-
-                synchronized (out) {
-                    out.writeObject(new Message("BID", bidData));
-                    out.flush();
-                }
-
-                return null;
-            }
-        };
-
-        Thread thread = new Thread(task);
-        thread.setDaemon(true);
-        thread.start();
+        if (currentUser == null) return;
+        Object[] bidData = {itemId, bidAmount, currentUser.getId()};
+        ClientApp.sendMessage(new Message("BID", bidData));
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -1102,6 +1085,7 @@ public class HomeController implements Initializable {
         userInfoLabel.setText(currentUser.getUsername() + " | Role: " + (sellerMode ? "seller" : "bidder"));
     }
 
+    // 🔥 FIX 3: Chuyển vai trò an toàn (Bỏ Task)
     @FXML
     public void onRoleSwitcherClicked() {
         sellerMode = !sellerMode;
@@ -1110,6 +1094,7 @@ public class HomeController implements Initializable {
         ClientApp.setSelectedRole(newRole);
         if (currentUser != null) {
             currentUser.setRole(newRole);
+            ClientApp.setCurrentUser(currentUser);
         }
 
         updateUIBasedOnRole();
@@ -1120,36 +1105,14 @@ public class HomeController implements Initializable {
             switchToHomeView();
         }
 
-        if (out == null) {
-            return;
-        }
-
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                synchronized (out) {
-                    out.writeObject(new Message("SWITCH_ROLE", newRole));
-                    out.flush();
-                }
-                return null;
-            }
-        };
-
-        Thread thread = new Thread(task);
-        thread.setDaemon(true);
-        thread.start();
+        ClientApp.sendMessage(new Message("SWITCH_ROLE", newRole));
     }
 
     // ═══════════════════════════════════════════════════════════
     // SERVER LISTENER
     // ═══════════════════════════════════════════════════════════
     private void listenForServerUpdates() {
-        if (in == null) {
-            return;
-        }
-
         ClientApp.setServerMessageHandler(this::handleServerMessage);
-        ClientApp.startServerListenerIfNeeded();
     }
 
     @SuppressWarnings("unchecked")
@@ -1227,25 +1190,10 @@ public class HomeController implements Initializable {
         }
     }
 
+    // 🔥 FIX 4: Gọi lịch sử an toàn (Bỏ Task)
     private void requestMyBidHistory() {
-        if (out == null || currentUser == null) {
-            return;
-        }
-
-        Task<Void> task = new Task<>() {
-            @Override
-            protected Void call() throws Exception {
-                synchronized (out) {
-                    out.writeObject(new Message("GET_MY_BID_HISTORY", currentUser.getId()));
-                    out.flush();
-                }
-                return null;
-            }
-        };
-
-        Thread thread = new Thread(task);
-        thread.setDaemon(true);
-        thread.start();
+        if (currentUser == null) return;
+        ClientApp.sendMessage(new Message("GET_MY_BID_HISTORY", currentUser.getId()));
     }
 
     private void updateBidHistoryFromPayload(Object payload) {

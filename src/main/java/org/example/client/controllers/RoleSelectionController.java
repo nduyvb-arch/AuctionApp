@@ -1,5 +1,7 @@
 package org.example.client.controllers;
+
 import org.example.client.ClientApp;
+import org.example.common.Message;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -94,25 +96,30 @@ public class RoleSelectionController implements Initializable {
     }
 
     private void openHomeWithRole(String role) {
-        try {
-            ClientApp.setSelectedRole(role);
-            ClientApp.switchToHome();
-        } catch (Exception e) {
-            showError("Không thể mở trang chủ", e.getMessage());
-        }
-    }
+        // 1. Cài đặt tai nghe đón phản hồi từ Server
+        ClientApp.setServerMessageHandler(message -> {
+            if ("SWITCH_ROLE_RESPONSE".equals(message.getAction())) {
+                Platform.runLater(() -> {
+                    if ("success".equals(message.getPayload())) {
+                        try {
+                            ClientApp.setSelectedRole(role);
+                            ClientApp.switchToHome();
+                        } catch (Exception e) {
+                            showError("Lỗi giao diện", "Không thể mở trang chủ: " + e.getMessage());
+                        }
+                    } else {
+                        showError("Lỗi", "Không thể chuyển vai trò: " + message.getPayload());
+                    }
+                });
+            }
+        });
 
-    private String formatRole(String role) {
-        if (role == null || role.isBlank()) {
-            return "Không rõ";
+        // 2. Gửi lệnh chuyển vai trò một cách an toàn
+        try {
+            ClientApp.sendMessage(new Message("SWITCH_ROLE", role));
+        } catch (Exception e) {
+            showError("Lỗi mạng", "Không thể gửi yêu cầu: " + e.getMessage());
         }
-        if ("seller".equalsIgnoreCase(role)) {
-            return "Người bán";
-        }
-        if ("bidder".equalsIgnoreCase(role)) {
-            return "Người đấu giá";
-        }
-        return role;
     }
 
     private void showInfo(String title, String content) {

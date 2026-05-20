@@ -3,7 +3,6 @@ package org.example.client.controllers;
 import org.example.client.ClientApp;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
@@ -16,7 +15,6 @@ import org.example.common.Message;
 import org.example.common.model.user.Admin;
 import org.example.common.model.user.User;
 
-import java.io.IOException;
 import java.net.URL;
 import java.text.Normalizer;
 import java.util.ResourceBundle;
@@ -45,6 +43,7 @@ public class LoginController implements Initializable {
 
     @FXML
     public void onLoginButtonClicked() {
+        ClientApp.startServerListenerIfNeeded();
         String username = usernameField.getText().trim();
         String password = passwordField.getText();
 
@@ -78,13 +77,7 @@ public class LoginController implements Initializable {
                     if (result.user != null) {
                         return result;
                     }
-
-                    ClientApp.closeConnection();
-                    throw new SecurityException("Tên đăng nhập hoặc mật khẩu không đúng");
-                }
-
-                ClientApp.closeConnection();
-                throw new IOException("Phản hồi từ server không hợp lệ.");
+                });
             }
         };
 
@@ -112,19 +105,19 @@ public class LoginController implements Initializable {
                 loginButton.setDisable(false);
                 loginButton.setText("Đăng nhập");
             }
-        }));
 
-        loginTask.setOnFailed(event -> Platform.runLater(() -> {
-            Throwable exception = loginTask.getException();
-            showError(exception.getMessage());
-            loginButton.setDisable(false);
-            loginButton.setText("Đăng nhập");
-            ClientApp.closeConnection();
-        }));
+            String[] loginData = {username, password};
+            ClientApp.sendMessage(new Message("LOGIN", loginData));
 
-        Thread loginThread = new Thread(loginTask);
-        loginThread.setDaemon(true);
-        loginThread.start();
+        } catch (Exception e) {
+            showError("Lỗi kết nối tới Server: Server chưa mở hoặc mạng rớt!");
+            resetLoginButton();
+        }
+    }
+
+    private void resetLoginButton() {
+        loginButton.setDisable(false);
+        loginButton.setText("Đăng nhập");
     }
 
     private LoginResult parseLoginResponse(Object payload) {
@@ -179,6 +172,7 @@ public class LoginController implements Initializable {
     @FXML
     public void onForgotPasswordClicked() {
         // Chức năng quên mật khẩu nếu bạn muốn hoàn thiện sau.
+        showError("Chức năng đang được nâng cấp!");
     }
 
     private void showError(String message) {
