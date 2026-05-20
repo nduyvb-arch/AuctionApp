@@ -1,72 +1,83 @@
 package org.example.server.manager;
 
+import org.example.common.model.item.Item;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+
 public class AntiSniper {
-    private static final long DEFAULT_EXTENSION_MILLIS = 30_000; // 30 giây
-    private static final long DEFAULT_SNIPE_THRESHOLD_MILLIS = 30_000; // Ngưỡng phát hiện snipe
+    private static final Logger logger = LoggerFactory.getLogger(AntiSniper.class);
 
-    private final long extensionMillis;
-    private final long snipeThresholdMillis;
-    private long endTime;
+    // =========================================================================
+    // PHẦN 1: TÍNH NĂNG MỚI (DÀNH CHO AUCTION MANAGER & DATABASE)
+    // =========================================================================
+    private static final int TRIGGER_THRESHOLD_SECONDS = 30;
+    private static final int EXTENSION_SECONDS = 30;
 
-    // Constructor mặc định: ngưỡng 30s, gia hạn 30s
-    public AntiSniper(long durationMillis) {
-        this(durationMillis, DEFAULT_SNIPE_THRESHOLD_MILLIS, DEFAULT_EXTENSION_MILLIS);
-    }
+    public static boolean applyAntiSniper(Item item) {
+        if (item.getEndTime() == null) return false;
 
-    // Constructor tuỳ chỉnh
-    public AntiSniper(long durationMillis, long snipeThresholdMillis, long extensionMillis) {
-        if (durationMillis <= 0) {
-            throw new IllegalArgumentException("Duration phải lớn hơn 0");
-        }
-        if (snipeThresholdMillis <= 0) {
-            throw new IllegalArgumentException("Snipe threshold phải lớn hơn 0");
-        }
-        if (extensionMillis <= 0) {
-            throw new IllegalArgumentException("Extension phải lớn hơn 0");
-        }
-        this.endTime = System.currentTimeMillis() + durationMillis;
-        this.snipeThresholdMillis = snipeThresholdMillis;
-        this.extensionMillis = extensionMillis;
-    }
+        LocalDateTime now = LocalDateTime.now();
+        long secondsLeft = ChronoUnit.SECONDS.between(now, item.getEndTime());
 
-    // Kiểm tra phiên đã kết thúc chưa
-    public boolean isExpired() {
-        return System.currentTimeMillis() >= endTime;
-    }
-
-    // Thời gian còn lại (milliseconds)
-    public long getRemainingMillis() {
-        return Math.max(0, endTime - System.currentTimeMillis());
-    }
-
-    // Gọi mỗi khi có bid mới — tự động gia hạn nếu là snipe
-    // Trả về true nếu đã gia hạn
-    public boolean checkAndExtend() {
-        if (getRemainingMillis() < snipeThresholdMillis) {
-            endTime += extensionMillis;
-            System.out.println(" Phát hiện snipe! Phiên gia hạn thêm "
-                    + (extensionMillis / 1000) + " giây. Còn lại: "
-                    + (getRemainingMillis() / 1000) + " giây");
+        if (secondsLeft > 0 && secondsLeft <= TRIGGER_THRESHOLD_SECONDS) {
+            LocalDateTime newEndTime = item.getEndTime().plusSeconds(EXTENSION_SECONDS);
+            item.setEndTime(newEndTime);
+            logger.info("[ANTI-SNIPER] Phát hiện 'bắn tỉa' sản phẩm '{}'! Gia hạn thêm {} giây.",
+                    item.getItemName(), EXTENSION_SECONDS);
             return true;
         }
         return false;
     }
 
-    // Thời gian kết thúc dạng milliseconds (để UI hiển thị)
-    public long getEndTime() { return endTime; }
+    // =========================================================================
+    // PHẦN 2: TÍNH NĂNG CŨ (GIỮ LẠI ĐỂ AUCTION SESSION KHÔNG BỊ LỖI)
+    // =========================================================================
+    private static final long DEFAULT_EXTENSION_MILLIS = 30_000;
+    private static final long DEFAULT_SNIPE_THRESHOLD_MILLIS = 30_000;
 
-    // Thời gian còn lại dạng dễ đọc "mm:ss"
+    private final long extensionMillis;
+    private final long snipeThresholdMillis;
+    private long endTime;
+
+    public AntiSniper(long durationMillis) {
+        this(durationMillis, DEFAULT_SNIPE_THRESHOLD_MILLIS, DEFAULT_EXTENSION_MILLIS);
+    }
+
+    public AntiSniper(long durationMillis, long snipeThresholdMillis, long extensionMillis) {
+        this.endTime = System.currentTimeMillis() + durationMillis;
+        this.snipeThresholdMillis = snipeThresholdMillis;
+        this.extensionMillis = extensionMillis;
+    }
+
+    public boolean isExpired() {
+        return System.currentTimeMillis() >= endTime;
+    }
+
+    public long getRemainingMillis() {
+        return Math.max(0, endTime - System.currentTimeMillis());
+    }
+
+    public boolean checkAndExtend() {
+        if (getRemainingMillis() < snipeThresholdMillis) {
+            endTime += extensionMillis;
+            System.out.println("Phát hiện snipe! Phiên gia hạn thêm "
+                    + (extensionMillis / 1000) + " giây.");
+            return true;
+        }
+        return false;
+    }
+
+    public long getEndTime() {
+        return endTime;
+    }
+
     public String getRemainingFormatted() {
         long remaining = getRemainingMillis();
         long minutes = remaining / 60_000;
         long seconds = (remaining % 60_000) / 1000;
         return String.format("%02d:%02d", minutes, seconds);
-    }
-
-    @Override
-    public String toString() {
-        return "AntiSniper{remaining=" + getRemainingFormatted()
-                + ", threshold=" + (snipeThresholdMillis / 1000) + "s"
-                + ", extension=" + (extensionMillis / 1000) + "s}";
     }
 }

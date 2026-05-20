@@ -263,8 +263,13 @@ public class AuctionManager {
 
         targetItem.setCurrentWinnerId(bidderId);
         targetItem.setCurrentPrice(bidAmount);
+        // Gọi AntiSniper trước khi lưu vào DB
+        boolean isSnipeDeflected = AntiSniper.applyAntiSniper(targetItem);
         updateItemDB(targetItem);
         insertBidRecord(itemId, bidderId, bidAmount);
+        if (isSnipeDeflected) {
+            return "Đặt giá thành công! Đã kích hoạt Anti-Sniper: Phiên đấu giá được gia hạn thêm 30 giây.";
+        }
 
         return "Đặt giá thành công! Hệ thống đã giữ " + amountToReserve
                 + " VNĐ từ tài khoản của bạn. Bạn đang dẫn đầu với mức giá " + bidAmount
