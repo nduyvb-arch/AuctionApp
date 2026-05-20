@@ -3,6 +3,7 @@ package org.example.client.controllers;
 import org.example.client.ClientApp;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
@@ -43,7 +44,6 @@ public class LoginController implements Initializable {
 
     @FXML
     public void onLoginButtonClicked() {
-        ClientApp.startServerListenerIfNeeded();
         String username = usernameField.getText().trim();
         String password = passwordField.getText();
 
@@ -58,7 +58,10 @@ public class LoginController implements Initializable {
         Task<LoginResult> loginTask = new Task<>() {
             @Override
             protected LoginResult call() throws Exception {
-                ClientApp.connectToServer();
+                if (ClientApp.getOutputStream() == null) {
+                    ClientApp.connectToServer();
+                    ClientApp.startServerListenerIfNeeded();
+                }
 
                 var out = ClientApp.getOutputStream();
                 var in = ClientApp.getInputStream();
@@ -72,18 +75,23 @@ public class LoginController implements Initializable {
                 Message responseMsg = (Message) in.readObject();
 
                 if (responseMsg != null && "LOGIN_RESPONSE".equals(responseMsg.getAction())) {
-                    LoginResult result = parseLoginResponse(responseMsg.getPayload());
+                    return parseLoginResponse(responseMsg.getPayload());
+                }
 
-                    if (result.user != null) {
-                        return result;
-                    }
-                });
+                return new LoginResult(null, null);
             }
         };
 
         loginTask.setOnSucceeded(event -> Platform.runLater(() -> {
             LoginResult result = loginTask.getValue();
             User user = result.user;
+
+            if (user == null) {
+                showError("Tài khoản không tồn tại, sai mật khẩu, hoặc đã bị khóa!");
+                resetLoginButton();
+                return;
+            }
+
             ClientApp.setCurrentUser(user);
 
             String objectRole = normalizeRole(user.getRole());
@@ -102,17 +110,16 @@ public class LoginController implements Initializable {
                 }
             } catch (Exception e) {
                 showError("Lỗi chuyển màn hình: " + e.getMessage());
-                loginButton.setDisable(false);
-                loginButton.setText("Đăng nhập");
+                resetLoginButton();
             }
+        }));
 
-            String[] loginData = {username, password};
-            ClientApp.sendMessage(new Message("LOGIN", loginData));
-
-        } catch (Exception e) {
+        loginTask.setOnFailed(event -> Platform.runLater(() -> {
             showError("Lỗi kết nối tới Server: Server chưa mở hoặc mạng rớt!");
             resetLoginButton();
-        }
+        }));
+
+        new Thread(loginTask).start();
     }
 
     private void resetLoginButton() {
@@ -147,7 +154,7 @@ public class LoginController implements Initializable {
                 .replace("đ", "d")
                 .replace("_", "")
                 .replace("-", "")
-                .replaceAll("[\s\u00A0]+", "");
+                .replaceAll("[\\s\u00A0]+", "");
 
         if ("administrator".equals(normalizedRole)
                 || "superadmin".equals(normalizedRole)
@@ -171,7 +178,6 @@ public class LoginController implements Initializable {
 
     @FXML
     public void onForgotPasswordClicked() {
-        // Chức năng quên mật khẩu nếu bạn muốn hoàn thiện sau.
         showError("Chức năng đang được nâng cấp!");
     }
 
