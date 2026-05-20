@@ -9,7 +9,9 @@ public class AuctionNotifier implements Subject {
 
     @Override
     public void registerObserver(Observer o) {
-        observers.add(o);
+        if (!observers.contains(o)) {
+            observers.add(o);
+        }
     }
 
     @Override

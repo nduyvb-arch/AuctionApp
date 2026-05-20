@@ -250,7 +250,7 @@ public class ClientHandler implements Runnable, Observer {
 
                         AuctionManager.getInstance().addItem(newItem);
                         sendMessage(new Message("ADD_ITEM_RESPONSE", "Đăng sản phẩm thành công! Mã SP: " + newItem.getId()));
-                        notifier.notifyObservers(new Message("NEW_ITEM_ADDED", null));
+                        notifier.notifyObservers(new Message("NEW_ITEM_ADDED", newItem));
                         break;
 
                     case "GET_IMAGE":

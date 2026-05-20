@@ -49,7 +49,7 @@ public class ClientApp extends Application {
 
     private static volatile CompletableFuture<byte[]> imageResponseFuture;
 
-    private static final String SERVER_ADDRESS = "localhost";
+    private static final String SERVER_ADDRESS = "10.11.7.121";
     private static final int SERVER_PORT = 8888;
 
     private static String selectedRole = "bidder";

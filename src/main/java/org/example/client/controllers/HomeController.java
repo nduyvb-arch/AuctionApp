@@ -1163,7 +1163,14 @@ public class HomeController implements Initializable {
                     break;
 
                 case "NEW_ITEM_ADDED":
-                    loadInitialItems();
+                    Item newItem = (Item) message.getPayload();
+                    if (newItem != null) {
+                        items.removeIf(item -> item.getId().equals(newItem.getId()));
+                        items.add(newItem);
+                        refreshCurrentViews();
+                    } else {
+                        loadInitialItems();
+                    }
                     break;
 
                 case "ADD_ITEM_RESPONSE":
