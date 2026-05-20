@@ -52,10 +52,6 @@ public class ClientApp extends Application {
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 8888;
 
-    /**
-     * Vai trò người dùng chọn ở màn RoleSelection.
-     * Không phụ thuộc cứng vào getRole() của tài khoản, vì màn này dùng để chọn luồng giao diện.
-     */
     private static String selectedRole = "bidder";
 
     @Override
@@ -282,7 +278,7 @@ public class ClientApp extends Application {
                 .replace("đ", "d")
                 .replace("_", "")
                 .replace("-", "")
-                .replaceAll("[\s\u00A0]+", "");
+                .replaceAll("[\\s\u00A0]+", "");
 
         return "admin".equals(normalizedRole)
                 || "administrator".equals(normalizedRole)
@@ -290,6 +286,8 @@ public class ClientApp extends Application {
                 || "root".equals(normalizedRole)
                 || "quantri".equals(normalizedRole)
                 || "quantrivien".equals(normalizedRole);
+    }
+
     public static byte[] getImageBytes(String imagePath) throws Exception {
         if (outputStream == null || imagePath == null || imagePath.isBlank()) {
             return null;
@@ -297,7 +295,6 @@ public class ClientApp extends Application {
 
         imageResponseFuture = new CompletableFuture<>();
 
-        // Dùng hàm sendMessage mới tạo thay cho cục synchronized cũ
         sendMessage(new Message("GET_IMAGE", imagePath));
 
         try {
@@ -331,7 +328,7 @@ public class ClientApp extends Application {
     public static synchronized void sendMessage(Message message) {
         try {
             if (outputStream != null && socket != null && !socket.isClosed()) {
-                outputStream.reset(); // Dọn rác ống nước
+                outputStream.reset();
                 outputStream.writeObject(message);
                 outputStream.flush();
             }
