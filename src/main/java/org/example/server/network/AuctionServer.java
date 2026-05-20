@@ -41,8 +41,6 @@ public class AuctionServer {
                 Socket clientSocket = serverSocket.accept();
                 logger.info("Có kết nối từ IP: {}", clientSocket.getInetAddress());
                 ClientHandler handler = new ClientHandler(clientSocket, notifier);
-                notifier.registerObserver(handler);
-
                 new Thread(handler).start();
             }
         } catch (IOException e) {
