@@ -13,30 +13,22 @@ import javafx.scene.control.TextField;
 import javafx.util.Duration;
 import org.example.common.Message;
 
-import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 
 public class SignUpController implements Initializable {
 
-    @FXML
-    private TextField usernameField;
-
-    @FXML
-    private PasswordField passwordField;
-
-    @FXML
-    private PasswordField confirmPasswordField;
-
-    @FXML
-    private Label errorLabel;
-
-    @FXML
-    private Button signUpButton;
+    @FXML private TextField usernameField;
+    @FXML private PasswordField passwordField;
+    @FXML private PasswordField confirmPasswordField;
+    @FXML private Label errorLabel;
+    @FXML private Button signUpButton;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         errorLabel.setText("");
+        // Đăng ký handler để xử lý phản hồi từ server ngay khi controller được tạo
+        ClientApp.setServerMessageHandler(this::handleServerMessage);
     }
 
     @FXML
@@ -46,7 +38,6 @@ public class SignUpController implements Initializable {
         String confirmPassword = confirmPasswordField.getText();
         String role = "bidder";
 
-        // 1. Kiểm tra dữ liệu đầu vào
         if (username.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
             showError("Vui lòng điền đầy đủ thông tin");
             return;
@@ -64,57 +55,55 @@ public class SignUpController implements Initializable {
             return;
         }
 
-        // 2. Vô hiệu hóa nút và hiển thị trạng thái chờ
         signUpButton.setDisable(true);
         signUpButton.setText("Đang xử lý...");
 
-        // 3. Đăng ký "Tai nghe" đón kết quả từ Server trả về
-        ClientApp.setServerMessageHandler(message -> {
-            if ("REGISTER_RESPONSE".equals(message.getAction())) {
-                String result = (String) message.getPayload();
+        // Chạy kết nối và gửi tin nhắn trên luồng nền
+        new Thread(() -> {
+            try {
+                // ClientApp sẽ tự quản lý việc có cần kết nối mới hay không
+                ClientApp.connectToServer();
 
-                // Do đây là luồng mạng (background), ta phải dùng Platform.runLater để cập nhật UI
+                String[] regData = {username, password, role};
+                ClientApp.sendMessage(new Message("REGISTER", regData));
+
+            } catch (Exception e) {
                 Platform.runLater(() -> {
-                    if (result.contains("thành công")) {
-                        Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
-                        successAlert.setTitle("Thành công");
-                        successAlert.setHeaderText("Tài khoản đã tạo thành công!");
-                        successAlert.setContentText("Chào mừng " + username + "!\nBạn sẽ được chuyển đến trang đăng nhập...");
-                        successAlert.show();
-
-                        PauseTransition pause = new PauseTransition(Duration.seconds(1));
-                        pause.setOnFinished(e -> {
-                            try {
-                                ClientApp.switchToLogin();
-                            } catch (Exception ex) {
-                                ex.printStackTrace();
-                            }
-                        });
-                        pause.play();
-                    } else {
-                        showError(result); // Hiển thị lỗi từ server
-                        signUpButton.setDisable(false);
-                        signUpButton.setText("Đăng Ký");
-                    }
+                    showError("Lỗi kết nối tới Server!");
+                    resetSignUpButton();
                 });
             }
-        });
+        }).start();
+    }
 
-        // 4. Gửi lệnh đi một cách an toàn
-        try {
-            // Mở kết nối và khởi động luồng nghe nếu chưa có
-            if (ClientApp.getOutputStream() == null) {
-                ClientApp.connectToServer();
-                ClientApp.startServerListenerIfNeeded();
-            }
+    private void handleServerMessage(Message message) {
+        if (!"REGISTER_RESPONSE".equals(message.getAction())) {
+            return;
+        }
 
-            String[] regData = {username, password, role};
-            ClientApp.sendMessage(new Message("REGISTER", regData));
+        String result = (String) message.getPayload();
 
-        } catch (Exception e) {
-            showError("Lỗi kết nối tới Server!");
-            signUpButton.setDisable(false);
-            signUpButton.setText("Đăng Ký");
+        if (result.contains("thành công")) {
+            Platform.runLater(() -> {
+                Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                successAlert.setTitle("Thành công");
+                successAlert.setHeaderText("Tài khoản đã tạo thành công!");
+                successAlert.setContentText("Bạn sẽ được chuyển đến trang đăng nhập...");
+                successAlert.show();
+
+                PauseTransition pause = new PauseTransition(Duration.seconds(1));
+                pause.setOnFinished(e -> {
+                    try {
+                        ClientApp.switchToLogin();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                });
+                pause.play();
+            });
+        } else {
+            showError(result); // Hiển thị lỗi từ server
+            resetSignUpButton();
         }
     }
 
@@ -127,11 +116,20 @@ public class SignUpController implements Initializable {
         }
     }
 
+    private void resetSignUpButton() {
+        Platform.runLater(() -> {
+            signUpButton.setDisable(false);
+            signUpButton.setText("Đăng Ký");
+        });
+    }
+
     private void showError(String message) {
-        errorLabel.setText(message);
-        errorLabel.setStyle("-fx-text-fill: #d32f2f; -fx-font-size: 12;");
-        PauseTransition pause = new PauseTransition(Duration.seconds(5));
-        pause.setOnFinished(event -> errorLabel.setText(""));
-        pause.play();
+        Platform.runLater(() -> {
+            errorLabel.setText(message);
+            errorLabel.setStyle("-fx-text-fill: #d32f2f; -fx-font-size: 12;");
+            PauseTransition pause = new PauseTransition(Duration.seconds(5));
+            pause.setOnFinished(event -> errorLabel.setText(""));
+            pause.play();
+        });
     }
 }

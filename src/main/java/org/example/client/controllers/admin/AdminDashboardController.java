@@ -12,7 +12,6 @@ import javafx.scene.layout.StackPane;
 import org.example.common.Message;
 import org.example.common.model.user.User;
 
-import java.io.ObjectOutputStream;
 import java.net.URL;
 import java.util.ResourceBundle;
 
@@ -29,7 +28,6 @@ public class AdminDashboardController implements Initializable {
     @FXML private Button statsButton;
 
     private User currentUser;
-    private ObjectOutputStream out;
     private AdminChildController activeChildController;
 
     private static final String ACTIVE_BUTTON_STYLE = "-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 12; -fx-padding: 12 16; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;";
@@ -38,7 +36,6 @@ public class AdminDashboardController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         currentUser = ClientApp.getCurrentUser();
-        out = ClientApp.getOutputStream();
 
         if (currentUser != null) {
             adminNameLabel.setText("Xin chào, " + currentUser.getUsername());
@@ -47,7 +44,6 @@ public class AdminDashboardController implements Initializable {
         }
 
         ClientApp.setServerMessageHandler(this::handleServerMessage);
-        ClientApp.startServerListenerIfNeeded();
         loadOverview();
     }
 
@@ -79,9 +75,6 @@ public class AdminDashboardController implements Initializable {
     @FXML
     private void onLogoutClicked() {
         try {
-            ClientApp.setCurrentUser(null);
-            ClientApp.setSelectedRole("bidder");
-            ClientApp.closeConnection();
             ClientApp.switchToLogin();
         } catch (Exception e) {
             showError("Đăng xuất", "Không thể đăng xuất: " + e.getMessage());
@@ -106,6 +99,7 @@ public class AdminDashboardController implements Initializable {
             setActiveButton(activeButton);
         } catch (Exception e) {
             showError("Quản trị", "Không thể mở màn hình: " + e.getMessage());
+            e.printStackTrace(); // In stack trace để debug
         }
     }
 
@@ -122,19 +116,7 @@ public class AdminDashboardController implements Initializable {
     }
 
     public void sendMessage(Message message) {
-        if (out == null) {
-            showError("Kết nối", "Không có kết nối tới server.");
-            return;
-        }
-
-        try {
-            synchronized (out) {
-                out.writeObject(message);
-                out.flush();
-            }
-        } catch (Exception e) {
-            showError("Kết nối", "Không thể gửi yêu cầu tới server: " + e.getMessage());
-        }
+        ClientApp.sendMessage(message);
     }
 
     private void handleServerMessage(Message message) {

@@ -1117,77 +1117,79 @@ public class HomeController implements Initializable {
 
     @SuppressWarnings("unchecked")
     private void handleServerMessage(Message message) {
-        switch (message.getAction()) {
-            case "GET_ALL_ITEMS_RESPONSE":
-                updateItemsFromServer((List<Item>) message.getPayload());
-                requestMyBidHistory();
-                break;
+        Platform.runLater(() -> {
+            switch (message.getAction()) {
+                case "GET_ALL_ITEMS_RESPONSE":
+                    updateItemsFromServer((List<Item>) message.getPayload());
+                    requestMyBidHistory();
+                    break;
 
-            case "BID_RESPONSE":
-                Alert bidAlert = new Alert(Alert.AlertType.INFORMATION);
-                bidAlert.setTitle("Kết quả đặt giá");
-                bidAlert.setHeaderText("Phản hồi từ server");
-                bidAlert.setContentText(String.valueOf(message.getPayload()));
-                bidAlert.showAndWait();
+                case "BID_RESPONSE":
+                    Alert bidAlert = new Alert(Alert.AlertType.INFORMATION);
+                    bidAlert.setTitle("Kết quả đặt giá");
+                    bidAlert.setHeaderText("Phản hồi từ server");
+                    bidAlert.setContentText(String.valueOf(message.getPayload()));
+                    bidAlert.showAndWait();
 
-                loadInitialItems();
-                requestMyBidHistory();
-                break;
+                    loadInitialItems();
+                    requestMyBidHistory();
+                    break;
 
-            case "MY_BID_HISTORY_RESPONSE":
-                updateBidHistoryFromPayload(message.getPayload());
-                break;
+                case "MY_BID_HISTORY_RESPONSE":
+                    updateBidHistoryFromPayload(message.getPayload());
+                    break;
 
-            case "AUCTION_RESULT_NOTIFICATION":
-                String notification = String.valueOf(message.getPayload());
-                notifications.add(notification);
+                case "AUCTION_RESULT_NOTIFICATION":
+                    String notification = String.valueOf(message.getPayload());
+                    notifications.add(notification);
 
-                Alert resultAlert = new Alert(Alert.AlertType.INFORMATION);
-                resultAlert.setTitle("Thông báo đấu giá");
-                resultAlert.setHeaderText("Kết quả đấu giá");
-                resultAlert.setContentText(notification);
-                resultAlert.showAndWait();
+                    Alert resultAlert = new Alert(Alert.AlertType.INFORMATION);
+                    resultAlert.setTitle("Thông báo đấu giá");
+                    resultAlert.setHeaderText("Kết quả đấu giá");
+                    resultAlert.setContentText(notification);
+                    resultAlert.showAndWait();
 
-                loadInitialItems();
-                requestMyBidHistory();
-                break;
+                    loadInitialItems();
+                    requestMyBidHistory();
+                    break;
 
-            case "ITEM_UPDATE":
-                Item updatedItem = (Item) message.getPayload();
+                case "ITEM_UPDATE":
+                    Item updatedItem = (Item) message.getPayload();
 
-                items.removeIf(item -> item.getId().equals(updatedItem.getId()));
-                items.add(updatedItem);
+                    items.removeIf(item -> item.getId().equals(updatedItem.getId()));
+                    items.add(updatedItem);
 
-                refreshCurrentViews();
-                break;
+                    refreshCurrentViews();
+                    break;
 
-            case "NEW_ITEM_ADDED":
-                loadInitialItems();
-                break;
+                case "NEW_ITEM_ADDED":
+                    loadInitialItems();
+                    break;
 
-            case "ADD_ITEM_RESPONSE":
-            case "START_AUCTION_RESPONSE":
-            case "SWITCH_ROLE_RESPONSE":
-                System.out.println("Server: " + message.getPayload());
-                loadInitialItems();
-                break;
+                case "ADD_ITEM_RESPONSE":
+                case "START_AUCTION_RESPONSE":
+                case "SWITCH_ROLE_RESPONSE":
+                    System.out.println("Server: " + message.getPayload());
+                    loadInitialItems();
+                    break;
 
-            case "TOP_UP_RESPONSE":
-                handleTopUpResponse(message.getPayload());
-                break;
+                case "TOP_UP_RESPONSE":
+                    handleTopUpResponse(message.getPayload());
+                    break;
 
-            case "ACCOUNT_INFO_RESPONSE":
-                handleAccountInfoResponse(message.getPayload());
-                break;
+                case "ACCOUNT_INFO_RESPONSE":
+                    handleAccountInfoResponse(message.getPayload());
+                    break;
 
-            case "SYSTEM_NOTIFICATION":
-                System.out.println("Server: " + message.getPayload());
-                break;
+                case "SYSTEM_NOTIFICATION":
+                    System.out.println("Server: " + message.getPayload());
+                    break;
 
-            default:
-                System.out.println("Unknown server message: " + message.getAction());
-                break;
-        }
+                default:
+                    System.out.println("Unknown server message: " + message.getAction());
+                    break;
+            }
+        });
     }
 
     // 🔥 FIX 4: Gọi lịch sử an toàn (Bỏ Task)

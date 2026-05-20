@@ -70,6 +70,8 @@ public class ClientApp extends Application {
         stage.setOnCloseRequest(event -> {
             closeConnection();
             logger.info("Ứng dụng đã đóng.");
+            Platform.exit();
+            System.exit(0);
         });
 
         stage.show();
@@ -84,6 +86,7 @@ public class ClientApp extends Application {
             outputStream = new ObjectOutputStream(socket.getOutputStream());
             inputStream = new ObjectInputStream(socket.getInputStream());
             logger.info("Kết nối mới thành công!");
+            startServerListenerIfNeeded(); // Bắt đầu lắng nghe ngay sau khi kết nối
         } catch (IOException e) {
             logger.error("Lỗi khi tạo kết nối mới: {}", e.getMessage());
             throw e;
@@ -91,19 +94,15 @@ public class ClientApp extends Application {
     }
 
     public static void closeConnection() {
-        serverMessageHandler = null;
-
+        if (serverListenerThread != null) {
+            serverListenerThread.interrupt(); // Ngắt luồng lắng nghe
+            serverListenerThread = null;
+        }
         try {
             if (socket != null && !socket.isClosed()) {
                 logger.info("Đang đóng kết nối...");
-
-                if (outputStream != null) {
-                    outputStream.close();
-                }
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-
+                if (outputStream != null) outputStream.close();
+                if (inputStream != null) inputStream.close();
                 socket.close();
                 logger.info("Đã đóng kết nối thành công.");
             }
@@ -113,7 +112,6 @@ public class ClientApp extends Application {
             socket = null;
             outputStream = null;
             inputStream = null;
-            serverListenerThread = null;
         }
     }
 
@@ -124,10 +122,10 @@ public class ClientApp extends Application {
     }
 
     public static void switchToLogin() throws Exception {
+        closeConnection(); // Đảm bảo đóng kết nối cũ trước khi về màn hình login
         FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/LoginMenu.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
-
         applyScene(scene, "Hệ thống đấu giá - Đăng nhập", 1000, 700, 1200, 800);
     }
 
@@ -136,11 +134,9 @@ public class ClientApp extends Application {
             switchToAdmin();
             return;
         }
-
         FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/RoleSelection.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
-
         applyScene(scene, "Hệ thống đấu giá - Chọn vai trò", 1000, 700, 1200, 800);
     }
 
@@ -148,31 +144,13 @@ public class ClientApp extends Application {
         FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/HomeMenu.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
-
         applyScene(scene, "Hệ thống đấu giá - Trang chủ", 1000, 700, 1200, 800);
-    }
-
-    public static void switchToAccount() throws Exception {
-        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/AccountView.fxml"));
-        Parent root = loader.load();
-
-        Object controller = loader.getController();
-        if (controller instanceof org.example.client.controllers.AccountViewController) {
-            org.example.client.controllers.AccountViewController accountController =
-                    (org.example.client.controllers.AccountViewController) controller;
-
-            accountController.setup(currentUser, ClientApp::setCurrentUser);
-        }
-
-        Scene scene = new Scene(root);
-        applyScene(scene, "Hệ thống đấu giá - Tài khoản", 1000, 700, 1200, 800);
     }
 
     public static void switchToAdmin() throws Exception {
         FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/admin/AdminDashboard.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
-
         applyScene(scene, "Hệ thống đấu giá - Quản trị", 1100, 720, 1280, 820);
     }
 
@@ -180,7 +158,6 @@ public class ClientApp extends Application {
         FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/SignUpMenu.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
-
         applyScene(scene, "Hệ thống đấu giá - Đăng ký", 1000, 700, 1200, 800);
     }
 
@@ -223,43 +200,49 @@ public class ClientApp extends Application {
 
     public static void startServerListenerIfNeeded() {
         if (inputStream == null || socket == null || socket.isClosed()) {
+            logger.warn("Không thể bắt đầu lắng nghe: kết nối không hợp lệ.");
             return;
         }
 
         if (serverListenerThread != null && serverListenerThread.isAlive()) {
+            logger.info("Luồng lắng nghe đã chạy, không cần khởi động lại.");
             return;
         }
 
         serverListenerThread = new Thread(() -> {
-            while (socket != null && !socket.isClosed() && inputStream != null) {
+            logger.info("Bắt đầu luồng lắng nghe server...");
+            while (!Thread.currentThread().isInterrupted() && socket != null && !socket.isClosed()) {
                 try {
                     Message message = (Message) inputStream.readObject();
+                    if (message == null) continue;
 
-                    if (message == null) {
-                        continue;
-                    }
-
+                    // Xử lý phản hồi ảnh một cách đặc biệt
                     if ("GET_IMAGE_RESPONSE".equals(message.getAction())) {
-                        if (imageResponseFuture != null) {
+                        if (imageResponseFuture != null && !imageResponseFuture.isDone()) {
                             imageResponseFuture.complete((byte[]) message.getPayload());
                         }
-                        continue;
+                        continue; // Không chuyển tin nhắn ảnh cho handler chung
                     }
 
-                    Platform.runLater(() -> {
-                        Consumer<Message> handler = serverMessageHandler;
+                    // Đối với các tin nhắn khác, chuyển cho handler đã đăng ký
+                    Consumer<Message> handler = serverMessageHandler;
+                    if (handler != null) {
+                        Platform.runLater(() -> handler.accept(message));
+                    } else {
+                        logger.warn("Đã nhận tin nhắn nhưng không có handler nào được thiết lập: {}", message.getAction());
+                    }
 
-                        if (handler != null) {
-                            handler.accept(message);
-                        }
-                    });
-                } catch (Exception e) {
-                    if (socket != null && !socket.isClosed()) {
-                        logger.warn("Dừng lắng nghe server: {}", e.getMessage());
+                } catch (IOException e) {
+                    if (!Thread.currentThread().isInterrupted()) {
+                        logger.error("Mất kết nối với server: {}", e.getMessage());
+                        // Có thể thêm logic để hiển thị thông báo lỗi cho người dùng ở đây
                     }
                     break;
+                } catch (ClassNotFoundException e) {
+                    logger.error("Lỗi không thể giải mã tin nhắn từ server: {}", e.getMessage());
                 }
             }
+            logger.info("Luồng lắng nghe server đã dừng.");
         }, "client-server-listener");
 
         serverListenerThread.setDaemon(true);
@@ -270,37 +253,25 @@ public class ClientApp extends Application {
         if (user == null || user.getRole() == null) {
             return false;
         }
-
         String normalizedRole = Normalizer.normalize(user.getRole(), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "")
-                .trim()
-                .toLowerCase()
-                .replace("đ", "d")
-                .replace("_", "")
-                .replace("-", "")
-                .replaceAll("[\\s\u00A0]+", "");
-
-        return "admin".equals(normalizedRole)
-                || "administrator".equals(normalizedRole)
-                || "superadmin".equals(normalizedRole)
-                || "root".equals(normalizedRole)
-                || "quantri".equals(normalizedRole)
-                || "quantrivien".equals(normalizedRole);
+                .trim().toLowerCase()
+                .replace("đ", "d");
+        return "admin".equals(normalizedRole) || "quantrivien".equals(normalizedRole);
     }
 
-    public static byte[] getImageBytes(String imagePath) throws Exception {
+    public static byte[] getImageBytes(String imagePath) {
         if (outputStream == null || imagePath == null || imagePath.isBlank()) {
             return null;
         }
-
+        // Tạo một CompletableFuture mới cho mỗi yêu cầu
         imageResponseFuture = new CompletableFuture<>();
-
         sendMessage(new Message("GET_IMAGE", imagePath));
-
         try {
-            return imageResponseFuture.get(5, TimeUnit.SECONDS);
+            // Đợi kết quả trong một khoảng thời gian nhất định
+            return imageResponseFuture.get(10, TimeUnit.SECONDS);
         } catch (Exception e) {
-            logger.error("Lỗi hoặc timeout khi tải ảnh: {}", e.getMessage());
+            logger.error("Lỗi hoặc timeout khi tải ảnh '{}': {}", imagePath, e.getMessage());
             return null;
         }
     }
@@ -318,35 +289,26 @@ public class ClientApp extends Application {
     }
 
     public static void setSelectedRole(String role) {
-        if (role == null || role.isBlank()) {
-            selectedRole = "bidder";
-            return;
-        }
-        selectedRole = role.trim().toLowerCase();
+        selectedRole = (role == null || role.isBlank()) ? "bidder" : role.trim().toLowerCase();
     }
 
     public static synchronized void sendMessage(Message message) {
+        if (outputStream == null || socket == null || socket.isClosed()) {
+            logger.error("Không thể gửi tin nhắn, kết nối đã đóng hoặc không hợp lệ.");
+            return;
+        }
         try {
-            if (outputStream != null && socket != null && !socket.isClosed()) {
-                outputStream.reset();
-                outputStream.writeObject(message);
-                outputStream.flush();
-            }
+            outputStream.writeObject(message);
+            outputStream.flush();
+            outputStream.reset(); // Reset trạng thái để tránh lỗi cache đối tượng
         } catch (IOException e) {
             logger.error("Lỗi khi gửi tin nhắn tới Server: {}", e.getMessage());
+            // Có thể cần đóng kết nối và yêu cầu đăng nhập lại ở đây
         }
     }
 
     public static boolean isSellerSelected() {
         return "seller".equalsIgnoreCase(selectedRole);
-    }
-
-    public static ObjectOutputStream getOutputStream() {
-        return outputStream;
-    }
-
-    public static ObjectInputStream getInputStream() {
-        return inputStream;
     }
 
     public static void main(final String[] args) {
