@@ -73,12 +73,6 @@
 
                   <Button fx:id="salesHistoryMenuItem" mnemonicParsing="false" onAction="#switchToSalesHistoryView" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="Lịch sử bán hàng" />
 
-                  <Label text="CHUNG" textFill="#475569" VBox.vgrow="NEVER">
-                     <font><Font name="System Bold" size="10.0" /></font>
-                     <VBox.margin><Insets bottom="8.0" top="15.0" /></VBox.margin>
-                  </Label>
-
-                  <Button fx:id="notificationsMenuItem" mnemonicParsing="false" onAction="#switchToNotificationsView" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="Thông báo" />
                </children>
             </VBox>
 
@@ -108,7 +102,7 @@
                         <Label fx:id="userInfoLabel" text="..." textFill="#334155">
                            <font><Font name="System Bold" size="13.0" /></font>
                         </Label>
-                        <Label text="Online" textFill="#64748b">
+                        <Label fx:id="balanceLabel" text="Số dư: 0 VNĐ" textFill="#64748b">
                            <font><Font size="11.0" /></font>
                         </Label>
                      </children>
