@@ -27,6 +27,7 @@ import java.io.ByteArrayInputStream;
 import java.net.URL;
 import java.text.NumberFormat;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -62,6 +63,7 @@ public class HomeController implements Initializable {
     // ═══════════════════════════════════════════════════════════
     @FXML private Label pageTitle;
     @FXML private Label userInfoLabel;
+    @FXML private Label balanceLabel;
 
     // ═══════════════════════════════════════════════════════════
     // HOME VIEW COMPONENTS
@@ -104,6 +106,7 @@ public class HomeController implements Initializable {
     private boolean sellerMode;
 
     private static final NumberFormat currencyFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
+    private static final DateTimeFormatter END_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM");
 
     // ═══════════════════════════════════════════════════════════
     // INITIALIZE
@@ -477,33 +480,8 @@ public class HomeController implements Initializable {
         card.setOnMouseEntered(event -> card.setStyle(getHoverCardStyle()));
         card.setOnMouseExited(event -> card.setStyle(getNormalCardStyle()));
 
-        if (item.getImagePath() != null && !item.getImagePath().isBlank()) {
-            Task<byte[]> loadImageTask = new Task<>() {
-                @Override
-                protected byte[] call() throws Exception {
-                    return ClientApp.getImageBytes(item.getImagePath());
-                }
-            };
-            loadImageTask.setOnSucceeded(e -> {
-                byte[] imageBytes = loadImageTask.getValue();
-                if (imageBytes != null && imageBytes.length > 0) {
-                    ImageView imageView = new ImageView(new Image(new ByteArrayInputStream(imageBytes)));
-                    imageView.setFitWidth(100);
-                    imageView.setFitHeight(100);
-                    imageView.setPreserveRatio(true);
-                    imageView.setSmooth(true);
-                    card.getChildren().add(0, imageView);
-                } else {
-                    card.getChildren().add(0, createImagePlaceholder("Không tải được ảnh"));
-                }
-            });
-            loadImageTask.setOnFailed(e -> {
-                card.getChildren().add(0, createImagePlaceholder("Lỗi tải ảnh"));
-            });
-            new Thread(loadImageTask).start();
-        } else {
-            card.getChildren().add(0, createImagePlaceholder("Chưa có ảnh"));
-        }
+        // Không hiển thị ảnh ở card ngoài trang chủ.
+        // Ảnh chỉ được tải và hiển thị trong popup chi tiết sản phẩm.
 
         return card;
     }
@@ -684,7 +662,7 @@ public class HomeController implements Initializable {
 
         Label endTimeLabel = createDetailLine(
                 "Thời gian kết thúc",
-                item.getEndTime() == null ? "Chưa thiết lập" : item.getEndTime().toString()
+                item.getEndTime() == null ? "Chưa thiết lập" : item.getEndTime().format(END_TIME_FORMATTER)
         );
 
         Label descriptionTitle = new Label("Mô tả sản phẩm");
@@ -1079,10 +1057,21 @@ public class HomeController implements Initializable {
 
     private void updateUserInfoLabel() {
         if (currentUser == null) {
+            if (userInfoLabel != null) {
+                userInfoLabel.setText("...");
+            }
+            if (balanceLabel != null) {
+                balanceLabel.setText("Số dư: 0 VNĐ");
+            }
             return;
         }
 
-        userInfoLabel.setText(currentUser.getUsername() + " | Role: " + (sellerMode ? "seller" : "bidder"));
+        if (userInfoLabel != null) {
+            userInfoLabel.setText(currentUser.getUsername() + " | Role: " + (sellerMode ? "seller" : "bidder"));
+        }
+        if (balanceLabel != null) {
+            balanceLabel.setText("Số dư: " + currencyFormat.format(currentUser.getBalance()) + " VNĐ");
+        }
     }
 
     // 🔥 FIX 3: Chuyển vai trò an toàn (Bỏ Task)

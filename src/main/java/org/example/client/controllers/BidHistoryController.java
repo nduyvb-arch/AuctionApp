@@ -6,6 +6,9 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 
 import java.net.URL;
 import java.text.NumberFormat;
@@ -14,14 +17,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Controller riêng cho màn hình Lịch sử đấu giá (Bid History).
- * Được nhúng vào HomeMenu.fxml qua fx:include.
- * Dữ liệu (bidHistory) được HomeController truyền vào qua {@link #setup}.
- */
 public class BidHistoryController implements Initializable {
 
-    // ===== FXML COMPONENTS =====
     @FXML private TextField              bidHistorySearchTextField;
     @FXML private ComboBox<String>       bidHistoryStatusComboBox;
     @FXML private ComboBox<String>       bidHistorySortComboBox;
@@ -34,15 +31,10 @@ public class BidHistoryController implements Initializable {
     @FXML private TableColumn<BidHistoryRecord, String>    colAuctionStatus;
     @FXML private TableColumn<BidHistoryRecord, String>    colResult;
 
-    // ===== DATA =====
     private List<BidHistoryRecord> bidHistory = new ArrayList<>();
 
     private static final NumberFormat currencyFormat =
             NumberFormat.getInstance(new Locale("vi_VN"));
-
-    // ============================================================
-    // RECORD NỘI TUYẾN – lưu thông tin một lần đấu giá
-    // ============================================================
 
     public static class BidHistoryRecord {
         private final String        itemId;
@@ -74,41 +66,25 @@ public class BidHistoryController implements Initializable {
         public String        getResult()        { return result; }
     }
 
-    // ============================================================
-    // JAVAFX INITIALIZE
-    // ============================================================
-
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         setupBidHistoryViewFilters();
         setupBidHistoryTableColumns();
     }
 
-    /**
-     * Được gọi bởi HomeController sau khi FXML load xong.
-     * Truyền danh sách lịch sử đấu giá và làm mới bảng.
-     */
     public void setup(List<BidHistoryRecord> bidHistory) {
         this.bidHistory = bidHistory;
         refreshBidHistoryDisplay();
     }
 
-    /**
-     * Cập nhật lại danh sách rồi làm mới bảng
-     * (dùng khi HomeController nhận dữ liệu mới từ server).
-     */
     public void updateData(List<BidHistoryRecord> bidHistory) {
         this.bidHistory = bidHistory;
         refreshBidHistoryDisplay();
     }
 
-    // ============================================================
-    // SETUP BỘ LỌC, SẮP XẾP & CỘT BẢNG
-    // ============================================================
-
     private void setupBidHistoryViewFilters() {
         ObservableList<String> statuses = FXCollections.observableArrayList(
-                "Tất cả", "Đang diễn ra", "Thắng", "Thua", "Chờ"
+                "Tất cả", "Đang diễn ra", "Thắng", "Thua", "Bị hủy", "Chờ"
         );
         bidHistoryStatusComboBox.setItems(statuses);
         bidHistoryStatusComboBox.setValue("Tất cả");
@@ -145,22 +121,39 @@ public class BidHistoryController implements Initializable {
 
         colResult.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getResult()));
-    }
 
-    // ============================================================
-    // HANDLER NÚT LÀM MỚI
-    // ============================================================
+        // Thêm màu sắc cho cột kết quả
+        colResult.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (item == null || empty) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    setFont(Font.font("System", FontWeight.BOLD, 12));
+                    switch (item) {
+                        case "Thắng":
+                            setTextFill(Color.web("#22c55e")); // Green
+                            break;
+                        case "Thua":
+                            setTextFill(Color.web("#ef4444")); // Red
+                            break;
+                        default:
+                            setTextFill(Color.web("#64748b")); // Slate
+                            break;
+                    }
+                }
+            }
+        });
+    }
 
     @FXML
     public void onBidHistoryRefreshClicked() {
         refreshBidHistoryDisplay();
     }
 
-    // ============================================================
-    // HIỂN THỊ LỊCH SỬ ĐẤU GIÁ
-    // ============================================================
-
-    /** Được gọi từ HomeController khi chuyển sang màn hình này. */
     public void refreshBidHistoryView() {
         refreshBidHistoryDisplay();
     }
@@ -182,29 +175,31 @@ public class BidHistoryController implements Initializable {
         bidHistoryTable.setItems(tableData);
     }
 
-    // ============================================================
-    // BỘ LỌC & SẮP XẾP
-    // ============================================================
-
     private boolean applyBidHistoryStatusFilter(BidHistoryRecord record, String filter) {
-        if ("Tất cả".equals(filter))          return true;
-        if ("Đang diễn ra".equals(filter))    return "ACTIVE".equals(record.getAuctionStatus());
-        if ("Thắng".equals(filter))           return "Thắng".equals(record.getResult());
-        if ("Thua".equals(filter))            return "Thua".equals(record.getResult());
-        if ("Chờ".equals(filter))             return "Chờ".equals(record.getResult());
-        return true;
+        if (filter == null || "Tất cả".equals(filter)) return true;
+        
+        // So sánh kết quả đã được tính toán
+        if (filter.equals(record.getResult())) return true;
+        
+        // So sánh trạng thái gốc cho các trường hợp khác
+        if (filter.equals(record.getAuctionStatus())) return true;
+
+        // Xử lý cho bộ lọc "Đang diễn ra"
+        if ("Đang diễn ra".equals(filter) && "ACTIVE".equalsIgnoreCase(record.getAuctionStatus())) return true;
+
+        return false;
     }
 
     private void applyBidHistorySorting(List<BidHistoryRecord> recordList, String sortOption) {
         switch (sortOption) {
             case "Mới nhất":
-                recordList.sort((a, b) -> b.getBidTime().compareTo(a.getBidTime()));
+                recordList.sort(Comparator.comparing(BidHistoryRecord::getBidTime).reversed());
                 break;
             case "Cũ nhất":
                 recordList.sort(Comparator.comparing(BidHistoryRecord::getBidTime));
                 break;
             case "Giá cao → thấp":
-                recordList.sort((a, b) -> Double.compare(b.getBidAmount(), a.getBidAmount()));
+                recordList.sort(Comparator.comparingDouble(BidHistoryRecord::getBidAmount).reversed());
                 break;
             case "Giá thấp → cao":
                 recordList.sort(Comparator.comparingDouble(BidHistoryRecord::getBidAmount));
