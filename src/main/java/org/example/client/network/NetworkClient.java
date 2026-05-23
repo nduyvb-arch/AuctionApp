@@ -2,6 +2,7 @@ package org.example.client.network;
 
 import javafx.application.Platform;
 import org.example.common.Message;
+import org.example.client.controllers.BidObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,7 +12,6 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
-
 
 public class NetworkClient {
 
@@ -24,8 +24,11 @@ public class NetworkClient {
     private ObjectInputStream in;
     private boolean isRunning;
 
-    // Danh sách các màn hình (Controller) đang đăng kí nhận thông báo
+    // Danh sách các màn hình (Controller) đang đăng kí nhận thông báo chung
     private final List<MessageListener> listeners = new ArrayList<>();
+
+    // Người lắng nghe chuyên biệt cho biểu đồ Lịch sử đặt giá Realtime
+    private BidObserver bidObserver;
 
     private NetworkClient(){}
 
@@ -35,14 +38,20 @@ public class NetworkClient {
         {
             instance = new NetworkClient();
         }
-
         return instance;
+    }
+
+    /**
+     * Hàm Setter cho phép màn hình BidHistoryController đăng ký nhận tin cập nhật biểu đồ
+     */
+    public void setBidObserver(BidObserver observer) {
+        this.bidObserver = observer;
     }
 
     // Hàm kết nối tới server ( chạy 1 lần khi bật App )
     public void connect(String serverAddress, int port)
     {
-        if (socket != null && socket.isClosed())
+        if (socket != null && !socket.isClosed())
         {
             logger.info("Mạng đã được kết nối, không cần kết nối lại");
             return;
@@ -58,7 +67,7 @@ public class NetworkClient {
 
             // Khởi chạy luồng nghe độc lập để tránh treo giao diện
             Thread listenerThread = new Thread(this::listenForMessages);
-            listenerThread.setDaemon(true); // Thread không tự chết khi tắt App
+            listenerThread.setDaemon(true); // Thread tự tắt khi đóng App chính thức
             listenerThread.start();
 
             logger.info("Kết nối tới Server thành công tại {}:{}", serverAddress, port);
@@ -96,7 +105,25 @@ public class NetworkClient {
             {
                 Message finalMsg = incomingMessage;
 
-                // Đẩy dữ liệu vào luồng giao diện
+                // --- XỬ LÝ ĐẨY DỮ LIỆU SANG BIỂU ĐỒ REALTIME ---
+                // Khớp chính xác phương thức getAction() và getPayload() của nhóm bạn
+                if ("BID_UPDATE".equals(finalMsg.getAction()) || finalMsg.getPayload() instanceof org.example.client.controllers.BidHistoryController.BidHistoryRecord) {
+
+                    Object dataPayload = finalMsg.getPayload();
+
+                    if (dataPayload instanceof org.example.client.controllers.BidHistoryController.BidHistoryRecord) {
+                        org.example.client.controllers.BidHistoryController.BidHistoryRecord record =
+                                (org.example.client.controllers.BidHistoryController.BidHistoryRecord) dataPayload;
+
+                        // Bắn thông tin về đồ thị qua interface
+                        if (bidObserver != null) {
+                            // Ép chạy trong luồng chính JavaFX UI an toàn
+                            Platform.runLater(() -> bidObserver.onNewBidReceived(record));
+                        }
+                    }
+                }
+
+                // Đẩy dữ liệu vào luồng giao diện cho các Listener chung khác của nhóm bạn
                 Platform.runLater(() -> {
                     for (MessageListener listener : listeners)
                     {

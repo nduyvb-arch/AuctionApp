@@ -1,11 +1,21 @@
 package org.example.client.controllers;
 
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.*;
+import javafx.scene.chart.CategoryAxis;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -14,72 +24,224 @@ import java.net.URL;
 import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
-public class BidHistoryController implements Initializable {
+/**
+ * Controller điều khiển màn hình lịch sử đấu giá, tích hợp biểu đồ xu hướng giá realtime.
+ * Triển khai BidObserver để nhận dữ liệu đồng bộ từ luồng mạng Socket.
+ */
+public class BidHistoryController implements Initializable, BidObserver {
 
-    @FXML private TextField              bidHistorySearchTextField;
-    @FXML private ComboBox<String>       bidHistoryStatusComboBox;
-    @FXML private ComboBox<String>       bidHistorySortComboBox;
-    @FXML private Button                 bidHistoryRefreshButton;
-    @FXML private TableView<BidHistoryRecord>              bidHistoryTable;
-    @FXML private TableColumn<BidHistoryRecord, String>    colItemName;
-    @FXML private TableColumn<BidHistoryRecord, String>    colItemType;
-    @FXML private TableColumn<BidHistoryRecord, String>    colBidAmount;
-    @FXML private TableColumn<BidHistoryRecord, String>    colBidTime;
-    @FXML private TableColumn<BidHistoryRecord, String>    colAuctionStatus;
-    @FXML private TableColumn<BidHistoryRecord, String>    colResult;
+    @FXML
+    private TextField bidHistorySearchTextField;
+    @FXML
+    private ComboBox<String> bidHistoryStatusComboBox;
+    @FXML
+    private ComboBox<String> bidHistorySortComboBox;
+    @FXML
+    private Button bidHistoryRefreshButton;
+    @FXML
+    private TableView<BidHistoryRecord> bidHistoryTable;
+    @FXML
+    private TableColumn<BidHistoryRecord, String> colItemName;
+    @FXML
+    private TableColumn<BidHistoryRecord, String> colItemType;
+    @FXML
+    private TableColumn<BidHistoryRecord, String> colBidAmount;
+    @FXML
+    private TableColumn<BidHistoryRecord, String> colBidTime;
+    @FXML
+    private TableColumn<BidHistoryRecord, String> colAuctionStatus;
+    @FXML
+    private TableColumn<BidHistoryRecord, String> colResult;
+
+    // === CÁC THÀNH PHẦN BIỂU ĐỒ MỚI ĐƯỢC TÍCH HỢP ===
+    @FXML
+    private LineChart<String, Number> bidLineChart;
+    @FXML
+    private CategoryAxis chartXAxis;
+    @FXML
+    private NumberAxis chartYAxis;
+
+    // Đối tượng quản lý đường biểu diễn giá
+    private XYChart.Series<String, Number> priceSeries;
+    // Biến lưu trữ ID của sản phẩm hiện đang được người dùng chọn xem biểu đồ
+    private String selectedItemId = null;
 
     private List<BidHistoryRecord> bidHistory = new ArrayList<>();
 
     private static final NumberFormat currencyFormat =
             NumberFormat.getInstance(new Locale("vi_VN"));
 
+    private static final DateTimeFormatter timeFormatter =
+            DateTimeFormatter.ofPattern("HH:mm:ss");
+
     public static class BidHistoryRecord {
-        private final String        itemId;
-        private final String        itemName;
-        private final String        itemType;
-        private final double        bidAmount;
+        private final String itemId;
+        private final String itemName;
+        private final String itemType;
+        private final double bidAmount;
         private final LocalDateTime bidTime;
-        private final String        auctionStatus;
-        private final String        result;
+        private final String auctionStatus;
+        private final String result;
 
         public BidHistoryRecord(String itemId, String itemName, String itemType,
                                 double bidAmount, LocalDateTime bidTime,
                                 String auctionStatus, String result) {
-            this.itemId        = itemId;
-            this.itemName      = itemName;
-            this.itemType      = itemType;
-            this.bidAmount     = bidAmount;
-            this.bidTime       = bidTime;
+            this.itemId = itemId;
+            this.itemName = itemName;
+            this.itemType = itemType;
+            this.bidAmount = bidAmount;
+            this.bidTime = bidTime;
             this.auctionStatus = auctionStatus;
-            this.result        = result;
+            this.result = result;
         }
 
-        public String        getItemId()        { return itemId; }
-        public String        getItemName()      { return itemName; }
-        public String        getItemType()      { return itemType; }
-        public double        getBidAmount()     { return bidAmount; }
-        public LocalDateTime getBidTime()       { return bidTime; }
-        public String        getAuctionStatus() { return auctionStatus; }
-        public String        getResult()        { return result; }
+        public String getItemId() {
+            return itemId;
+        }
+
+        public String getItemName() {
+            return itemName;
+        }
+
+        public String getItemType() {
+            return itemType;
+        }
+
+        public double getBidAmount() {
+            return bidAmount;
+        }
+
+        public LocalDateTime getBidTime() {
+            return bidTime;
+        }
+
+        public String getAuctionStatus() {
+            return auctionStatus;
+        }
+
+        public String getResult() {
+            return result;
+        }
     }
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         setupBidHistoryViewFilters();
         setupBidHistoryTableColumns();
+        setupRealtimeChart(); // Khởi tạo cấu hình cho biểu đồ
     }
 
     public void setup(List<BidHistoryRecord> bidHistory) {
         this.bidHistory = bidHistory;
         refreshBidHistoryDisplay();
+
+        // TỰ ĐỘNG CHỌN DÒNG ĐẦU TIÊN: Hiển thị ngay biểu đồ khi vừa nạp màn hình
+        if (!bidHistoryTable.getItems().isEmpty()) {
+            bidHistoryTable.getSelectionModel().selectFirst();
+        }
     }
 
     public void updateData(List<BidHistoryRecord> bidHistory) {
         this.bidHistory = bidHistory;
         refreshBidHistoryDisplay();
+
+        // Cập nhật lại biểu đồ dựa trên tập dữ liệu mới nếu đang chọn một sản phẩm
+        if (selectedItemId != null) {
+            updateChartForProduct(selectedItemId);
+        } else if (!bidHistoryTable.getItems().isEmpty()) {
+            bidHistoryTable.getSelectionModel().selectFirst();
+        }
+    }
+
+    /**
+     * THỰC HIỆN VIỆC 2: Ghi đè hàm từ Interface BidObserver.
+     * Hàm này đóng vai trò là "Trạm tiếp nhận thông tin" (Callback), nhận gói tin chứa lượt đặt giá
+     * mới từ tiến trình mạng chạy ngầm (Socket Thread) và đẩy vào logic xử lý đồ thị.
+     */
+    @Override
+    public void onNewBidReceived(BidHistoryRecord newRecord) {
+        // Chuyển tiếp luồng dữ liệu sang hàm xử lý giao diện đa luồng an toàn
+        this.handleIncomingNewBidRealtime(newRecord);
+    }
+
+    /**
+     * Khởi tạo cấu hình đồ thị và đăng ký lắng nghe sự kiện TableView click
+     */
+    private void setupRealtimeChart() {
+        priceSeries = new XYChart.Series<>();
+        priceSeries.setName("Xu hướng giá đặt");
+        bidLineChart.getData().add(priceSeries);
+
+        // Tắt hiệu ứng mặc định để các điểm vẽ đồ thị realtime xuất hiện ngay lập tức
+        bidLineChart.setAnimated(false);
+
+        // Không ép mốc đồ thị bắt đầu từ mức giá 0 VNĐ, giúp biểu đồ tự động zoom cận cảnh khoảng giá tranh chấp
+        chartYAxis.setForceZeroInRange(false);
+
+        // LẮNG NGHE OOP EVENT: Khi người dùng click chọn 1 dòng sản phẩm trong bảng
+        bidHistoryTable.getSelectionModel().selectedItemProperty().addListener((observable, oldSelection, newSelection) -> {
+            if (newSelection != null) {
+                selectedItemId = newSelection.getItemId();
+                updateChartForProduct(selectedItemId);
+            } else {
+                selectedItemId = null;
+                priceSeries.getData().clear();
+            }
+        });
+    }
+
+    /**
+     * Lọc và vẽ lại toàn bộ tiến trình giá của một sản phẩm lên đồ thị (Sắp xếp tăng dần theo thời gian)
+     */
+    private void updateChartForProduct(String itemId) {
+        // Xóa dữ liệu cũ trên biểu đồ
+        priceSeries.getData().clear();
+
+        // Lọc ra tất cả các lượt bid của sản phẩm này, sắp xếp theo thời gian tăng dần để vẽ từ trái qua phải
+        List<BidHistoryRecord> productHistory = bidHistory.stream()
+                .filter(r -> r.getItemId().equals(itemId))
+                .sorted(Comparator.comparing(BidHistoryRecord::getBidTime))
+                .collect(Collectors.toList());
+
+        // Đẩy toàn bộ các mốc giá cũ vào biểu đồ
+        for (BidHistoryRecord record : productHistory) {
+            String timeLabel = record.getBidTime().format(timeFormatter);
+            priceSeries.getData().add(new XYChart.Data<>(timeLabel, record.getBidAmount()));
+        }
+    }
+
+    /**
+     * CHỨC NĂNG REALTIME (SOCKET CLIENT CALL):
+     * Hàm này sẽ được gọi từ luồng nhận gói tin mạng Socket (Background Thread)
+     * mỗi khi server báo có ai đó (hoặc chính bạn) vừa đặt thêm một mức giá mới.
+     */
+    public void handleIncomingNewBidRealtime(BidHistoryRecord newRecord) {
+        // Đầu tiên, bổ sung bản ghi mới nhận được vào danh sách tổng của bộ nhớ Client
+        Platform.runLater(() -> {
+            bidHistory.add(newRecord);
+            refreshBidHistoryDisplay(); // Cập nhật lại TableView để người dùng thấy dòng mới nhất
+
+            // KIỂM TRA ĐIỀU KIỆN REALTIME: Nếu bản ghi mới thuộc sản phẩm mà người dùng ĐANG CHỌN xem biểu đồ
+            if (selectedItemId != null && selectedItemId.equals(newRecord.getItemId())) {
+                String timeLabel = newRecord.getBidTime().format(timeFormatter);
+
+                // Thêm một node điểm mới vào cuối biểu đồ ngay lập tức
+                priceSeries.getData().add(new XYChart.Data<>(timeLabel, newRecord.getBidAmount()));
+
+                // Cuộn biểu đồ: Nếu sản phẩm bị đấu giá quá nhiều (ví dụ > 12 bước giá),
+                // xóa điểm cũ nhất ở đầu đồ thị đi để tránh việc các cột thời gian bị đè chữ lên nhau
+                if (priceSeries.getData().size() > 12) {
+                    priceSeries.getData().remove(0);
+                }
+            }
+        });
     }
 
     private void setupBidHistoryViewFilters() {
@@ -122,7 +284,6 @@ public class BidHistoryController implements Initializable {
         colResult.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getResult()));
 
-        // Thêm màu sắc cho cột kết quả
         colResult.setCellFactory(column -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -135,13 +296,13 @@ public class BidHistoryController implements Initializable {
                     setFont(Font.font("System", FontWeight.BOLD, 12));
                     switch (item) {
                         case "Thắng":
-                            setTextFill(Color.web("#22c55e")); // Green
+                            setTextFill(Color.web("#22c55e"));
                             break;
                         case "Thua":
-                            setTextFill(Color.web("#ef4444")); // Red
+                            setTextFill(Color.web("#ef4444"));
                             break;
                         default:
-                            setTextFill(Color.web("#64748b")); // Slate
+                            setTextFill(Color.web("#64748b"));
                             break;
                     }
                 }
@@ -152,6 +313,9 @@ public class BidHistoryController implements Initializable {
     @FXML
     public void onBidHistoryRefreshClicked() {
         refreshBidHistoryDisplay();
+        if (selectedItemId != null) {
+            updateChartForProduct(selectedItemId);
+        }
     }
 
     public void refreshBidHistoryView() {
@@ -159,9 +323,9 @@ public class BidHistoryController implements Initializable {
     }
 
     private void refreshBidHistoryDisplay() {
-        String searchText   = bidHistorySearchTextField.getText().toLowerCase();
+        String searchText = bidHistorySearchTextField.getText().toLowerCase();
         String statusFilter = bidHistoryStatusComboBox.getValue();
-        String sortOption   = bidHistorySortComboBox.getValue();
+        String sortOption = bidHistorySortComboBox.getValue();
 
         List<BidHistoryRecord> filtered = bidHistory.stream()
                 .filter(r -> r.getItemName().toLowerCase().contains(searchText))
@@ -177,16 +341,9 @@ public class BidHistoryController implements Initializable {
 
     private boolean applyBidHistoryStatusFilter(BidHistoryRecord record, String filter) {
         if (filter == null || "Tất cả".equals(filter)) return true;
-        
-        // So sánh kết quả đã được tính toán
         if (filter.equals(record.getResult())) return true;
-        
-        // So sánh trạng thái gốc cho các trường hợp khác
         if (filter.equals(record.getAuctionStatus())) return true;
-
-        // Xử lý cho bộ lọc "Đang diễn ra"
         if ("Đang diễn ra".equals(filter) && "ACTIVE".equalsIgnoreCase(record.getAuctionStatus())) return true;
-
         return false;
     }
 
