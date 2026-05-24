@@ -5,6 +5,7 @@ import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import org.example.common.Message;
@@ -13,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
@@ -58,8 +60,7 @@ public class ClientApp extends Application {
     public void start(final Stage stage) throws Exception {
         primaryStage = stage;
 
-        Image icon = new Image(getClass().getResourceAsStream("/images/logo.png"));
-        primaryStage.getIcons().add(icon);
+        setAppIcon(primaryStage);
 
         switchToLogin();
 
@@ -75,6 +76,18 @@ public class ClientApp extends Application {
         });
 
         stage.show();
+    }
+
+    private void setAppIcon(final Stage stage) {
+        try (InputStream iconStream = getClass().getResourceAsStream("/images/taskbar_icon.png")) {
+            if (iconStream == null) {
+                logger.warn("Không tìm thấy file icon: /images/taskbar_icon.png");
+                return;
+            }
+            stage.getIcons().add(new Image(iconStream));
+        } catch (IOException e) {
+            logger.warn("Không thể tải icon ứng dụng: {}", e.getMessage());
+        }
     }
 
     public static void connectToServer() throws IOException {
@@ -224,6 +237,12 @@ public class ClientApp extends Application {
                         continue; // Không chuyển tin nhắn ảnh cho handler chung
                     }
 
+                    // Tin nhắn khóa tài khoản phải được xử lý ở tầng ứng dụng,
+                    // không phụ thuộc màn hình hiện tại.
+                    if (handleForceLogoutMessage(message)) {
+                        continue;
+                    }
+
                     // Đối với các tin nhắn khác, chuyển cho handler đã đăng ký
                     Consumer<Message> handler = serverMessageHandler;
                     if (handler != null) {
@@ -247,6 +266,47 @@ public class ClientApp extends Application {
 
         serverListenerThread.setDaemon(true);
         serverListenerThread.start();
+    }
+
+    private static boolean handleForceLogoutMessage(Message message) {
+        if (message == null || !"FORCE_LOGOUT".equals(message.getAction())) {
+            return false;
+        }
+
+        String lockedUserId = extractUserId(message.getPayload());
+        User user = currentUser;
+
+        // FORCE_LOGOUT được broadcast cho mọi client, nhưng chỉ tài khoản bị khóa mới đăng xuất.
+        if (user == null || lockedUserId == null || !lockedUserId.equals(user.getId())) {
+            return true;
+        }
+
+        Platform.runLater(() -> {
+            try {
+                currentUser = null;
+                selectedRole = "bidder";
+                serverMessageHandler = null;
+
+                switchToLogin();
+
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.setTitle("Tài khoản bị khóa");
+                alert.setHeaderText("Tài khoản của bạn đã bị admin khóa");
+                alert.setContentText("Bạn đã được đăng xuất và quay về màn hình đăng nhập.");
+                alert.show();
+            } catch (Exception e) {
+                logger.error("Không thể tự động đăng xuất sau khi tài khoản bị khóa: {}", e.getMessage(), e);
+            }
+        });
+
+        return true;
+    }
+
+    private static String extractUserId(Object payload) {
+        if (payload instanceof User) {
+            return ((User) payload).getId();
+        }
+        return payload == null ? null : String.valueOf(payload);
     }
 
     public static boolean isAdminUser(User user) {

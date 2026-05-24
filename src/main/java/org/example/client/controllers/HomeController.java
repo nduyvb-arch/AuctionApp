@@ -1,6 +1,7 @@
 package org.example.client.controllers;
 import org.example.client.ClientApp;
 import javafx.animation.KeyFrame;
+import javafx.event.ActionEvent;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -8,6 +9,10 @@ import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.chart.CategoryAxis;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -32,7 +37,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 import javafx.util.Duration;
@@ -105,8 +110,22 @@ public class HomeController implements Initializable {
     private User currentUser;
     private boolean sellerMode;
 
-    private static final NumberFormat currencyFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
+    private String pendingBidItemId;
+    private double pendingBidAmount;
+    private String activeBidDialogItemId;
+    private String activeBidDialogLastKnownWinnerId;
+    private Item activeBidDialogItem;
+    private Label activeBidCurrentPriceLabel;
+    private Label activeBidMinBidLabel;
+    private Label activeBidStatusLabel;
+    private TextField activeBidAmountField;
+    private Button activeBidSubmitButton;
+    private XYChart.Series<String, Number> activeBidTrendSeries;
+    private final List<BidHistoryController.BidHistoryRecord> activeItemBidHistory = new ArrayList<>();
+
+    private static final NumberFormat currencyFormat = NumberFormat.getInstance(Locale.forLanguageTag("vi-VN"));
     private static final DateTimeFormatter END_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM");
+    private static final DateTimeFormatter CHART_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     // ═══════════════════════════════════════════════════════════
     // INITIALIZE
@@ -874,17 +893,13 @@ public class HomeController implements Initializable {
     // ĐẶT GIÁ
     // ═══════════════════════════════════════════════════════════
     private void openBidDialog(Item item) {
-        Dialog<Double> bidDialog = new Dialog<>();
+        Dialog<Void> bidDialog = new Dialog<>();
         bidDialog.setTitle("Đặt giá - " + item.getItemName());
         bidDialog.setHeaderText(null);
 
-        double minBid = item.getCurrentWinnerId() == null || item.getCurrentWinnerId().isBlank()
-                ? item.getStartingPrice()
-                : item.getCurrentPrice() + item.getBidIncrement();
-
         VBox root = new VBox(14);
         root.setPadding(new Insets(20));
-        root.setPrefWidth(420);
+        root.setPrefWidth(520);
         root.setStyle("-fx-background-color: #f8fafc;");
 
         Label titleLabel = new Label("Nhập mức giá bạn muốn đặt");
@@ -894,21 +909,27 @@ public class HomeController implements Initializable {
                         "-fx-font-weight: bold;"
         );
 
-        Label currentPriceLabel = new Label("Giá hiện tại: " + currencyFormat.format(item.getCurrentPrice()) + " VNĐ");
+        Label currentPriceLabel = new Label();
         currentPriceLabel.setStyle("-fx-text-fill: #334155; -fx-font-size: 13;");
 
         Label incrementLabel = new Label("Bước giá tối thiểu: " + currencyFormat.format(item.getBidIncrement()) + " VNĐ");
         incrementLabel.setStyle("-fx-text-fill: #334155; -fx-font-size: 13;");
 
-        Label minBidLabel = new Label("Bạn cần đặt tối thiểu: " + currencyFormat.format(minBid) + " VNĐ");
+        Label minBidLabel = new Label();
         minBidLabel.setStyle(
                 "-fx-text-fill: #2563eb;" +
                         "-fx-font-size: 14;" +
                         "-fx-font-weight: bold;"
         );
 
+        LineChart<String, Number> bidTrendChart = createBidTrendChart(item);
+        XYChart.Series<String, Number> bidTrendSeries = bidTrendChart.getData().isEmpty()
+                ? null
+                : bidTrendChart.getData().get(0);
+        VBox bidTrendChartBox = createBidTrendChartBox(bidTrendChart);
+
         TextField amountField = new TextField();
-        amountField.setPromptText("Ví dụ: " + currencyFormat.format(minBid));
+        amountField.setPromptText("Ví dụ: " + currencyFormat.format(calculateMinimumBid(item)));
         amountField.setPrefHeight(42);
         amountField.setEditable(true);
         amountField.setDisable(false);
@@ -925,21 +946,40 @@ public class HomeController implements Initializable {
         Label errorLabel = new Label("");
         errorLabel.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 12;");
 
+        Label statusLabel = new Label("");
+        statusLabel.setWrapText(true);
+        statusLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12;");
+
+        activeBidDialogItemId = item.getId();
+        activeBidDialogItem = item;
+        activeBidDialogLastKnownWinnerId = item.getCurrentWinnerId();
+        activeBidCurrentPriceLabel = currentPriceLabel;
+        activeBidMinBidLabel = minBidLabel;
+        activeBidStatusLabel = statusLabel;
+        activeBidAmountField = amountField;
+        activeBidTrendSeries = bidTrendSeries;
+
+        refreshActiveBidDialogLabels();
+        requestItemBidHistory(item.getId());
+
         root.getChildren().addAll(
                 titleLabel,
                 currentPriceLabel,
                 incrementLabel,
                 minBidLabel,
+                bidTrendChartBox,
                 new Label("Số tiền đặt giá:"),
                 amountField,
-                errorLabel
+                errorLabel,
+                statusLabel
         );
 
-        ButtonType submitButtonType = new ButtonType("Xác nhận đặt giá", ButtonBar.ButtonData.OK_DONE);
-        bidDialog.getDialogPane().getButtonTypes().addAll(submitButtonType, ButtonType.CANCEL);
+        ButtonType submitButtonType = new ButtonType("Xác nhận đặt giá", ButtonBar.ButtonData.OTHER);
+        bidDialog.getDialogPane().getButtonTypes().addAll(submitButtonType, ButtonType.CLOSE);
         bidDialog.getDialogPane().setContent(root);
 
         Button submitButton = (Button) bidDialog.getDialogPane().lookupButton(submitButtonType);
+        activeBidSubmitButton = submitButton;
         submitButton.setDisable(true);
         submitButton.setStyle(
                 "-fx-background-color: #10b981;" +
@@ -962,12 +1002,19 @@ public class HomeController implements Initializable {
                 return;
             }
 
+            if (isCurrentUserLastBidder(item)) {
+                submitButton.setDisable(true);
+                errorLabel.setText(getConsecutiveBidWarning());
+                return;
+            }
+
             try {
                 double amount = Double.parseDouble(cleaned);
+                double minimumBid = calculateMinimumBid(item);
 
-                if (amount < minBid) {
+                if (amount < minimumBid) {
                     submitButton.setDisable(true);
-                    errorLabel.setText("Giá phải từ " + currencyFormat.format(minBid) + " VNĐ trở lên.");
+                    errorLabel.setText("Giá phải từ " + currencyFormat.format(minimumBid) + " VNĐ trở lên.");
                 } else {
                     submitButton.setDisable(false);
                     errorLabel.setText("");
@@ -978,31 +1025,363 @@ public class HomeController implements Initializable {
             }
         });
 
+        submitButton.addEventFilter(ActionEvent.ACTION, event -> {
+            event.consume();
+
+            String raw = amountField.getText().trim();
+            if (raw.isBlank()) {
+                errorLabel.setText("Vui lòng nhập số tiền đặt giá.");
+                submitButton.setDisable(true);
+                return;
+            }
+
+            if (isCurrentUserLastBidder(item)) {
+                errorLabel.setText(getConsecutiveBidWarning());
+                submitButton.setDisable(true);
+                return;
+            }
+
+            try {
+                double amount = Double.parseDouble(raw);
+                double minimumBid = calculateMinimumBid(item);
+
+                if (amount < minimumBid) {
+                    errorLabel.setText("Giá phải từ " + currencyFormat.format(minimumBid) + " VNĐ trở lên.");
+                    submitButton.setDisable(true);
+                    return;
+                }
+
+                pendingBidItemId = item.getId();
+                pendingBidAmount = amount;
+                submitButton.setDisable(true);
+                statusLabel.setStyle("-fx-text-fill: #2563eb; -fx-font-size: 12; -fx-font-weight: bold;");
+                statusLabel.setText("Đang gửi lệnh đặt giá...");
+                submitBid(item.getId(), amount);
+            } catch (NumberFormatException e) {
+                errorLabel.setText("Số tiền không hợp lệ.");
+                submitButton.setDisable(true);
+            }
+        });
+
         bidDialog.setOnShown(event -> Platform.runLater(() -> {
             amountField.requestFocus();
             amountField.positionCaret(amountField.getText().length());
         }));
 
-        bidDialog.setResultConverter(buttonType -> {
-            if (buttonType == submitButtonType) {
-                String raw = amountField.getText().trim();
-
-                if (raw.isBlank()) {
-                    return null;
-                }
-
-                try {
-                    return Double.parseDouble(raw);
-                } catch (NumberFormatException e) {
-                    return null;
-                }
+        bidDialog.setOnHidden(event -> {
+            if (item.getId().equals(activeBidDialogItemId)) {
+                clearActiveBidDialogState();
             }
-
-            return null;
         });
 
-        Optional<Double> result = bidDialog.showAndWait();
-        result.ifPresent(amount -> submitBid(item.getId(), amount));
+        bidDialog.showAndWait();
+    }
+
+    private VBox createBidTrendChartBox(LineChart<String, Number> bidTrendChart) {
+        Label chartTitle = new Label("Biểu đồ giá theo thời gian");
+        chartTitle.setStyle(
+                "-fx-text-fill: #334155;" +
+                        "-fx-font-size: 13;" +
+                        "-fx-font-weight: bold;"
+        );
+
+        VBox chartBox = new VBox(8, chartTitle, bidTrendChart);
+        chartBox.setMaxWidth(Double.MAX_VALUE);
+        chartBox.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #e2e8f0;" +
+                        "-fx-border-radius: 12;" +
+                        "-fx-background-radius: 12;" +
+                        "-fx-padding: 10;"
+        );
+
+        return chartBox;
+    }
+
+    private LineChart<String, Number> createBidTrendChart(Item item) {
+        CategoryAxis xAxis = new CategoryAxis();
+        xAxis.setLabel("Mốc giá");
+        xAxis.setTickLabelRotation(-25);
+
+        NumberAxis yAxis = new NumberAxis();
+        yAxis.setLabel("Giá (VNĐ)");
+        yAxis.setForceZeroInRange(false);
+        yAxis.setTickLabelFormatter(new NumberAxis.DefaultFormatter(yAxis) {
+            @Override
+            public String toString(Number object) {
+                return currencyFormat.format(object.doubleValue());
+            }
+        });
+
+        LineChart<String, Number> chart = new LineChart<>(xAxis, yAxis);
+        chart.setAnimated(false);
+        chart.setCreateSymbols(true);
+        chart.setLegendVisible(false);
+        chart.setPrefHeight(230);
+        chart.setMinHeight(210);
+        chart.setMaxWidth(Double.MAX_VALUE);
+        chart.setTitle(null);
+
+        URL chartCss = getClass().getResource("/styles/chart-style.css");
+        if (chartCss != null) {
+            chart.getStylesheets().add(chartCss.toExternalForm());
+        }
+
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        series.setName("Giá đấu toàn server");
+        chart.getData().add(series);
+        rebuildBidTrendSeries(series, item, new ArrayList<>());
+
+        return chart;
+    }
+
+    private void rebuildActiveBidChartFromHistory(List<BidHistoryController.BidHistoryRecord> productBidHistory) {
+        if (activeBidTrendSeries == null || activeBidDialogItem == null) {
+            return;
+        }
+
+        rebuildBidTrendSeries(activeBidTrendSeries, activeBidDialogItem, productBidHistory);
+    }
+
+    private void rebuildBidTrendSeries(XYChart.Series<String, Number> series,
+                                       Item item,
+                                       List<BidHistoryController.BidHistoryRecord> productBidHistory) {
+        if (series == null || item == null) {
+            return;
+        }
+
+        series.getData().clear();
+        series.getData().add(new XYChart.Data<>("Khởi điểm", item.getStartingPrice()));
+
+        List<BidHistoryController.BidHistoryRecord> sortedHistory = productBidHistory == null
+                ? new ArrayList<>()
+                : productBidHistory.stream()
+                .filter(record -> item.getId().equals(record.getItemId()))
+                .sorted(Comparator.comparing(BidHistoryController.BidHistoryRecord::getBidTime))
+                .collect(Collectors.toList());
+
+        if (sortedHistory.size() > 10) {
+            sortedHistory = sortedHistory.subList(sortedHistory.size() - 10, sortedHistory.size());
+        }
+
+        int bidIndex = 1;
+        for (BidHistoryController.BidHistoryRecord record : sortedHistory) {
+            String timeLabel = record.getBidTime().format(DateTimeFormatter.ofPattern("HH:mm"));
+            series.getData().add(new XYChart.Data<>("L" + bidIndex + " " + timeLabel, record.getBidAmount()));
+            bidIndex++;
+        }
+
+        boolean lastPointIsCurrentPrice = !sortedHistory.isEmpty()
+                && Double.compare(sortedHistory.get(sortedHistory.size() - 1).getBidAmount(), item.getCurrentPrice()) == 0;
+
+        if (sortedHistory.isEmpty() || !lastPointIsCurrentPrice) {
+            series.getData().add(new XYChart.Data<>("Hiện tại", item.getCurrentPrice()));
+        }
+    }
+
+    private boolean isCurrentUserLastBidder(Item item) {
+        return currentUser != null
+                && item != null
+                && item.getCurrentWinnerId() != null
+                && item.getCurrentWinnerId().equals(currentUser.getId());
+    }
+
+    private String getConsecutiveBidWarning() {
+        return "Bạn đang là người đặt giá gần nhất cho sản phẩm này. Vui lòng chờ người khác đặt giá trước.";
+    }
+
+    private double calculateMinimumBid(Item item) {
+        if (item == null) {
+            return 0;
+        }
+
+        return item.getCurrentWinnerId() == null || item.getCurrentWinnerId().isBlank()
+                ? item.getStartingPrice()
+                : item.getCurrentPrice() + item.getBidIncrement();
+    }
+
+    private void refreshActiveBidDialogLabels() {
+        if (activeBidDialogItem == null) {
+            return;
+        }
+
+        double minimumBid = calculateMinimumBid(activeBidDialogItem);
+
+        if (activeBidCurrentPriceLabel != null) {
+            activeBidCurrentPriceLabel.setText("Giá hiện tại: "
+                    + currencyFormat.format(activeBidDialogItem.getCurrentPrice()) + " VNĐ");
+        }
+
+        if (activeBidMinBidLabel != null) {
+            activeBidMinBidLabel.setText("Bạn cần đặt tối thiểu: "
+                    + currencyFormat.format(minimumBid) + " VNĐ");
+        }
+
+        if (activeBidAmountField != null) {
+            activeBidAmountField.setPromptText("Ví dụ: " + currencyFormat.format(minimumBid));
+        }
+    }
+
+    private void appendActiveBidChartPoint(double amount, String labelPrefix, boolean forceAdd) {
+        if (activeBidTrendSeries == null) {
+            return;
+        }
+
+        if (!forceAdd && isLastActiveBidChartValue(amount)) {
+            return;
+        }
+
+        String baseLabel = labelPrefix + " " + LocalDateTime.now().format(CHART_TIME_FORMATTER);
+        String label = baseLabel;
+        int duplicateIndex = 2;
+
+        while (containsActiveBidChartLabel(label)) {
+            label = baseLabel + " (" + duplicateIndex + ")";
+            duplicateIndex++;
+        }
+
+        activeBidTrendSeries.getData().add(new XYChart.Data<>(label, amount));
+
+        while (activeBidTrendSeries.getData().size() > 12) {
+            int removeIndex = activeBidTrendSeries.getData().size() > 1 ? 1 : 0;
+            activeBidTrendSeries.getData().remove(removeIndex);
+        }
+    }
+
+
+    private boolean containsActiveBidChartLabel(String label) {
+        if (activeBidTrendSeries == null) {
+            return false;
+        }
+
+        for (XYChart.Data<String, Number> data : activeBidTrendSeries.getData()) {
+            if (label.equals(data.getXValue())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isLastActiveBidChartValue(double amount) {
+        if (activeBidTrendSeries == null || activeBidTrendSeries.getData().isEmpty()) {
+            return false;
+        }
+
+        XYChart.Data<String, Number> lastPoint = activeBidTrendSeries.getData()
+                .get(activeBidTrendSeries.getData().size() - 1);
+        return Double.compare(lastPoint.getYValue().doubleValue(), amount) == 0;
+    }
+
+    private void handleBidResponse(Object payload) {
+        String responseMessage = String.valueOf(payload);
+        boolean success = responseMessage.startsWith("Đặt giá thành công");
+
+        if (success) {
+            updateActiveBidDialogAfterSuccessfulBid(responseMessage);
+        } else {
+            if (activeBidStatusLabel != null) {
+                activeBidStatusLabel.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 12; -fx-font-weight: bold;");
+                activeBidStatusLabel.setText(responseMessage);
+            }
+
+            if (activeBidSubmitButton != null && activeBidAmountField != null
+                    && !activeBidAmountField.getText().isBlank()) {
+                activeBidSubmitButton.setDisable(false);
+            }
+
+            Alert bidAlert = new Alert(Alert.AlertType.WARNING);
+            bidAlert.setTitle("Kết quả đặt giá");
+            bidAlert.setHeaderText("Đặt giá thất bại");
+            bidAlert.setContentText(responseMessage);
+            bidAlert.showAndWait();
+        }
+
+        pendingBidItemId = null;
+        pendingBidAmount = 0;
+    }
+
+    private void updateActiveBidDialogAfterSuccessfulBid(String responseMessage) {
+        if (pendingBidItemId == null || !pendingBidItemId.equals(activeBidDialogItemId)
+                || activeBidDialogItem == null) {
+            Alert bidAlert = new Alert(Alert.AlertType.INFORMATION);
+            bidAlert.setTitle("Kết quả đặt giá");
+            bidAlert.setHeaderText("Đặt giá thành công");
+            bidAlert.setContentText(responseMessage);
+            bidAlert.showAndWait();
+            return;
+        }
+
+        activeBidDialogItem.setCurrentPrice(pendingBidAmount);
+        if (currentUser != null) {
+            activeBidDialogItem.setCurrentWinnerId(currentUser.getId());
+            activeBidDialogLastKnownWinnerId = currentUser.getId();
+        }
+
+        appendActiveBidChartPoint(pendingBidAmount, "Vừa đặt", true);
+        requestItemBidHistory(activeBidDialogItemId);
+        refreshActiveBidDialogLabels();
+
+        if (activeBidAmountField != null) {
+            activeBidAmountField.clear();
+        }
+
+        if (activeBidSubmitButton != null) {
+            activeBidSubmitButton.setDisable(true);
+        }
+
+        if (activeBidStatusLabel != null) {
+            activeBidStatusLabel.setStyle("-fx-text-fill: #16a34a; -fx-font-size: 12; -fx-font-weight: bold;");
+            activeBidStatusLabel.setText("Đặt giá thành công! Đang đồng bộ biểu đồ chung toàn server.");
+        }
+    }
+
+    private void updateActiveBidDialogFromItemUpdate(Item updatedItem) {
+        if (updatedItem == null || activeBidDialogItem == null || activeBidDialogItemId == null
+                || !activeBidDialogItemId.equals(updatedItem.getId())) {
+            return;
+        }
+
+        boolean winnerChanged = !Objects.equals(activeBidDialogLastKnownWinnerId, updatedItem.getCurrentWinnerId());
+        boolean priceChanged = Double.compare(activeBidDialogItem.getCurrentPrice(), updatedItem.getCurrentPrice()) != 0;
+
+        activeBidDialogItem.setCurrentPrice(updatedItem.getCurrentPrice());
+        activeBidDialogItem.setCurrentWinnerId(updatedItem.getCurrentWinnerId());
+        activeBidDialogItem.setStatus(updatedItem.getStatus());
+        activeBidDialogItem.setEndTime(updatedItem.getEndTime());
+        activeBidDialogLastKnownWinnerId = updatedItem.getCurrentWinnerId();
+
+        if (winnerChanged || priceChanged) {
+            appendActiveBidChartPoint(updatedItem.getCurrentPrice(), "Cập nhật", winnerChanged);
+            requestItemBidHistory(updatedItem.getId());
+        }
+
+        refreshActiveBidDialogLabels();
+
+        if (activeBidStatusLabel != null) {
+            if (isCurrentUserLastBidder(activeBidDialogItem)) {
+                activeBidStatusLabel.setStyle("-fx-text-fill: #d97706; -fx-font-size: 12; -fx-font-weight: bold;");
+                activeBidStatusLabel.setText(getConsecutiveBidWarning());
+            } else if (winnerChanged || priceChanged) {
+                activeBidStatusLabel.setStyle("-fx-text-fill: #2563eb; -fx-font-size: 12; -fx-font-weight: bold;");
+                activeBidStatusLabel.setText("Đã có lượt đặt giá mới. Bạn có thể đặt tiếp nếu muốn.");
+            }
+        }
+    }
+
+    private void clearActiveBidDialogState() {
+        activeBidDialogItemId = null;
+        activeBidDialogLastKnownWinnerId = null;
+        activeBidDialogItem = null;
+        activeBidCurrentPriceLabel = null;
+        activeBidMinBidLabel = null;
+        activeBidStatusLabel = null;
+        activeBidAmountField = null;
+        activeBidSubmitButton = null;
+        activeBidTrendSeries = null;
+        activeItemBidHistory.clear();
+        pendingBidItemId = null;
+        pendingBidAmount = 0;
     }
 
     // 🔥 FIX 2: Đặt giá an toàn (Bỏ Task)
@@ -1114,18 +1493,18 @@ public class HomeController implements Initializable {
                     break;
 
                 case "BID_RESPONSE":
-                    Alert bidAlert = new Alert(Alert.AlertType.INFORMATION);
-                    bidAlert.setTitle("Kết quả đặt giá");
-                    bidAlert.setHeaderText("Phản hồi từ server");
-                    bidAlert.setContentText(String.valueOf(message.getPayload()));
-                    bidAlert.showAndWait();
-
+                    handleBidResponse(message.getPayload());
                     loadInitialItems();
                     requestMyBidHistory();
                     break;
 
                 case "MY_BID_HISTORY_RESPONSE":
                     updateBidHistoryFromPayload(message.getPayload());
+                    break;
+
+                case "ITEM_BID_HISTORY_RESPONSE":
+                case "ITEM_BID_HISTORY_UPDATE":
+                    updateActiveBidChartFromHistoryPayload(message.getPayload());
                     break;
 
                 case "AUCTION_RESULT_NOTIFICATION":
@@ -1147,6 +1526,7 @@ public class HomeController implements Initializable {
 
                     items.removeIf(item -> item.getId().equals(updatedItem.getId()));
                     items.add(updatedItem);
+                    updateActiveBidDialogFromItemUpdate(updatedItem);
 
                     refreshCurrentViews();
                     break;
@@ -1186,6 +1566,83 @@ public class HomeController implements Initializable {
                     break;
             }
         });
+    }
+
+    private void requestItemBidHistory(String itemId) {
+        if (itemId == null || itemId.isBlank()) {
+            return;
+        }
+
+        ClientApp.sendMessage(new Message("GET_ITEM_BID_HISTORY", itemId));
+    }
+
+    private void updateActiveBidChartFromHistoryPayload(Object payload) {
+        if (!(payload instanceof Object[])) {
+            return;
+        }
+
+        Object[] data = (Object[]) payload;
+        if (data.length < 2) {
+            return;
+        }
+
+        String itemId = String.valueOf(data[0]);
+        if (activeBidDialogItemId == null || !activeBidDialogItemId.equals(itemId)) {
+            return;
+        }
+
+        activeItemBidHistory.clear();
+        Object rows = data[1];
+
+        if (rows instanceof List<?>) {
+            for (Object row : (List<?>) rows) {
+                BidHistoryController.BidHistoryRecord record = createBidHistoryRecordFromRow(row);
+                if (record != null) {
+                    activeItemBidHistory.add(record);
+                }
+            }
+        }
+
+        rebuildActiveBidChartFromHistory(activeItemBidHistory);
+
+        if (activeBidStatusLabel != null && !activeItemBidHistory.isEmpty()) {
+            activeBidStatusLabel.setStyle("-fx-text-fill: #2563eb; -fx-font-size: 12; -fx-font-weight: bold;");
+            activeBidStatusLabel.setText("Biểu đồ đã đồng bộ theo lịch sử đặt giá chung của toàn server.");
+        }
+    }
+
+    private BidHistoryController.BidHistoryRecord createBidHistoryRecordFromRow(Object row) {
+        if (!(row instanceof Object[])) {
+            return null;
+        }
+
+        Object[] data = (Object[]) row;
+        if (data.length < 7) {
+            return null;
+        }
+
+        try {
+            String itemId = String.valueOf(data[0]);
+            String itemName = String.valueOf(data[1]);
+            String itemType = String.valueOf(data[2]);
+            double bidAmount = ((Number) data[3]).doubleValue();
+            java.time.LocalDateTime bidTime = (java.time.LocalDateTime) data[4];
+            String auctionStatus = String.valueOf(data[5]);
+            String result = String.valueOf(data[6]);
+
+            return new BidHistoryController.BidHistoryRecord(
+                    itemId,
+                    itemName,
+                    itemType,
+                    bidAmount,
+                    bidTime,
+                    auctionStatus,
+                    result
+            );
+        } catch (Exception e) {
+            System.err.println("Không đọc được một dòng lịch sử đặt giá sản phẩm: " + e.getMessage());
+            return null;
+        }
     }
 
     // 🔥 FIX 4: Gọi lịch sử an toàn (Bỏ Task)
