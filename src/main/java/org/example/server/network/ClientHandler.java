@@ -52,6 +52,11 @@ public class ClientHandler implements Runnable, Observer {
             while ((inputMessage = (Message) in.readObject()) != null) {
                 logger.info("Nhận được lệnh từ Client: {}", inputMessage.getAction());
 
+                if (isCurrentUserBanned() && !isLoginOrRegisterAction(inputMessage.getAction())) {
+                    sendMessage(new Message("FORCE_LOGOUT", currentUser.getId()));
+                    break;
+                }
+
                 switch (inputMessage.getAction()) {
                     case "LOGIN":
                         String[] loginData = (String[]) inputMessage.getPayload();
@@ -121,6 +126,10 @@ public class ClientHandler implements Runnable, Observer {
 
                             if (updatedItem != null) {
                                 notifier.notifyObservers(new Message("ITEM_UPDATE", updatedItem));
+                                notifier.notifyObservers(new Message(
+                                        "ITEM_BID_HISTORY_UPDATE",
+                                        new Object[]{itemId, AuctionManager.getInstance().getBidHistoryForItem(itemId)}
+                                ));
                             }
                         }
                         break;
@@ -143,6 +152,14 @@ public class ClientHandler implements Runnable, Observer {
                         sendMessage(new Message(
                                 "MY_BID_HISTORY_RESPONSE",
                                 AuctionManager.getInstance().getBidHistoryForUser(historyUserId)
+                        ));
+                        break;
+
+                    case "GET_ITEM_BID_HISTORY":
+                        String historyItemId = String.valueOf(inputMessage.getPayload());
+                        sendMessage(new Message(
+                                "ITEM_BID_HISTORY_RESPONSE",
+                                new Object[]{historyItemId, AuctionManager.getInstance().getBidHistoryForItem(historyItemId)}
                         ));
                         break;
 
@@ -286,7 +303,12 @@ public class ClientHandler implements Runnable, Observer {
                         }
                         String banUserId = (String) inputMessage.getPayload();
                         String banResult = UserManager.getInstance().banUser(banUserId);
-                        sendMessage(new Message("BAN_USER_RESPONSE", "success".equals(banResult) ? "Đã khóa tài khoản thành công." : banResult));
+                        boolean banSuccess = "success".equals(banResult);
+                        sendMessage(new Message("BAN_USER_RESPONSE", banSuccess ? "Đã khóa tài khoản thành công." : banResult));
+
+                        if (banSuccess) {
+                            notifier.notifyObservers(new Message("FORCE_LOGOUT", banUserId));
+                        }
                         break;
 
                     case "UNBAN_USER":
@@ -428,6 +450,19 @@ public class ClientHandler implements Runnable, Observer {
                 logger.error("Lỗi khi đóng socket", e);
             }
         }
+    }
+
+    private boolean isLoginOrRegisterAction(String action) {
+        return "LOGIN".equals(action) || "REGISTER".equals(action);
+    }
+
+    private boolean isCurrentUserBanned() {
+        if (currentUser == null || currentUser.getId() == null) {
+            return false;
+        }
+
+        User latestUser = UserManager.getInstance().findUserById(currentUser.getId());
+        return latestUser != null && latestUser.isBanned();
     }
 
     public synchronized void sendMessage(Message message) {
