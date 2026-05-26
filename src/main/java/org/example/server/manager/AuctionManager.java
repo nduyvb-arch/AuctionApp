@@ -21,13 +21,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Bản sửa:
- * - getAllItems() tự kiểm tra sản phẩm hết hạn và đổi sang CLOSED.
- * - startAuction() đổi status sang ACTIVE, set endTime, cập nhật DB.
- * - placeBid() vẫn kiểm tra hết hạn trước khi cho đặt giá.
- * - Không cho cùng một người dùng đặt cùng một sản phẩm 2 lần liên tiếp.
- */
 public class AuctionManager {
 
     private static final Logger logger = LoggerFactory.getLogger(AuctionManager.class);
@@ -327,9 +320,15 @@ public class AuctionManager {
 
                     String displayResult;
                     if ("ACTIVE".equals(status)) {
-                        displayResult = String.valueOf(userId).equals(winnerId) ? "Đang dẫn đầu" : "Đang diễn ra";
+                        displayResult = String.valueOf(userId).equals(winnerId) ? "Đang dẫn đầu" : "Đã bị vượt";
+                    } else if ("CLOSED".equals(status)) {
+                        displayResult = String.valueOf(userId).equals(winnerId) ? "Thắng" : "Thua";
+                    } else if ("CANCELED".equals(status)) {
+                        displayResult = "Bị hủy";
+                    } else if ("PENDING".equals(status)) {
+                        displayResult = "Chờ";
                     } else {
-                        displayResult = "Đã kết thúc";
+                        displayResult = "Không rõ";
                     }
 
                     result.add(new Object[]{itemId, itemName, itemType, bidAmount, bidTime, status, displayResult});
@@ -373,8 +372,14 @@ public class AuctionManager {
                     String displayResult;
                     if ("ACTIVE".equals(status)) {
                         displayResult = String.valueOf(bidderId).equals(winnerId) ? "Đang dẫn đầu" : "Đã bị vượt";
+                    } else if ("CLOSED".equals(status)) {
+                        displayResult = String.valueOf(bidderId).equals(winnerId) ? "Thắng" : "Thua";
+                    } else if ("CANCELED".equals(status)) {
+                        displayResult = "Bị hủy";
+                    } else if ("PENDING".equals(status)) {
+                        displayResult = "Chờ";
                     } else {
-                        displayResult = String.valueOf(bidderId).equals(winnerId) ? "Thắng" : "Đã kết thúc";
+                        displayResult = "Không rõ";
                     }
 
                     result.add(new Object[]{rowItemId, itemName, itemType, bidAmount, bidTime, status, displayResult});

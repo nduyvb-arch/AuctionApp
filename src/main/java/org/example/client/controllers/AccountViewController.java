@@ -64,6 +64,9 @@ public class AccountViewController implements Initializable {
         balanceLabel.setText(currencyFormat.format(user.getBalance()) + " VNĐ");
         statusLabel.setText(user.isBanned() ? "Đang bị khóa" : "Đang hoạt động");
 
+        if (topUpButton != null) topUpButton.setDisable(false);
+        if (refreshButton != null) refreshButton.setDisable(false);
+
         if ("seller".equalsIgnoreCase(user.getRole())) {
             noteLabel.setText("Số dư bao gồm tiền nạp và nhận được từ đấu giá.");
         } else {
