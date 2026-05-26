@@ -18,6 +18,8 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.text.Normalizer;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -48,6 +50,8 @@ public class ClientApp extends Application {
     private static volatile Thread serverListenerThread;
 
     private static volatile CompletableFuture<byte[]> imageResponseFuture;
+
+    public static final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 8888;
@@ -118,6 +122,7 @@ public class ClientApp extends Application {
     @Override
     public void stop() throws Exception {
         closeConnection();
+        executorService.shutdownNow();
         super.stop();
     }
 
