@@ -279,7 +279,7 @@ public class BidHistoryController implements Initializable, BidObserver {
                                 .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
 
         colAuctionStatus.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getAuctionStatus()));
+                new SimpleStringProperty(formatAuctionStatus(cellData.getValue().getAuctionStatus())));
 
         colResult.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getResult()));
@@ -299,6 +299,7 @@ public class BidHistoryController implements Initializable, BidObserver {
                             setTextFill(Color.web("#22c55e"));
                             break;
                         case "Thua":
+                        case "Đã bị vượt":
                             setTextFill(Color.web("#ef4444"));
                             break;
                         default:
@@ -308,6 +309,26 @@ public class BidHistoryController implements Initializable, BidObserver {
                 }
             }
         });
+    }
+
+
+    private String formatAuctionStatus(String status) {
+        if (status == null) {
+            return "Không rõ";
+        }
+
+        switch (status.toUpperCase()) {
+            case "ACTIVE":
+                return "Đang diễn ra";
+            case "CLOSED":
+                return "Đã kết thúc";
+            case "CANCELED":
+                return "Bị hủy";
+            case "PENDING":
+                return "Chờ";
+            default:
+                return status;
+        }
     }
 
     @FXML

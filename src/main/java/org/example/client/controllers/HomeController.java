@@ -26,6 +26,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import org.example.common.Message;
 import org.example.common.model.item.Item;
+import org.example.common.model.chat.AuctionChatMessage;
 import org.example.common.model.user.User;
 
 import java.io.ByteArrayInputStream;
@@ -74,6 +75,7 @@ public class HomeController implements Initializable {
     // HOME VIEW COMPONENTS
     // ═══════════════════════════════════════════════════════════
     @FXML private VBox homeView;
+    @FXML private VBox auctionRoomView;
     @FXML private TextField searchTextField;
     @FXML private ComboBox<String> filterComboBox;
     @FXML private ComboBox<String> sortComboBox;
@@ -120,8 +122,19 @@ public class HomeController implements Initializable {
     private Label activeBidStatusLabel;
     private TextField activeBidAmountField;
     private Button activeBidSubmitButton;
+    private Label activeBidErrorLabel;
     private XYChart.Series<String, Number> activeBidTrendSeries;
     private final List<BidHistoryController.BidHistoryRecord> activeItemBidHistory = new ArrayList<>();
+
+    private Item activeAuctionRoomItem;
+    private VBox auctionRoomChatMessagesBox;
+    private ScrollPane auctionRoomChatScrollPane;
+    private TextField auctionRoomChatField;
+    private Button auctionRoomChatSendButton;
+    private Label auctionRoomCountdownLabel;
+    private Label auctionRoomStatusBadge;
+    private boolean auctionRoomChatHasMessages;
+    private Timeline auctionRoomCountdownTimeline;
 
     private static final NumberFormat currencyFormat = NumberFormat.getInstance(Locale.forLanguageTag("vi-VN"));
     private static final DateTimeFormatter END_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM");
@@ -179,6 +192,7 @@ public class HomeController implements Initializable {
     // ═══════════════════════════════════════════════════════════
     @FXML
     private void switchToHomeView() {
+        clearAuctionRoomState();
         showView(homeView);
         pageTitle.setText("Trang chủ sàn đấu giá");
         loadInitialItems();
@@ -186,6 +200,7 @@ public class HomeController implements Initializable {
 
     @FXML
     private void switchToBidHistoryView() {
+        clearAuctionRoomState();
         showView(bidHistoryViewPane);
         pageTitle.setText("Lịch sử đấu giá");
         requestMyBidHistory();
@@ -197,12 +212,14 @@ public class HomeController implements Initializable {
 
     @FXML
     private void switchToAddItemView() {
+        clearAuctionRoomState();
         showView(addItemViewPane);
         pageTitle.setText("➕ Đăng sản phẩm mới");
     }
 
     @FXML
     private void switchToMyItemsView() {
+        clearAuctionRoomState();
         showView(myItemsViewPane);
         pageTitle.setText("Sản phẩm của tôi");
 
@@ -213,6 +230,7 @@ public class HomeController implements Initializable {
 
     @FXML
     private void switchToSalesHistoryView() {
+        clearAuctionRoomState();
         showView(salesHistoryViewPane);
         pageTitle.setText("Lịch sử bán hàng");
 
@@ -223,6 +241,7 @@ public class HomeController implements Initializable {
 
     @FXML
     private void switchToAccountView() {
+        clearAuctionRoomState();
         showView(accountViewPane);
         pageTitle.setText("Tài khoản");
 
@@ -279,6 +298,7 @@ public class HomeController implements Initializable {
 
     private void hideAllViews() {
         setViewState(homeView, false);
+        setViewState(auctionRoomView, false);
         setViewState(bidHistoryViewPane, false);
         setViewState(addItemViewPane, false);
         setViewState(myItemsViewPane, false);
@@ -708,7 +728,7 @@ public class HomeController implements Initializable {
                         "-fx-border-radius: 12;"
         );
 
-        Button bidButton = new Button("Đặt giá ngay");
+        Button bidButton = new Button("Tham gia phòng đấu giá");
         bidButton.setPrefHeight(42);
         bidButton.setMaxWidth(Double.MAX_VALUE);
         bidButton.setStyle(
@@ -722,7 +742,7 @@ public class HomeController implements Initializable {
 
         bidButton.setOnAction(event -> {
             dialog.close();
-            Platform.runLater(() -> openBidDialog(item));
+            Platform.runLater(() -> openAuctionRoom(item));
         });
 
         if (!"ACTIVE".equals(status)) {
@@ -789,6 +809,625 @@ public class HomeController implements Initializable {
         dialog.getDialogPane().setContent(root);
         dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
         dialog.showAndWait();
+    }
+
+
+
+    private void openAuctionRoom(Item item) {
+        if (item == null) {
+            return;
+        }
+
+        String targetItemId = item.getId();
+        Item latestItem = items.stream()
+                .filter(existingItem -> existingItem.getId().equals(targetItemId))
+                .findFirst()
+                .orElse(item);
+        item = latestItem;
+
+        clearAuctionRoomState();
+
+        activeAuctionRoomItem = item;
+        activeBidDialogItemId = item.getId();
+        activeBidDialogItem = item;
+        activeBidDialogLastKnownWinnerId = item.getCurrentWinnerId();
+
+        auctionRoomView.getChildren().setAll(createAuctionRoomLayout(item));
+        showView(auctionRoomView);
+        pageTitle.setText("Phòng đấu giá - " + item.getItemName());
+
+        refreshActiveBidDialogLabels();
+        refreshAuctionRoomHeader();
+        validateActiveBidAmount();
+        requestItemBidHistory(item.getId());
+        requestAuctionChatHistory(item.getId());
+        startAuctionRoomCountdown();
+
+        Platform.runLater(() -> {
+            if (activeBidAmountField != null) {
+                activeBidAmountField.requestFocus();
+            }
+        });
+    }
+
+    private VBox createAuctionRoomLayout(Item item) {
+        VBox root = new VBox(18);
+        root.setPadding(new Insets(20));
+        root.setStyle("-fx-background-color: #f8fafc;");
+        root.setMaxWidth(Double.MAX_VALUE);
+        root.setMaxHeight(Double.MAX_VALUE);
+
+        HBox header = createAuctionRoomHeader(item);
+        HBox mainContent = new HBox(18);
+        mainContent.setAlignment(Pos.TOP_LEFT);
+        VBox.setVgrow(mainContent, Priority.ALWAYS);
+
+        VBox productPanel = createAuctionRoomProductPanel(item);
+        VBox bidPanel = createAuctionRoomBidPanel(item);
+        VBox chatPanel = createAuctionRoomChatPanel();
+
+        HBox.setHgrow(bidPanel, Priority.ALWAYS);
+        mainContent.getChildren().addAll(productPanel, bidPanel, chatPanel);
+
+        root.getChildren().addAll(header, mainContent);
+        return root;
+    }
+
+    private HBox createAuctionRoomHeader(Item item) {
+        Button backButton = new Button("← Quay lại danh sách");
+        backButton.setPrefHeight(38);
+        backButton.setStyle(
+                "-fx-background-color: #e2e8f0;" +
+                        "-fx-text-fill: #334155;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 10;" +
+                        "-fx-cursor: hand;"
+        );
+        backButton.setOnAction(event -> switchToHomeView());
+
+        Label titleLabel = new Label(item.getItemName());
+        titleLabel.setWrapText(true);
+        titleLabel.setStyle(
+                "-fx-text-fill: #0f172a;" +
+                        "-fx-font-size: 23;" +
+                        "-fx-font-weight: bold;"
+        );
+
+        Label subtitleLabel = new Label("Phòng đấu giá realtime · đặt giá, xem biểu đồ và chat cùng bidder khác");
+        subtitleLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12;");
+
+        VBox titleBox = new VBox(4, titleLabel, subtitleLabel);
+        HBox.setHgrow(titleBox, Priority.ALWAYS);
+
+        auctionRoomStatusBadge = new Label();
+        auctionRoomStatusBadge.setStyle("-fx-text-fill: white; -fx-padding: 7 13; -fx-background-radius: 999; -fx-font-size: 12; -fx-font-weight: bold;");
+
+        auctionRoomCountdownLabel = new Label();
+        auctionRoomCountdownLabel.setStyle(getCountdownStyle(getDisplayStatus(item)));
+
+        HBox header = new HBox(14, backButton, titleBox, auctionRoomStatusBadge, auctionRoomCountdownLabel);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setPadding(new Insets(16));
+        header.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-background-radius: 18;" +
+                        "-fx-border-color: #e2e8f0;" +
+                        "-fx-border-radius: 18;"
+        );
+        return header;
+    }
+
+    private VBox createAuctionRoomProductPanel(Item item) {
+        VBox panel = new VBox(14);
+        panel.setPrefWidth(270);
+        panel.setMinWidth(250);
+        panel.setPadding(new Insets(16));
+        panel.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-background-radius: 18;" +
+                        "-fx-border-color: #e2e8f0;" +
+                        "-fx-border-radius: 18;"
+        );
+
+        VBox imageBox = new VBox();
+        imageBox.setAlignment(Pos.CENTER);
+        imageBox.setPrefSize(238, 210);
+        imageBox.setMinSize(238, 210);
+        imageBox.setStyle(
+                "-fx-background-color: #f8fafc;" +
+                        "-fx-background-radius: 16;" +
+                        "-fx-border-color: #e2e8f0;" +
+                        "-fx-border-radius: 16;"
+        );
+        loadItemImageIntoBox(item, imageBox, 220, 190);
+
+        Label infoTitle = new Label("Thông tin sản phẩm");
+        infoTitle.setStyle("-fx-text-fill: #0f172a; -fx-font-size: 15; -fx-font-weight: bold;");
+
+        Label typeLabel = createDetailLine("Loại", safeText(item.getType()));
+        Label startPriceLabel = createDetailLine("Giá khởi điểm", currencyFormat.format(item.getStartingPrice()) + " VNĐ");
+        Label incrementLabel = createDetailLine("Bước giá", currencyFormat.format(item.getBidIncrement()) + " VNĐ");
+        Label endTimeLabel = createDetailLine("Kết thúc", item.getEndTime() == null ? "Chưa thiết lập" : item.getEndTime().format(END_TIME_FORMATTER));
+
+        Label descTitle = new Label("Mô tả");
+        descTitle.setStyle("-fx-text-fill: #334155; -fx-font-size: 13; -fx-font-weight: bold;");
+
+        Label descriptionLabel = new Label(item.getDescription() == null || item.getDescription().isBlank()
+                ? "Không có mô tả."
+                : item.getDescription());
+        descriptionLabel.setWrapText(true);
+        descriptionLabel.setMaxWidth(235);
+        descriptionLabel.setStyle(
+                "-fx-text-fill: #64748b;" +
+                        "-fx-font-size: 12;" +
+                        "-fx-background-color: #f8fafc;" +
+                        "-fx-padding: 10;" +
+                        "-fx-background-radius: 12;" +
+                        "-fx-border-color: #e2e8f0;" +
+                        "-fx-border-radius: 12;"
+        );
+
+        panel.getChildren().addAll(
+                imageBox,
+                infoTitle,
+                typeLabel,
+                startPriceLabel,
+                incrementLabel,
+                endTimeLabel,
+                descTitle,
+                descriptionLabel
+        );
+        return panel;
+    }
+
+    private VBox createAuctionRoomBidPanel(Item item) {
+        VBox panel = new VBox(14);
+        panel.setPadding(new Insets(16));
+        panel.setMinWidth(380);
+        panel.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-background-radius: 18;" +
+                        "-fx-border-color: #e2e8f0;" +
+                        "-fx-border-radius: 18;"
+        );
+
+        Label panelTitle = new Label("Khu vực đặt giá");
+        panelTitle.setStyle("-fx-text-fill: #0f172a; -fx-font-size: 18; -fx-font-weight: bold;");
+
+        activeBidCurrentPriceLabel = new Label();
+        activeBidCurrentPriceLabel.setStyle("-fx-text-fill: #2563eb; -fx-font-size: 18; -fx-font-weight: bold;");
+
+        Label incrementLabel = new Label("Bước giá tối thiểu: " + currencyFormat.format(item.getBidIncrement()) + " VNĐ");
+        incrementLabel.setStyle("-fx-text-fill: #334155; -fx-font-size: 13;");
+
+        activeBidMinBidLabel = new Label();
+        activeBidMinBidLabel.setStyle("-fx-text-fill: #0f766e; -fx-font-size: 14; -fx-font-weight: bold;");
+
+        LineChart<String, Number> bidTrendChart = createBidTrendChart(item);
+        activeBidTrendSeries = bidTrendChart.getData().isEmpty() ? null : bidTrendChart.getData().get(0);
+        VBox bidTrendChartBox = createBidTrendChartBox(bidTrendChart);
+        VBox.setVgrow(bidTrendChartBox, Priority.ALWAYS);
+
+        activeBidAmountField = new TextField();
+        activeBidAmountField.setPromptText("Ví dụ: " + currencyFormat.format(calculateMinimumBid(item)));
+        activeBidAmountField.setPrefHeight(42);
+        activeBidAmountField.setStyle(
+                "-fx-background-color: #f8fafc;" +
+                        "-fx-border-color: #cbd5e1;" +
+                        "-fx-border-radius: 10;" +
+                        "-fx-background-radius: 10;" +
+                        "-fx-padding: 0 12;" +
+                        "-fx-font-size: 14;"
+        );
+
+        activeBidErrorLabel = new Label("");
+        activeBidErrorLabel.setWrapText(true);
+        activeBidErrorLabel.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 12;");
+
+        activeBidStatusLabel = new Label("");
+        activeBidStatusLabel.setWrapText(true);
+        activeBidStatusLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12;");
+
+        activeBidSubmitButton = new Button("Xác nhận đặt giá");
+        activeBidSubmitButton.setPrefHeight(42);
+        activeBidSubmitButton.setMaxWidth(Double.MAX_VALUE);
+        activeBidSubmitButton.setStyle(
+                "-fx-background-color: #10b981;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 10;" +
+                        "-fx-cursor: hand;"
+        );
+
+        activeBidAmountField.textProperty().addListener((observable, oldValue, newValue) -> {
+            String cleaned = newValue.replaceAll("[^0-9]", "");
+            if (!cleaned.equals(newValue)) {
+                activeBidAmountField.setText(cleaned);
+                return;
+            }
+            validateActiveBidAmount();
+        });
+
+        activeBidSubmitButton.setOnAction(event -> submitActiveAuctionRoomBid());
+
+        panel.getChildren().addAll(
+                panelTitle,
+                activeBidCurrentPriceLabel,
+                incrementLabel,
+                activeBidMinBidLabel,
+                bidTrendChartBox,
+                new Label("Số tiền đặt giá:"),
+                activeBidAmountField,
+                activeBidErrorLabel,
+                activeBidSubmitButton,
+                activeBidStatusLabel
+        );
+
+        refreshActiveBidDialogLabels();
+        validateActiveBidAmount();
+        return panel;
+    }
+
+    private VBox createAuctionRoomChatPanel() {
+        VBox panel = new VBox(12);
+        panel.setPrefWidth(320);
+        panel.setMinWidth(300);
+        panel.setPadding(new Insets(16));
+        panel.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-background-radius: 18;" +
+                        "-fx-border-color: #e2e8f0;" +
+                        "-fx-border-radius: 18;"
+        );
+
+        Label chatTitle = new Label("Chat trong phòng");
+        chatTitle.setStyle("-fx-text-fill: #0f172a; -fx-font-size: 18; -fx-font-weight: bold;");
+
+        Label chatSubtitle = new Label("Tin nhắn chỉ hiển thị trong phòng đấu giá của sản phẩm này.");
+        chatSubtitle.setWrapText(true);
+        chatSubtitle.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12;");
+
+        auctionRoomChatMessagesBox = new VBox(10);
+        auctionRoomChatMessagesBox.setPadding(new Insets(10));
+        showAuctionRoomEmptyChatPlaceholder();
+
+        auctionRoomChatScrollPane = new ScrollPane(auctionRoomChatMessagesBox);
+        auctionRoomChatScrollPane.setFitToWidth(true);
+        auctionRoomChatScrollPane.setStyle("-fx-background-color: transparent; -fx-background: #f8fafc;");
+        VBox.setVgrow(auctionRoomChatScrollPane, Priority.ALWAYS);
+
+        auctionRoomChatField = new TextField();
+        auctionRoomChatField.setPromptText("Nhập tin nhắn...");
+        auctionRoomChatField.setPrefHeight(38);
+        auctionRoomChatField.setStyle(
+                "-fx-background-color: #f8fafc;" +
+                        "-fx-border-color: #cbd5e1;" +
+                        "-fx-border-radius: 10;" +
+                        "-fx-background-radius: 10;" +
+                        "-fx-padding: 0 10;"
+        );
+        auctionRoomChatField.setOnAction(event -> sendAuctionRoomChatMessage());
+
+        auctionRoomChatSendButton = new Button("Gửi");
+        auctionRoomChatSendButton.setPrefHeight(38);
+        auctionRoomChatSendButton.setStyle(
+                "-fx-background-color: #3b82f6;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 10;" +
+                        "-fx-cursor: hand;"
+        );
+        auctionRoomChatSendButton.setOnAction(event -> sendAuctionRoomChatMessage());
+
+        HBox inputRow = new HBox(8, auctionRoomChatField, auctionRoomChatSendButton);
+        HBox.setHgrow(auctionRoomChatField, Priority.ALWAYS);
+
+        panel.getChildren().addAll(chatTitle, chatSubtitle, auctionRoomChatScrollPane, inputRow);
+        return panel;
+    }
+
+    private void loadItemImageIntoBox(Item item, VBox imageBox, double fitWidth, double fitHeight) {
+        imageBox.getChildren().clear();
+
+        if (item.getImagePath() == null || item.getImagePath().isBlank()) {
+            imageBox.getChildren().add(createImagePlaceholder("Chưa có ảnh\nsản phẩm"));
+            return;
+        }
+
+        Task<byte[]> loadImageTask = new Task<>() {
+            @Override
+            protected byte[] call() throws Exception {
+                return ClientApp.getImageBytes(item.getImagePath());
+            }
+        };
+        loadImageTask.setOnSucceeded(e -> {
+            byte[] imageBytes = loadImageTask.getValue();
+            imageBox.getChildren().clear();
+            if (imageBytes != null && imageBytes.length > 0) {
+                ImageView imageView = new ImageView(new Image(new ByteArrayInputStream(imageBytes)));
+                imageView.setFitWidth(fitWidth);
+                imageView.setFitHeight(fitHeight);
+                imageView.setPreserveRatio(true);
+                imageView.setSmooth(true);
+                imageBox.getChildren().add(imageView);
+            } else {
+                imageBox.getChildren().add(createImagePlaceholder("Không tải được ảnh"));
+            }
+        });
+        loadImageTask.setOnFailed(e -> {
+            imageBox.getChildren().clear();
+            imageBox.getChildren().add(createImagePlaceholder("Lỗi tải ảnh"));
+        });
+        Thread imageThread = new Thread(loadImageTask, "auction-room-image-loader");
+        imageThread.setDaemon(true);
+        imageThread.start();
+    }
+
+    private void submitActiveAuctionRoomBid() {
+        if (activeBidDialogItem == null || activeBidAmountField == null) {
+            return;
+        }
+
+        validateActiveBidAmount();
+
+        if (activeBidSubmitButton != null && activeBidSubmitButton.isDisabled()) {
+            return;
+        }
+
+        try {
+            double amount = Double.parseDouble(activeBidAmountField.getText().trim());
+            pendingBidItemId = activeBidDialogItem.getId();
+            pendingBidAmount = amount;
+
+            if (activeBidSubmitButton != null) {
+                activeBidSubmitButton.setDisable(true);
+            }
+            if (activeBidStatusLabel != null) {
+                activeBidStatusLabel.setStyle("-fx-text-fill: #2563eb; -fx-font-size: 12; -fx-font-weight: bold;");
+                activeBidStatusLabel.setText("Đang gửi lệnh đặt giá...");
+            }
+
+            submitBid(activeBidDialogItem.getId(), amount);
+        } catch (NumberFormatException e) {
+            if (activeBidErrorLabel != null) {
+                activeBidErrorLabel.setText("Số tiền không hợp lệ.");
+            }
+        }
+    }
+
+    private void validateActiveBidAmount() {
+        if (activeBidDialogItem == null || activeBidAmountField == null || activeBidSubmitButton == null) {
+            return;
+        }
+
+        String status = getDisplayStatus(activeBidDialogItem);
+        String raw = activeBidAmountField.getText() == null ? "" : activeBidAmountField.getText().trim();
+
+        if (!"ACTIVE".equals(status)) {
+            activeBidSubmitButton.setDisable(true);
+            if (activeBidErrorLabel != null) {
+                activeBidErrorLabel.setText("Phiên đấu giá chưa diễn ra hoặc đã kết thúc.");
+            }
+            return;
+        }
+
+        if (isCurrentUserLastBidder(activeBidDialogItem)) {
+            activeBidSubmitButton.setDisable(true);
+            if (activeBidErrorLabel != null) {
+                activeBidErrorLabel.setText(getConsecutiveBidWarning());
+            }
+            return;
+        }
+
+        if (raw.isBlank()) {
+            activeBidSubmitButton.setDisable(true);
+            if (activeBidErrorLabel != null) {
+                activeBidErrorLabel.setText("");
+            }
+            return;
+        }
+
+        try {
+            double amount = Double.parseDouble(raw);
+            double minimumBid = calculateMinimumBid(activeBidDialogItem);
+
+            if (amount < minimumBid) {
+                activeBidSubmitButton.setDisable(true);
+                if (activeBidErrorLabel != null) {
+                    activeBidErrorLabel.setText("Giá phải từ " + currencyFormat.format(minimumBid) + " VNĐ trở lên.");
+                }
+            } else {
+                activeBidSubmitButton.setDisable(false);
+                if (activeBidErrorLabel != null) {
+                    activeBidErrorLabel.setText("");
+                }
+            }
+        } catch (NumberFormatException e) {
+            activeBidSubmitButton.setDisable(true);
+            if (activeBidErrorLabel != null) {
+                activeBidErrorLabel.setText("Số tiền không hợp lệ.");
+            }
+        }
+    }
+
+    private void refreshAuctionRoomHeader() {
+        if (activeBidDialogItem == null) {
+            return;
+        }
+
+        String status = getDisplayStatus(activeBidDialogItem);
+
+        if (auctionRoomStatusBadge != null) {
+            auctionRoomStatusBadge.setText(getStatusText(status));
+            auctionRoomStatusBadge.setStyle(
+                    "-fx-background-color: " + getStatusColor(status) + ";" +
+                            "-fx-text-fill: white;" +
+                            "-fx-padding: 7 13;" +
+                            "-fx-background-radius: 999;" +
+                            "-fx-font-size: 12;" +
+                            "-fx-font-weight: bold;"
+            );
+        }
+
+        if (auctionRoomCountdownLabel != null) {
+            auctionRoomCountdownLabel.setText(getCountdownText(activeBidDialogItem));
+            auctionRoomCountdownLabel.setStyle(getCountdownStyle(status));
+        }
+    }
+
+    private void startAuctionRoomCountdown() {
+        stopAuctionRoomCountdown();
+        auctionRoomCountdownTimeline = new Timeline(
+                new KeyFrame(Duration.seconds(1), event -> {
+                    refreshAuctionRoomHeader();
+                    refreshActiveBidDialogLabels();
+                    validateActiveBidAmount();
+                })
+        );
+        auctionRoomCountdownTimeline.setCycleCount(Timeline.INDEFINITE);
+        auctionRoomCountdownTimeline.play();
+    }
+
+    private void stopAuctionRoomCountdown() {
+        if (auctionRoomCountdownTimeline != null) {
+            auctionRoomCountdownTimeline.stop();
+            auctionRoomCountdownTimeline = null;
+        }
+    }
+
+    private void clearAuctionRoomState() {
+        stopAuctionRoomCountdown();
+        activeAuctionRoomItem = null;
+        auctionRoomChatMessagesBox = null;
+        auctionRoomChatScrollPane = null;
+        auctionRoomChatField = null;
+        auctionRoomChatSendButton = null;
+        auctionRoomCountdownLabel = null;
+        auctionRoomStatusBadge = null;
+        auctionRoomChatHasMessages = false;
+        clearActiveBidDialogState();
+
+        if (auctionRoomView != null) {
+            auctionRoomView.getChildren().clear();
+        }
+    }
+
+    private void requestAuctionChatHistory(String itemId) {
+        if (itemId == null || itemId.isBlank()) {
+            return;
+        }
+        ClientApp.sendMessage(new Message("JOIN_AUCTION_ROOM", itemId));
+    }
+
+    private void sendAuctionRoomChatMessage() {
+        if (activeBidDialogItemId == null || auctionRoomChatField == null) {
+            return;
+        }
+
+        String text = auctionRoomChatField.getText() == null ? "" : auctionRoomChatField.getText().trim();
+        if (text.isBlank()) {
+            return;
+        }
+
+        ClientApp.sendMessage(new Message("SEND_AUCTION_CHAT", new Object[]{activeBidDialogItemId, text}));
+        auctionRoomChatField.clear();
+    }
+
+    private void updateAuctionRoomChatHistory(Object payload) {
+        if (!(payload instanceof Object[])) {
+            return;
+        }
+
+        Object[] data = (Object[]) payload;
+        if (data.length < 2) {
+            return;
+        }
+
+        String itemId = String.valueOf(data[0]);
+        if (activeBidDialogItemId == null || !activeBidDialogItemId.equals(itemId) || auctionRoomChatMessagesBox == null) {
+            return;
+        }
+
+        auctionRoomChatMessagesBox.getChildren().clear();
+        auctionRoomChatHasMessages = false;
+
+        Object rows = data[1];
+        if (rows instanceof List<?>) {
+            for (Object row : (List<?>) rows) {
+                appendAuctionRoomChatMessage(row);
+            }
+        }
+
+        if (!auctionRoomChatHasMessages) {
+            showAuctionRoomEmptyChatPlaceholder();
+        }
+    }
+
+    private void appendAuctionRoomChatMessage(Object payload) {
+        if (!(payload instanceof AuctionChatMessage)) {
+            return;
+        }
+
+        AuctionChatMessage chatMessage = (AuctionChatMessage) payload;
+        if (activeBidDialogItemId == null || !activeBidDialogItemId.equals(chatMessage.getItemId())
+                || auctionRoomChatMessagesBox == null) {
+            return;
+        }
+
+        if (!auctionRoomChatHasMessages) {
+            auctionRoomChatMessagesBox.getChildren().clear();
+            auctionRoomChatHasMessages = true;
+        }
+
+        boolean mine = currentUser != null && currentUser.getId() != null
+                && currentUser.getId().equals(chatMessage.getSenderId());
+
+        Label metaLabel = new Label((mine ? "Bạn" : safeText(chatMessage.getSenderName()))
+                + " · " + (chatMessage.getSentAt() == null ? "" : chatMessage.getSentAt().format(CHART_TIME_FORMATTER)));
+        metaLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 10;");
+
+        Label contentLabel = new Label(chatMessage.getContent());
+        contentLabel.setWrapText(true);
+        contentLabel.setMaxWidth(230);
+        contentLabel.setStyle("-fx-text-fill: #0f172a; -fx-font-size: 12;");
+
+        VBox bubble = new VBox(4, metaLabel, contentLabel);
+        bubble.setMaxWidth(250);
+        bubble.setPadding(new Insets(9));
+        bubble.setStyle(
+                "-fx-background-color: " + (mine ? "#dbeafe" : "#f8fafc") + ";" +
+                        "-fx-background-radius: 12;" +
+                        "-fx-border-color: " + (mine ? "#93c5fd" : "#e2e8f0") + ";" +
+                        "-fx-border-radius: 12;"
+        );
+
+        HBox row = new HBox(bubble);
+        row.setAlignment(mine ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+        auctionRoomChatMessagesBox.getChildren().add(row);
+
+        Platform.runLater(() -> {
+            if (auctionRoomChatScrollPane != null) {
+                auctionRoomChatScrollPane.setVvalue(1.0);
+            }
+        });
+    }
+
+    private void showAuctionRoomEmptyChatPlaceholder() {
+        if (auctionRoomChatMessagesBox == null) {
+            return;
+        }
+
+        Label emptyLabel = new Label("Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện trong phòng đấu giá.");
+        emptyLabel.setWrapText(true);
+        emptyLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 12; -fx-padding: 12;");
+        auctionRoomChatMessagesBox.getChildren().setAll(emptyLabel);
+    }
+
+    private void showAuctionRoomChatError(Object payload) {
+        if (activeBidStatusLabel != null) {
+            activeBidStatusLabel.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 12; -fx-font-weight: bold;");
+            activeBidStatusLabel.setText(String.valueOf(payload));
+        }
     }
 
     private String getDisplayStatus(Item item) {
@@ -956,6 +1595,7 @@ public class HomeController implements Initializable {
         activeBidCurrentPriceLabel = currentPriceLabel;
         activeBidMinBidLabel = minBidLabel;
         activeBidStatusLabel = statusLabel;
+        activeBidErrorLabel = errorLabel;
         activeBidAmountField = amountField;
         activeBidTrendSeries = bidTrendSeries;
 
@@ -1285,10 +1925,7 @@ public class HomeController implements Initializable {
                 activeBidStatusLabel.setText(responseMessage);
             }
 
-            if (activeBidSubmitButton != null && activeBidAmountField != null
-                    && !activeBidAmountField.getText().isBlank()) {
-                activeBidSubmitButton.setDisable(false);
-            }
+            validateActiveBidAmount();
 
             Alert bidAlert = new Alert(Alert.AlertType.WARNING);
             bidAlert.setTitle("Kết quả đặt giá");
@@ -1321,6 +1958,8 @@ public class HomeController implements Initializable {
         appendActiveBidChartPoint(pendingBidAmount, "Vừa đặt", true);
         requestItemBidHistory(activeBidDialogItemId);
         refreshActiveBidDialogLabels();
+        refreshAuctionRoomHeader();
+        validateActiveBidAmount();
 
         if (activeBidAmountField != null) {
             activeBidAmountField.clear();
@@ -1357,6 +1996,8 @@ public class HomeController implements Initializable {
         }
 
         refreshActiveBidDialogLabels();
+        refreshAuctionRoomHeader();
+        validateActiveBidAmount();
 
         if (activeBidStatusLabel != null) {
             if (isCurrentUserLastBidder(activeBidDialogItem)) {
@@ -1376,6 +2017,7 @@ public class HomeController implements Initializable {
         activeBidCurrentPriceLabel = null;
         activeBidMinBidLabel = null;
         activeBidStatusLabel = null;
+        activeBidErrorLabel = null;
         activeBidAmountField = null;
         activeBidSubmitButton = null;
         activeBidTrendSeries = null;
@@ -1505,6 +2147,22 @@ public class HomeController implements Initializable {
                 case "ITEM_BID_HISTORY_RESPONSE":
                 case "ITEM_BID_HISTORY_UPDATE":
                     updateActiveBidChartFromHistoryPayload(message.getPayload());
+                    break;
+
+                case "AUCTION_CHAT_HISTORY":
+                    updateAuctionRoomChatHistory(message.getPayload());
+                    break;
+
+                case "AUCTION_CHAT_MESSAGE":
+                    appendAuctionRoomChatMessage(message.getPayload());
+                    break;
+
+                case "AUCTION_CHAT_ERROR":
+                    showAuctionRoomChatError(message.getPayload());
+                    break;
+
+                case "BID_HISTORY_REFRESH_REQUIRED":
+                    requestMyBidHistory();
                     break;
 
                 case "AUCTION_RESULT_NOTIFICATION":
@@ -1693,7 +2351,15 @@ public class HomeController implements Initializable {
 
     private void handleAccountInfoResponse(Object payload) {
         if (payload instanceof User) {
-            currentUser = (User) payload;
+            User updatedUser = (User) payload;
+
+            if (currentUser != null && currentUser.getId() != null
+                    && updatedUser.getId() != null
+                    && !currentUser.getId().equals(updatedUser.getId())) {
+                return;
+            }
+
+            currentUser = updatedUser;
             ClientApp.setCurrentUser(currentUser);
             updateUserInfoLabel();
 
@@ -1770,6 +2436,12 @@ public class HomeController implements Initializable {
         if (salesHistoryViewPane != null && salesHistoryViewPane.isVisible() && salesHistoryViewPaneController != null) {
             salesHistoryViewPaneController.updateData(items);
         }
+
+        if (auctionRoomView != null && auctionRoomView.isVisible() && activeBidDialogItem != null) {
+            refreshAuctionRoomHeader();
+            refreshActiveBidDialogLabels();
+            validateActiveBidAmount();
+        }
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -1777,6 +2449,7 @@ public class HomeController implements Initializable {
     // ═══════════════════════════════════════════════════════════
     @FXML
     public void onLogoutClicked() {
+        clearAuctionRoomState();
         ClientApp.setCurrentUser(null);
         ClientApp.closeConnection();
 

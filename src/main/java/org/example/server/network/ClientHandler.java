@@ -2,6 +2,7 @@ package org.example.server.network;
 
 import org.example.common.Message;
 import org.example.common.model.item.Item;
+import org.example.common.model.chat.AuctionChatMessage;
 import org.example.common.model.user.User;
 import org.example.server.manager.AuctionManager;
 import org.example.server.manager.UserManager;
@@ -17,12 +18,18 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ClientHandler implements Runnable, Observer {
 
     private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
     private static final String IMAGE_DIR = "images"; // Thư mục lưu ảnh trong repo
+    private static final int MAX_CHAT_HISTORY_PER_ROOM = 100;
+    private static final Map<String, List<AuctionChatMessage>> AUCTION_CHAT_HISTORY = new ConcurrentHashMap<>();
 
     private Socket clientSocket;
     private AuctionNotifier notifier;
@@ -119,6 +126,14 @@ public class ClientHandler implements Runnable, Observer {
                                 sendMessage(new Message("ACCOUNT_INFO_RESPONSE", refreshedBidder));
                             }
 
+                            /*
+                             * Khi có người đặt giá cao hơn, server đã hoàn tiền cho người đang dẫn trước.
+                             * Nếu chỉ cập nhật tài khoản cho người vừa đặt, client của người bị vượt sẽ vẫn
+                             * hiển thị số dư cũ cho đến khi bấm refresh/đăng nhập lại. Vì vậy broadcast lại
+                             * thông tin tài khoản; hàm update() bên dưới sẽ lọc để mỗi client chỉ nhận user của chính nó.
+                             */
+                            notifyAllAccountInfo();
+
                             Item updatedItem = AuctionManager.getInstance().getAllItems().stream()
                                     .filter(i -> i.getId().equals(itemId))
                                     .findFirst()
@@ -130,6 +145,7 @@ public class ClientHandler implements Runnable, Observer {
                                         "ITEM_BID_HISTORY_UPDATE",
                                         new Object[]{itemId, AuctionManager.getInstance().getBidHistoryForItem(itemId)}
                                 ));
+                                notifier.notifyObservers(new Message("BID_HISTORY_REFRESH_REQUIRED", itemId));
                             }
                         }
                         break;
@@ -139,6 +155,10 @@ public class ClientHandler implements Runnable, Observer {
 
                         for (String notification : closedNotifications) {
                             notifier.notifyObservers(new Message("AUCTION_RESULT_NOTIFICATION", notification));
+                        }
+
+                        if (!closedNotifications.isEmpty()) {
+                            notifyAllAccountInfo();
                         }
 
                         sendMessage(new Message(
@@ -161,6 +181,14 @@ public class ClientHandler implements Runnable, Observer {
                                 "ITEM_BID_HISTORY_RESPONSE",
                                 new Object[]{historyItemId, AuctionManager.getInstance().getBidHistoryForItem(historyItemId)}
                         ));
+                        break;
+
+                    case "JOIN_AUCTION_ROOM":
+                        sendAuctionChatHistory(String.valueOf(inputMessage.getPayload()));
+                        break;
+
+                    case "SEND_AUCTION_CHAT":
+                        handleAuctionChatMessage(inputMessage.getPayload());
                         break;
 
                     case "GET_ACCOUNT_INFO":
@@ -333,6 +361,10 @@ public class ClientHandler implements Runnable, Observer {
                             notifier.notifyObservers(new Message("AUCTION_RESULT_NOTIFICATION", notification));
                         }
 
+                        if (!adminClosedNotifications.isEmpty()) {
+                            notifyAllAccountInfo();
+                        }
+
                         sendMessage(new Message(
                                 "GET_ALL_ITEMS_ADMIN_RESPONSE",
                                 new ArrayList<>(AuctionManager.getInstance().getAllItems())
@@ -352,6 +384,7 @@ public class ClientHandler implements Runnable, Observer {
                             logger.info("Admin {} đã hủy phiên đấu giá mã {}", currentUser.getUsername(), adminCancelItemId);
                             sendMessage(new Message("CANCEL_AUCTION_RESPONSE", "Đã hủy phiên đấu giá thành công."));
                             notifier.notifyObservers(new Message("SYSTEM_NOTIFICATION", "⚠️ [ADMIN] Phiên đấu giá mã " + adminCancelItemId + " đã bị hủy."));
+                            notifyAllAccountInfo();
 
                             Item adminCanceledItem = AuctionManager.getInstance().getAllItems().stream()
                                     .filter(i -> i.getId().equals(adminCancelItemId))
@@ -377,6 +410,7 @@ public class ClientHandler implements Runnable, Observer {
                         String endItemId = (String) inputMessage.getPayload();
                         String endResult = AuctionManager.getInstance().endAuctionByAdmin(endItemId);
                         sendMessage(new Message("END_AUCTION_ADMIN_RESPONSE", endResult));
+                        notifyAllAccountInfo();
 
                         Item endedItem = AuctionManager.getInstance().getAllItems().stream()
                                 .filter(i -> i.getId().equals(endItemId))
@@ -399,6 +433,7 @@ public class ClientHandler implements Runnable, Observer {
                         String deleteItemId = (String) inputMessage.getPayload();
                         String deleteResult = AuctionManager.getInstance().deleteItemByAdmin(deleteItemId);
                         sendMessage(new Message("DELETE_ITEM_ADMIN_RESPONSE", deleteResult));
+                        notifyAllAccountInfo();
                         notifier.notifyObservers(new Message("NEW_ITEM_ADDED", null));
                         break;
 
@@ -420,6 +455,7 @@ public class ClientHandler implements Runnable, Observer {
                                     "SYSTEM_NOTIFICATION",
                                     "⚠️ [THÔNG BÁO TỪ ADMIN] Phiên đấu giá mã " + itemToCancelId + " đã bị hủy bỏ!"
                             ));
+                            notifyAllAccountInfo();
 
                             Item canceledItem = AuctionManager.getInstance().getAllItems().stream()
                                     .filter(i -> i.getId().equals(itemToCancelId))
@@ -452,6 +488,80 @@ public class ClientHandler implements Runnable, Observer {
         }
     }
 
+    private void sendAuctionChatHistory(String itemId) {
+        if (itemId == null || itemId.isBlank()) {
+            sendMessage(new Message("AUCTION_CHAT_HISTORY", new Object[]{itemId, new ArrayList<AuctionChatMessage>()}));
+            return;
+        }
+
+        List<AuctionChatMessage> history = AUCTION_CHAT_HISTORY.get(itemId);
+        List<AuctionChatMessage> snapshot = new ArrayList<>();
+
+        if (history != null) {
+            synchronized (history) {
+                snapshot.addAll(history);
+            }
+        }
+
+        sendMessage(new Message("AUCTION_CHAT_HISTORY", new Object[]{itemId, snapshot}));
+    }
+
+    private void handleAuctionChatMessage(Object payload) {
+        if (currentUser == null) {
+            sendMessage(new Message("AUCTION_CHAT_ERROR", "Bạn cần đăng nhập để chat trong phòng đấu giá."));
+            return;
+        }
+
+        if (!"bidder".equalsIgnoreCase(currentUser.getRole())) {
+            sendMessage(new Message("AUCTION_CHAT_ERROR", "Chỉ người đấu giá mới được chat trong phòng đấu giá."));
+            return;
+        }
+
+        if (!(payload instanceof Object[])) {
+            sendMessage(new Message("AUCTION_CHAT_ERROR", "Dữ liệu tin nhắn không hợp lệ."));
+            return;
+        }
+
+        Object[] data = (Object[]) payload;
+        if (data.length < 2) {
+            sendMessage(new Message("AUCTION_CHAT_ERROR", "Dữ liệu tin nhắn không đủ thông tin."));
+            return;
+        }
+
+        String itemId = String.valueOf(data[0]);
+        String content = String.valueOf(data[1]).trim();
+
+        if (itemId.isBlank() || content.isBlank()) {
+            return;
+        }
+
+        if (content.length() > 300) {
+            content = content.substring(0, 300);
+        }
+
+        AuctionChatMessage chatMessage = new AuctionChatMessage(
+                itemId,
+                currentUser.getId(),
+                currentUser.getUsername(),
+                content,
+                LocalDateTime.now()
+        );
+
+        List<AuctionChatMessage> history = AUCTION_CHAT_HISTORY.computeIfAbsent(
+                itemId,
+                key -> Collections.synchronizedList(new ArrayList<>())
+        );
+
+        synchronized (history) {
+            history.add(chatMessage);
+            while (history.size() > MAX_CHAT_HISTORY_PER_ROOM) {
+                history.remove(0);
+            }
+        }
+
+        notifier.notifyObservers(new Message("AUCTION_CHAT_MESSAGE", chatMessage));
+    }
+
     private boolean isLoginOrRegisterAction(String action) {
         return "LOGIN".equals(action) || "REGISTER".equals(action);
     }
@@ -463,6 +573,12 @@ public class ClientHandler implements Runnable, Observer {
 
         User latestUser = UserManager.getInstance().findUserById(currentUser.getId());
         return latestUser != null && latestUser.isBanned();
+    }
+
+    private void notifyAllAccountInfo() {
+        for (User user : UserManager.getInstance().getAllUsers()) {
+            notifier.notifyObservers(new Message("ACCOUNT_INFO_RESPONSE", user));
+        }
     }
 
     public synchronized void sendMessage(Message message) {
@@ -479,6 +595,18 @@ public class ClientHandler implements Runnable, Observer {
 
     @Override
     public void update(Message message) {
+        if ("ACCOUNT_INFO_RESPONSE".equals(message.getAction()) && message.getPayload() instanceof User) {
+            User updatedUser = (User) message.getPayload();
+
+            if (currentUser != null && currentUser.getId() != null
+                    && currentUser.getId().equals(updatedUser.getId())) {
+                currentUser = updatedUser;
+                sendMessage(message);
+            }
+
+            return;
+        }
+
         sendMessage(message);
     }
 }

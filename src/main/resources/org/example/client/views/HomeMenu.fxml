@@ -136,6 +136,8 @@
                      </children>
                   </VBox>
 
+                  <VBox fx:id="auctionRoomView" managed="false" visible="false" VBox.vgrow="ALWAYS" />
+
                   <fx:include fx:id="bidHistoryViewPane" source="BidHistoryView.fxml" VBox.vgrow="ALWAYS" />
                   <fx:include fx:id="addItemViewPane" source="AddItemView.fxml" VBox.vgrow="ALWAYS" />
                   <fx:include fx:id="myItemsViewPane" source="MyItemsView.fxml" VBox.vgrow="ALWAYS" />
