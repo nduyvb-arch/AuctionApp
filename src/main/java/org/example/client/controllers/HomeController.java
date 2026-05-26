@@ -634,7 +634,7 @@ public class HomeController implements Initializable {
             loadImageTask.setOnFailed(e -> {
                 imageBox.getChildren().add(createImagePlaceholder("Lỗi tải ảnh"));
             });
-            new Thread(loadImageTask).start();
+            ClientApp.executorService.submit(loadImageTask);
         } else {
             imageBox.getChildren().add(createImagePlaceholder("Chưa có ảnh\nsản phẩm"));
         }
