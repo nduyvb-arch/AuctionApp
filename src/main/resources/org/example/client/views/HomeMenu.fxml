@@ -13,19 +13,12 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="800.0" prefWidth="1200.0"
-            style="-fx-background-color: #f8fafc;"
-            xmlns="http://javafx.com/javafx/17"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="org.example.client.controllers.HomeController">
+<AnchorPane prefHeight="800.0" prefWidth="1200.0" style="-fx-background-color: #f8fafc;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.HomeController">
    <children>
       <!-- SIDEBAR MENU -->
-      <VBox fx:id="sidebarMenu" prefWidth="280.0" spacing="0"
-            style="-fx-background-color: #1e293b; -fx-padding: 0;"
-            AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="0.0">
+      <VBox fx:id="sidebarMenu" prefWidth="280.0" spacing="0" style="-fx-background-color: #1e293b; -fx-padding: 0;" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
-            <VBox alignment="CENTER" prefHeight="100.0" spacing="10.0"
-                  style="-fx-background-color: #0f172a; -fx-padding: 20;">
+            <VBox alignment="CENTER" prefHeight="100.0" spacing="10.0" style="-fx-background-color: #0f172a; -fx-padding: 20;">
                <children>
                   <Label text="ĐẤU GIÁ" textFill="#38bdf8">
                      <font><Font name="System Bold" size="24.0" /></font>
@@ -54,57 +47,32 @@
             </VBox>
 
             <!-- Giữ fx:id để HomeController không lỗi inject, nhưng ẩn hoàn toàn nút chuyển đổi cũ. -->
-            <Button fx:id="roleSwitcherButton" managed="false" mnemonicParsing="false" prefWidth="0.0"
-                    style="-fx-background-color: transparent;" text="" visible="false" />
+            <Button fx:id="roleSwitcherButton" managed="false" mnemonicParsing="false" prefWidth="0.0" style="-fx-background-color: transparent;" text="" visible="false" />
 
             <Separator style="-fx-padding: 15 0; -fx-border-color: #334155;" />
 
             <VBox spacing="5.0" style="-fx-padding: 0 15;">
                <children>
-                  <Button fx:id="homeMenuItem" mnemonicParsing="false" onAction="#switchToHomeView"
-                          prefHeight="45.0" prefWidth="250.0"
-                          style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 12 20; -fx-font-size: 13; -fx-background-radius: 8; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;"
-                          text="Trang chủ" />
+                  <Button fx:id="homeMenuItem" mnemonicParsing="false" onAction="#switchToHomeView" prefHeight="45.0" prefWidth="250.0" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 12 20; -fx-font-size: 13; -fx-background-radius: 8; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="Trang chủ" />
 
                   <Label fx:id="bidderMenuLabel" text="CHO NGƯỜI ĐẤU GIÁ" textFill="#475569" VBox.vgrow="NEVER">
                      <font><Font name="System Bold" size="10.0" /></font>
-                     <VBox.margin><Insets top="15.0" bottom="8.0" /></VBox.margin>
+                     <VBox.margin><Insets bottom="8.0" top="15.0" /></VBox.margin>
                   </Label>
 
-                  <Button fx:id="bidHistoryMenuItem" mnemonicParsing="false" onAction="#switchToBidHistoryView"
-                          prefHeight="40.0" prefWidth="250.0"
-                          style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;"
-                          text="Lịch sử đấu giá" />
+                  <Button fx:id="bidHistoryMenuItem" mnemonicParsing="false" onAction="#switchToBidHistoryView" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="Lịch sử đấu giá" />
 
                   <Label fx:id="sellerMenuLabel" text="CHO NGƯỜI BÁN" textFill="#475569" VBox.vgrow="NEVER">
                      <font><Font name="System Bold" size="10.0" /></font>
-                     <VBox.margin><Insets top="15.0" bottom="8.0" /></VBox.margin>
+                     <VBox.margin><Insets bottom="8.0" top="15.0" /></VBox.margin>
                   </Label>
 
-                  <Button fx:id="addItemMenuItem" mnemonicParsing="false" onAction="#switchToAddItemView"
-                          prefHeight="40.0" prefWidth="250.0"
-                          style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;"
-                          text="➕ Đăng sản phẩm mới" />
+                  <Button fx:id="addItemMenuItem" mnemonicParsing="false" onAction="#switchToAddItemView" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="Đăng sản phẩm mới" />
 
-                  <Button fx:id="myItemsMenuItem" mnemonicParsing="false" onAction="#switchToMyItemsView"
-                          prefHeight="40.0" prefWidth="250.0"
-                          style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;"
-                          text="Sản phẩm của tôi" />
+                  <Button fx:id="myItemsMenuItem" mnemonicParsing="false" onAction="#switchToMyItemsView" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="Sản phẩm của tôi" />
 
-                  <Button fx:id="salesHistoryMenuItem" mnemonicParsing="false" onAction="#switchToSalesHistoryView"
-                          prefHeight="40.0" prefWidth="250.0"
-                          style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;"
-                          text="Lịch sử bán hàng" />
+                  <Button fx:id="salesHistoryMenuItem" mnemonicParsing="false" onAction="#switchToSalesHistoryView" prefHeight="40.0" prefWidth="250.0" style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;" text="Lịch sử bán hàng" />
 
-                  <Label text="CHUNG" textFill="#475569" VBox.vgrow="NEVER">
-                     <font><Font name="System Bold" size="10.0" /></font>
-                     <VBox.margin><Insets top="15.0" bottom="8.0" /></VBox.margin>
-                  </Label>
-
-                  <Button fx:id="notificationsMenuItem" mnemonicParsing="false" onAction="#switchToNotificationsView"
-                          prefHeight="40.0" prefWidth="250.0"
-                          style="-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 6; -fx-cursor: hand; -fx-alignment: CENTER_LEFT;"
-                          text="Thông báo" />
                </children>
             </VBox>
 
@@ -113,25 +81,17 @@
             <VBox spacing="10.0" style="-fx-padding: 20;">
                <children>
                   <Separator style="-fx-border-color: #334155;" />
-                  <Button fx:id="roleSelectionBackButton" mnemonicParsing="false" onAction="#switchToRoleSelectionView"
-                          prefWidth="240.0"
-                          style="-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-padding: 10 15; -fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;"
-                          text="← Quay lại chọn vai trò" />
-                  <Button fx:id="logoutButton" mnemonicParsing="false" onAction="#onLogoutClicked"
-                          prefWidth="240.0"
-                          style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 10 15; -fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;"
-                          text="Đăng xuất" />
+                  <Button fx:id="roleSelectionBackButton" mnemonicParsing="false" onAction="#switchToRoleSelectionView" prefWidth="240.0" style="-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-padding: 10 15; -fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;" text="← Quay lại chọn vai trò" />
+                  <Button fx:id="logoutButton" mnemonicParsing="false" onAction="#onLogoutClicked" prefWidth="240.0" style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 10 15; -fx-font-size: 12; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;" text="Đăng xuất" />
                </children>
             </VBox>
          </children>
       </VBox>
 
       <!-- MAIN CONTENT AREA -->
-      <VBox AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="280.0"
-            AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+      <VBox AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="280.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
-            <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0"
-                  style="-fx-background-color: white; -fx-padding: 20; -fx-border-color: #e2e8f0; -fx-border-width: 0 0 1 0;">
+            <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0" style="-fx-background-color: white; -fx-padding: 20; -fx-border-color: #e2e8f0; -fx-border-width: 0 0 1 0;">
                <children>
                   <Label fx:id="pageTitle" text="Trang chủ sàn đấu giá" textFill="#0f172a">
                      <font><Font name="System Bold" size="22.0" /></font>
@@ -142,7 +102,7 @@
                         <Label fx:id="userInfoLabel" text="..." textFill="#334155">
                            <font><Font name="System Bold" size="13.0" /></font>
                         </Label>
-                        <Label text="Online" textFill="#64748b">
+                        <Label fx:id="balanceLabel" text="Số dư: 0 VNĐ" textFill="#64748b">
                            <font><Font size="11.0" /></font>
                         </Label>
                      </children>
@@ -150,32 +110,21 @@
                </children>
             </HBox>
 
-            <VBox fx:id="contentContainer" VBox.vgrow="ALWAYS" style="-fx-background-color: #f8fafc;">
+            <VBox fx:id="contentContainer" style="-fx-background-color: #f8fafc;" VBox.vgrow="ALWAYS">
                <children>
                   <VBox fx:id="homeView" visible="true" VBox.vgrow="ALWAYS">
                      <children>
-                        <HBox alignment="CENTER" prefHeight="80.0" spacing="15.0"
-                              style="-fx-background-color: #f8fafc; -fx-padding: 20;">
+                        <HBox alignment="CENTER" prefHeight="80.0" spacing="15.0" style="-fx-background-color: #f8fafc; -fx-padding: 20;">
                            <children>
-                              <TextField fx:id="searchTextField" prefHeight="40.0" prefWidth="400.0"
-                                         promptText="Tìm kiếm sản phẩm..."
-                                         style="-fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-color: white; -fx-padding: 0 15; -fx-font-size: 12;" />
-                              <ComboBox fx:id="filterComboBox" prefHeight="40.0" prefWidth="180.0"
-                                        promptText="Lọc trạng thái..."
-                                        style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
-                              <ComboBox fx:id="sortComboBox" prefHeight="40.0" prefWidth="180.0"
-                                        promptText="Sắp xếp..."
-                                        style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
+                              <TextField fx:id="searchTextField" prefHeight="40.0" prefWidth="400.0" promptText="Tìm kiếm sản phẩm..." style="-fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-color: white; -fx-padding: 0 15; -fx-font-size: 12;" />
+                              <ComboBox fx:id="filterComboBox" prefHeight="40.0" prefWidth="180.0" promptText="Lọc trạng thái..." style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
+                              <ComboBox fx:id="sortComboBox" prefHeight="40.0" prefWidth="180.0" promptText="Sắp xếp..." style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-padding: 0 15;" />
                               <HBox HBox.hgrow="ALWAYS" />
-                              <Button fx:id="refreshButton" mnemonicParsing="false" onAction="#onRefreshClicked"
-                                      style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-weight: bold;"
-                                      text="Làm mới" />
+                              <Button fx:id="refreshButton" mnemonicParsing="false" onAction="#onRefreshClicked" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 10 20; -fx-font-size: 12; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-weight: bold;" text="Làm mới" />
                            </children>
                         </HBox>
 
-                        <ScrollPane fitToWidth="true"
-                                    style="-fx-background-color: transparent; -fx-background: #f8fafc; -fx-padding: 0;"
-                                    VBox.vgrow="ALWAYS">
+                        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #f8fafc; -fx-padding: 0;" VBox.vgrow="ALWAYS">
                            <content>
                               <FlowPane fx:id="itemFlowPane" hgap="20.0" vgap="20.0">
                                  <padding>
@@ -186,6 +135,8 @@
                         </ScrollPane>
                      </children>
                   </VBox>
+
+                  <VBox fx:id="auctionRoomView" managed="false" visible="false" VBox.vgrow="ALWAYS" />
 
                   <fx:include fx:id="bidHistoryViewPane" source="BidHistoryView.fxml" VBox.vgrow="ALWAYS" />
                   <fx:include fx:id="addItemViewPane" source="AddItemView.fxml" VBox.vgrow="ALWAYS" />

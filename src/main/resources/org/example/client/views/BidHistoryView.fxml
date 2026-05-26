@@ -6,14 +6,19 @@
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import java.net.URL?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
 <VBox xmlns="http://javafx.com/javafx/25"
-      xmlns:fx="http://javafx.com/fxml/1"
+      xmlns:fx="http://fxml.com/fxml/1"
       fx:controller="org.example.client.controllers.BidHistoryController"
       spacing="12"
       style="-fx-padding: 20; -fx-background-color: #f8fafc;"
+      stylesheets="@../../../../styles/chart-style.css"
       VBox.vgrow="ALWAYS">
 
     <children>
@@ -31,7 +36,7 @@
 
             <TextField fx:id="bidHistorySearchTextField"
                        prefHeight="38"
-                       prefWidth="320"
+                       prefWidth="250"
                        promptText="Tìm kiếm sản phẩm..."
                        style="-fx-background-radius: 8;
                               -fx-border-color: #e2e8f0;
@@ -42,7 +47,7 @@
 
             <ComboBox fx:id="bidHistoryStatusComboBox"
                       prefHeight="38"
-                      prefWidth="155"
+                      prefWidth="140"
                       promptText="Lọc trạng thái..."
                       style="-fx-background-color: white;
                              -fx-border-color: #e2e8f0;
@@ -52,7 +57,7 @@
 
             <ComboBox fx:id="bidHistorySortComboBox"
                       prefHeight="38"
-                      prefWidth="155"
+                      prefWidth="140"
                       promptText="Sắp xếp..."
                       style="-fx-background-color: white;
                              -fx-border-color: #e2e8f0;
@@ -76,23 +81,52 @@
                            -fx-font-weight: bold;" />
         </HBox>
 
-        <TableView fx:id="bidHistoryTable"
-                   VBox.vgrow="ALWAYS"
-                   style="-fx-background-color: white;
-                          -fx-border-color: #e2e8f0;
-                          -fx-border-radius: 10;
-                          -fx-background-radius: 10;
-                          -fx-font-family: 'System';
-                          -fx-font-size: 12;">
+        <HBox spacing="14" VBox.vgrow="ALWAYS">
+            <children>
 
-            <columns>
-                <TableColumn fx:id="colItemName" text="Tên sản phẩm" prefWidth="220" />
-                <TableColumn fx:id="colItemType" text="Loại" prefWidth="110" />
-                <TableColumn fx:id="colBidAmount" text="Giá đặt" prefWidth="140" />
-                <TableColumn fx:id="colBidTime" text="Thời gian" prefWidth="170" />
-                <TableColumn fx:id="colAuctionStatus" text="Trạng thái" prefWidth="130" />
-                <TableColumn fx:id="colResult" text="Kết quả" prefWidth="130" />
-            </columns>
-        </TableView>
+                <TableView fx:id="bidHistoryTable"
+                           HBox.hgrow="ALWAYS"
+                           prefWidth="600"
+                           style="-fx-background-color: white;
+                                  -fx-border-color: #e2e8f0;
+                                  -fx-border-radius: 10;
+                                  -fx-background-radius: 10;
+                                  -fx-font-family: 'System';
+                                  -fx-font-size: 12;">
+                    <columns>
+                        <TableColumn fx:id="colItemName" text="Tên sản phẩm" prefWidth="160" />
+                        <TableColumn fx:id="colItemType" text="Loại" prefWidth="80" />
+                        <TableColumn fx:id="colBidAmount" text="Giá đặt" prefWidth="100" />
+                        <TableColumn fx:id="colBidTime" text="Thời gian" prefWidth="120" />
+                        <TableColumn fx:id="colAuctionStatus" text="Trạng thái" prefWidth="90" />
+                        <TableColumn fx:id="colResult" text="Kết quả" prefWidth="90" />
+                    </columns>
+                </TableView>
+
+                <VBox HBox.hgrow="ALWAYS"
+                      prefWidth="450"
+                      style="-fx-background-color: white;
+                             -fx-border-color: #e2e8f0;
+                             -fx-border-radius: 10;
+                             -fx-background-radius: 10;
+                             -fx-padding: 10;">
+                    <children>
+                        <Label text="Xu hướng giá (Sản phẩm đang chọn)"
+                               style="-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: #475569; -fx-padding: 0 0 0 10;" />
+                        <LineChart fx:id="bidLineChart"
+                                   legendSide="BOTTOM"
+                                   VBox.vgrow="ALWAYS">
+                            <xAxis>
+                                <CategoryAxis fx:id="chartXAxis" label="Thời gian" side="BOTTOM" />
+                            </xAxis>
+                            <yAxis>
+                                <NumberAxis fx:id="chartYAxis" label="Mức giá (VND)" side="LEFT" forceZeroInRange="false" />
+                            </yAxis>
+                        </LineChart>
+                    </children>
+                </VBox>
+
+            </children>
+        </HBox>
     </children>
 </VBox>

@@ -21,12 +21,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Bản sửa:
- * - getAllItems() tự kiểm tra sản phẩm hết hạn và đổi sang CLOSED.
- * - startAuction() đổi status sang ACTIVE, set endTime, cập nhật DB.
- * - placeBid() vẫn kiểm tra hết hạn trước khi cho đặt giá.
- */
 public class AuctionManager {
 
     private static final Logger logger = LoggerFactory.getLogger(AuctionManager.class);
@@ -225,6 +219,11 @@ public class AuctionManager {
         String previousWinnerId = targetItem.getCurrentWinnerId();
         double previousPrice = targetItem.getCurrentPrice();
 
+        if (previousWinnerId != null && previousWinnerId.equals(bidderId)) {
+            return "Lỗi: Bạn đang là người đặt giá gần nhất cho sản phẩm này. "
+                    + "Vui lòng chờ người khác đặt giá trước khi đặt tiếp.";
+        }
+
         double minRequiredBid = previousWinnerId == null || previousWinnerId.isEmpty()
                 ? targetItem.getStartingPrice()
                 : previousPrice + targetItem.getBidIncrement();
@@ -233,8 +232,7 @@ public class AuctionManager {
             return "Lỗi: Giá thấp nhất có thể đặt hiện tại là: " + minRequiredBid;
         }
 
-        boolean sameLeadingBidder = previousWinnerId != null && previousWinnerId.equals(bidderId);
-        double amountToReserve = sameLeadingBidder ? bidAmount - previousPrice : bidAmount;
+        double amountToReserve = bidAmount;
 
         if (amountToReserve <= 0) {
             return "Lỗi: Mức giá mới phải cao hơn giá hiện tại.";
@@ -251,7 +249,7 @@ public class AuctionManager {
             return "Lỗi: Số dư của bạn không đủ hoặc không thể giữ tiền đặt giá.";
         }
 
-        if (!sameLeadingBidder && previousWinnerId != null && !previousWinnerId.isEmpty()) {
+        if (previousWinnerId != null && !previousWinnerId.isEmpty()) {
             boolean refunded = UserManager.getInstance().addBalance(previousWinnerId, previousPrice);
 
             if (!refunded) {
@@ -322,9 +320,15 @@ public class AuctionManager {
 
                     String displayResult;
                     if ("ACTIVE".equals(status)) {
-                        displayResult = String.valueOf(userId).equals(winnerId) ? "Đang dẫn đầu" : "Đang diễn ra";
+                        displayResult = String.valueOf(userId).equals(winnerId) ? "Đang dẫn đầu" : "Đã bị vượt";
+                    } else if ("CLOSED".equals(status)) {
+                        displayResult = String.valueOf(userId).equals(winnerId) ? "Thắng" : "Thua";
+                    } else if ("CANCELED".equals(status)) {
+                        displayResult = "Bị hủy";
+                    } else if ("PENDING".equals(status)) {
+                        displayResult = "Chờ";
                     } else {
-                        displayResult = "Đã kết thúc";
+                        displayResult = "Không rõ";
                     }
 
                     result.add(new Object[]{itemId, itemName, itemType, bidAmount, bidTime, status, displayResult});
@@ -332,6 +336,57 @@ public class AuctionManager {
             }
         } catch (SQLException e) {
             logger.error("Lỗi lấy lịch sử đấu giá: {}", e.getMessage(), e);
+        }
+
+        return result;
+    }
+
+
+    public synchronized List<Object[]> getBidHistoryForItem(String itemId) {
+        checkAndCloseExpiredAuctions();
+
+        List<Object[]> result = new ArrayList<>();
+
+        String sql = "SELECT b.item_id, i.name, i.type, b.bid_amount, b.bid_time, i.status, i.current_winner_id, b.user_id " +
+                "FROM bids b JOIN items i ON b.item_id = i.id " +
+                "WHERE b.item_id = ? ORDER BY b.bid_time ASC";
+
+        try (
+                Connection conn = DatabaseManager.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)
+        ) {
+            pstmt.setInt(1, Integer.parseInt(itemId));
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String rowItemId = rs.getString("item_id");
+                    String itemName = rs.getString("name");
+                    String itemType = rs.getString("type");
+                    double bidAmount = rs.getDouble("bid_amount");
+                    Timestamp bidTimestamp = rs.getTimestamp("bid_time");
+                    LocalDateTime bidTime = bidTimestamp == null ? LocalDateTime.now() : bidTimestamp.toLocalDateTime();
+                    String status = rs.getString("status");
+                    String winnerId = rs.getString("current_winner_id");
+                    String bidderId = rs.getString("user_id");
+
+                    String displayResult;
+                    if ("ACTIVE".equals(status)) {
+                        displayResult = String.valueOf(bidderId).equals(winnerId) ? "Đang dẫn đầu" : "Đã bị vượt";
+                    } else if ("CLOSED".equals(status)) {
+                        displayResult = String.valueOf(bidderId).equals(winnerId) ? "Thắng" : "Thua";
+                    } else if ("CANCELED".equals(status)) {
+                        displayResult = "Bị hủy";
+                    } else if ("PENDING".equals(status)) {
+                        displayResult = "Chờ";
+                    } else {
+                        displayResult = "Không rõ";
+                    }
+
+                    result.add(new Object[]{rowItemId, itemName, itemType, bidAmount, bidTime, status, displayResult});
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Lỗi lấy lịch sử bid theo sản phẩm {}: {}", itemId, e.getMessage(), e);
         }
 
         return result;

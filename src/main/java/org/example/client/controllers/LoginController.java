@@ -6,7 +6,6 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
@@ -22,7 +21,6 @@ public class LoginController implements Initializable {
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
     @FXML private Label errorLabel;
-    @FXML private CheckBox rememberCheckbox;
     @FXML private Button loginButton;
 
     @Override
@@ -119,11 +117,6 @@ public class LoginController implements Initializable {
         } catch (Exception e) {
             System.err.println("Error switching to sign up: " + e.getMessage());
         }
-    }
-
-    @FXML
-    public void onForgotPasswordClicked() {
-        showError("Chức năng đang được nâng cấp!");
     }
 
     private void showError(String message) {
