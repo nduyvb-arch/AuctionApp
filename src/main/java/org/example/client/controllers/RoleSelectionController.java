@@ -90,9 +90,8 @@ public class RoleSelectionController implements Initializable {
     @FXML
     private void onAccountClicked() {
         try {
-            // Đánh dấu để khi quay lại từ màn hình account, sẽ mở lại màn hình role selection
-            ClientApp.setOpenAccountOnHomeLoad(true);
-            ClientApp.switchToHome();
+            // Mở thẳng màn hình tài khoản riêng, không load qua HomeMenu của Bidder/Seller.
+            ClientApp.switchToAccount();
         } catch (Exception e) {
             showError("Không thể mở tài khoản", e.getMessage());
         }
