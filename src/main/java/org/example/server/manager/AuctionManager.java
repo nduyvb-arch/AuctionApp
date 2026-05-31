@@ -20,6 +20,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class AuctionManager {
 
@@ -28,6 +30,8 @@ public class AuctionManager {
 
     private final List<Item> auctionItems;
     private static final DateTimeFormatter DB_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private final ExecutorService dbExecutor = Executors.newSingleThreadScheduledExecutor();
 
     private AuctionManager() {
         auctionItems = new ArrayList<>();
@@ -142,6 +146,7 @@ public class AuctionManager {
     }
 
     private void updateItemDB(Item item) {
+        dbExecutor.submit(() -> {
         String sql = "UPDATE items SET current_price = ?, current_winner_id = ?, status = ?, end_time = ?, image_path = ? WHERE id = ?";
 
         try (
@@ -165,6 +170,7 @@ public class AuctionManager {
         } catch (SQLException e) {
             logger.error("Lỗi cập nhật item vào DB: {}", e.getMessage(), e);
         }
+        });
     }
 
     public synchronized String startAuction(String itemId, int durationInMinutes) {
@@ -285,19 +291,21 @@ public class AuctionManager {
 
 
     private void insertBidRecord(String itemId, String bidderId, double bidAmount) {
-        String sql = "INSERT INTO bids (item_id, user_id, bid_amount) VALUES (?, ?, ?)";
+        dbExecutor.submit(() -> {
+            String sql = "INSERT INTO bids (item_id, user_id, bid_amount) VALUES (?, ?, ?)";
 
-        try (
-                Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)
-        ) {
-            pstmt.setInt(1, Integer.parseInt(itemId));
-            pstmt.setInt(2, Integer.parseInt(bidderId));
-            pstmt.setDouble(3, bidAmount);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            logger.error("Lỗi lưu lịch sử bid: {}", e.getMessage(), e);
-        }
+            try (
+                    Connection conn = DatabaseManager.getConnection();
+                    PreparedStatement pstmt = conn.prepareStatement(sql)
+            ) {
+                pstmt.setInt(1, Integer.parseInt(itemId));
+                pstmt.setInt(2, Integer.parseInt(bidderId));
+                pstmt.setDouble(3, bidAmount);
+                pstmt.executeUpdate();
+            } catch (SQLException e) {
+                logger.error("Lỗi lưu lịch sử bid: {}", e.getMessage(), e);
+            }
+        });
     }
 
     public synchronized List<Object[]> getBidHistoryForUser(String userId) {
