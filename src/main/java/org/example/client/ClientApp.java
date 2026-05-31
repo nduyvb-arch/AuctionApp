@@ -165,6 +165,24 @@ public class ClientApp extends Application {
         applyScene(scene, "Hệ thống đấu giá - Trang chủ", 1000, 700, 1200, 800);
     }
 
+    /**
+     * Mở màn hình tài khoản độc lập, không đi qua HomeMenu.
+     * Cách này tránh việc AccountView bị đặt bên trong layout của role Bidder/Seller
+     * nên sẽ không còn dính sidebar/top bar của giao diện người bán.
+     */
+    public static void switchToAccount() throws Exception {
+        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/AccountView.fxml"));
+        Parent root = loader.load();
+
+        org.example.client.controllers.AccountViewController controller = loader.getController();
+        if (controller != null) {
+            controller.setupStandalone(currentUser);
+        }
+
+        Scene scene = new Scene(root);
+        applyScene(scene, "Hệ thống đấu giá - Tài khoản", 1000, 700, 1200, 800);
+    }
+
     public static void switchToAdmin() throws Exception {
         FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/admin/AdminDashboard.fxml"));
         Parent root = loader.load();

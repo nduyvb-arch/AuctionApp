@@ -114,6 +114,24 @@ public class ClientHandler implements Runnable, Observer {
                         String bidResult = AuctionManager.getInstance().placeBid(itemId, bidAmount, bidderId);
                         sendMessage(new Message("BID_RESPONSE", bidResult));
 
+                        if (bidResult.contains("đã kết thúc")) {
+                            Item endedItem = AuctionManager.getInstance().getAllItems().stream()
+                                    .filter(i -> i.getId().equals(itemId))
+                                    .findFirst()
+                                    .orElse(null);
+
+                            if (endedItem != null) {
+                                notifier.notifyObservers(new Message("ITEM_UPDATE", endedItem));
+                                notifier.notifyObservers(new Message(
+                                        "ITEM_BID_HISTORY_UPDATE",
+                                        new Object[]{itemId, AuctionManager.getInstance().getBidHistoryForItem(itemId)}
+                                ));
+                            }
+
+                            notifier.notifyObservers(new Message("BID_HISTORY_REFRESH_REQUIRED", itemId));
+                            notifyAllAccountInfo();
+                        }
+
                         if (bidResult.startsWith("Đặt giá thành công")) {
                             User refreshedBidder = UserManager.getInstance().findUserById(bidderId);
 

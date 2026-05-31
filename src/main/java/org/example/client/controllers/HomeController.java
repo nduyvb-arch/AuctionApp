@@ -26,6 +26,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import org.example.common.Message;
 import org.example.common.model.item.Item;
+import org.example.common.model.item.AuctionStatus;
 import org.example.common.model.chat.AuctionChatMessage;
 import org.example.common.model.user.User;
 
@@ -1170,6 +1171,13 @@ public class HomeController implements Initializable {
 
         validateActiveBidAmount();
 
+        if (!isItemOpenForBid(activeBidDialogItem)) {
+            showActiveBidClosedState(activeBidDialogItem);
+            pendingBidItemId = null;
+            pendingBidAmount = 0;
+            return;
+        }
+
         if (activeBidSubmitButton != null && activeBidSubmitButton.isDisabled()) {
             return;
         }
@@ -1200,16 +1208,15 @@ public class HomeController implements Initializable {
             return;
         }
 
-        String status = getDisplayStatus(activeBidDialogItem);
         String raw = activeBidAmountField.getText() == null ? "" : activeBidAmountField.getText().trim();
 
-        if (!"ACTIVE".equals(status)) {
-            activeBidSubmitButton.setDisable(true);
-            if (activeBidErrorLabel != null) {
-                activeBidErrorLabel.setText("Phiên đấu giá chưa diễn ra hoặc đã kết thúc.");
-            }
+        if (!isItemOpenForBid(activeBidDialogItem)) {
+            showActiveBidClosedState(activeBidDialogItem);
             return;
         }
+
+        activeBidAmountField.setDisable(false);
+        activeBidAmountField.setEditable(true);
 
         if (isCurrentUserLastBidder(activeBidDialogItem)) {
             activeBidSubmitButton.setDisable(true);
@@ -1532,6 +1539,17 @@ public class HomeController implements Initializable {
     // ĐẶT GIÁ
     // ═══════════════════════════════════════════════════════════
     private void openBidDialog(Item item) {
+        markItemClosedLocallyIfExpired(item);
+        if (!isItemOpenForBid(item)) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Đặt giá");
+            alert.setHeaderText("Không thể đặt giá");
+            alert.setContentText(getAuctionClosedBidMessage(item));
+            alert.showAndWait();
+            loadInitialItems();
+            return;
+        }
+
         Dialog<Void> bidDialog = new Dialog<>();
         bidDialog.setTitle("Đặt giá - " + item.getItemName());
         bidDialog.setHeaderText(null);
@@ -1642,6 +1660,11 @@ public class HomeController implements Initializable {
                 return;
             }
 
+            if (!isItemOpenForBid(activeBidDialogItem)) {
+                showActiveBidClosedState(activeBidDialogItem);
+                return;
+            }
+
             if (isCurrentUserLastBidder(item)) {
                 submitButton.setDisable(true);
                 errorLabel.setText(getConsecutiveBidWarning());
@@ -1675,6 +1698,13 @@ public class HomeController implements Initializable {
                 return;
             }
 
+            if (!isItemOpenForBid(activeBidDialogItem)) {
+                showActiveBidClosedState(activeBidDialogItem);
+                pendingBidItemId = null;
+                pendingBidAmount = 0;
+                return;
+            }
+
             if (isCurrentUserLastBidder(item)) {
                 errorLabel.setText(getConsecutiveBidWarning());
                 submitButton.setDisable(true);
@@ -1703,12 +1733,22 @@ public class HomeController implements Initializable {
             }
         });
 
+        Timeline bidDialogCountdownTimeline = new Timeline(
+                new KeyFrame(Duration.seconds(1), event -> {
+                    refreshActiveBidDialogLabels();
+                    validateActiveBidAmount();
+                })
+        );
+        bidDialogCountdownTimeline.setCycleCount(Timeline.INDEFINITE);
+        bidDialogCountdownTimeline.play();
+
         bidDialog.setOnShown(event -> Platform.runLater(() -> {
             amountField.requestFocus();
             amountField.positionCaret(amountField.getText().length());
         }));
 
         bidDialog.setOnHidden(event -> {
+            bidDialogCountdownTimeline.stop();
             if (item.getId().equals(activeBidDialogItemId)) {
                 clearActiveBidDialogState();
             }
@@ -1830,6 +1870,90 @@ public class HomeController implements Initializable {
         return "Bạn đang là người đặt giá gần nhất cho sản phẩm này. Vui lòng chờ người khác đặt giá trước.";
     }
 
+    private boolean isItemOpenForBid(Item item) {
+        if (item == null || item.getStatus() == null || item.getEndTime() == null) {
+            return false;
+        }
+
+        return item.getStatus() == AuctionStatus.ACTIVE
+                && LocalDateTime.now().isBefore(item.getEndTime());
+    }
+
+    private boolean isItemExpired(Item item) {
+        return item != null
+                && item.getStatus() == AuctionStatus.ACTIVE
+                && item.getEndTime() != null
+                && !LocalDateTime.now().isBefore(item.getEndTime());
+    }
+
+    private void markItemClosedLocallyIfExpired(Item item) {
+        if (!isItemExpired(item)) {
+            return;
+        }
+
+        item.setStatus(AuctionStatus.CLOSED);
+
+        if (activeBidDialogItem != null && item.getId().equals(activeBidDialogItem.getId())) {
+            activeBidDialogItem.setStatus(AuctionStatus.CLOSED);
+        }
+
+        for (Item cachedItem : items) {
+            if (item.getId().equals(cachedItem.getId())) {
+                cachedItem.setStatus(AuctionStatus.CLOSED);
+                break;
+            }
+        }
+    }
+
+    private Item findCachedItemById(String itemId) {
+        if (itemId == null) {
+            return null;
+        }
+
+        return items.stream()
+                .filter(item -> itemId.equals(item.getId()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String getAuctionClosedBidMessage(Item item) {
+        if (item == null || item.getStatus() == AuctionStatus.PENDING) {
+            return "Phiên đấu giá chưa bắt đầu nên chưa thể đặt giá.";
+        }
+
+        if (item.getStatus() == AuctionStatus.CANCELED) {
+            return "Phiên đấu giá đã bị hủy nên không thể đặt giá.";
+        }
+
+        return "Phiên đấu giá đã kết thúc nên không thể đặt giá.";
+    }
+
+    private void showActiveBidClosedState(Item item) {
+        markItemClosedLocallyIfExpired(item);
+
+        if (activeBidSubmitButton != null) {
+            activeBidSubmitButton.setDisable(true);
+        }
+
+        if (activeBidAmountField != null) {
+            activeBidAmountField.setDisable(true);
+            activeBidAmountField.setEditable(false);
+        }
+
+        String message = getAuctionClosedBidMessage(item);
+
+        if (activeBidErrorLabel != null) {
+            activeBidErrorLabel.setText(message);
+        }
+
+        if (activeBidStatusLabel != null) {
+            activeBidStatusLabel.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 12; -fx-font-weight: bold;");
+            activeBidStatusLabel.setText(message);
+        }
+
+        refreshAuctionRoomHeader();
+    }
+
     private double calculateMinimumBid(Item item) {
         if (item == null) {
             return 0;
@@ -1845,7 +1969,12 @@ public class HomeController implements Initializable {
             return;
         }
 
+        markItemClosedLocallyIfExpired(activeBidDialogItem);
         double minimumBid = calculateMinimumBid(activeBidDialogItem);
+
+        if (!isItemOpenForBid(activeBidDialogItem)) {
+            showActiveBidClosedState(activeBidDialogItem);
+        }
 
         if (activeBidCurrentPriceLabel != null) {
             activeBidCurrentPriceLabel.setText("Giá hiện tại: "
@@ -1920,7 +2049,11 @@ public class HomeController implements Initializable {
         if (success) {
             updateActiveBidDialogAfterSuccessfulBid(responseMessage);
         } else {
-            if (activeBidStatusLabel != null) {
+            if (responseMessage.toLowerCase().contains("kết thúc") && activeBidDialogItem != null) {
+                activeBidDialogItem.setStatus(AuctionStatus.CLOSED);
+                showActiveBidClosedState(activeBidDialogItem);
+                loadInitialItems();
+            } else if (activeBidStatusLabel != null) {
                 activeBidStatusLabel.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 12; -fx-font-weight: bold;");
                 activeBidStatusLabel.setText(responseMessage);
             }
@@ -1999,6 +2132,11 @@ public class HomeController implements Initializable {
         refreshAuctionRoomHeader();
         validateActiveBidAmount();
 
+        if (!isItemOpenForBid(activeBidDialogItem)) {
+            showActiveBidClosedState(activeBidDialogItem);
+            return;
+        }
+
         if (activeBidStatusLabel != null) {
             if (isCurrentUserLastBidder(activeBidDialogItem)) {
                 activeBidStatusLabel.setStyle("-fx-text-fill: #d97706; -fx-font-size: 12; -fx-font-weight: bold;");
@@ -2029,6 +2167,19 @@ public class HomeController implements Initializable {
     // 🔥 FIX 2: Đặt giá an toàn (Bỏ Task)
     private void submitBid(String itemId, double bidAmount) {
         if (currentUser == null) return;
+
+        Item itemForValidation = activeBidDialogItem != null && itemId.equals(activeBidDialogItem.getId())
+                ? activeBidDialogItem
+                : findCachedItemById(itemId);
+
+        if (!isItemOpenForBid(itemForValidation)) {
+            showActiveBidClosedState(itemForValidation);
+            pendingBidItemId = null;
+            pendingBidAmount = 0;
+            loadInitialItems();
+            return;
+        }
+
         Object[] bidData = {itemId, bidAmount, currentUser.getId()};
         ClientApp.sendMessage(new Message("BID", bidData));
     }
@@ -2256,6 +2407,11 @@ public class HomeController implements Initializable {
         }
 
         rebuildActiveBidChartFromHistory(activeItemBidHistory);
+
+        if (!isItemOpenForBid(activeBidDialogItem)) {
+            showActiveBidClosedState(activeBidDialogItem);
+            return;
+        }
 
         if (activeBidStatusLabel != null && !activeItemBidHistory.isEmpty()) {
             activeBidStatusLabel.setStyle("-fx-text-fill: #2563eb; -fx-font-size: 12; -fx-font-weight: bold;");

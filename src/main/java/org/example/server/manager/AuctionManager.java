@@ -147,30 +147,37 @@ public class AuctionManager {
 
     private void updateItemDB(Item item) {
         dbExecutor.submit(() -> {
-        String sql = "UPDATE items SET current_price = ?, current_winner_id = ?, status = ?, end_time = ?, image_path = ? WHERE id = ?";
+            String sql = "UPDATE items SET current_price = ?, current_winner_id = ?, status = ?, end_time = ?, image_path = ? WHERE id = ?";
 
-        try (
-                Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)
-        ) {
-            pstmt.setDouble(1, item.getCurrentPrice());
+            try (
+                    Connection conn = DatabaseManager.getConnection();
+                    PreparedStatement pstmt = conn.prepareStatement(sql)
+            ) {
+                pstmt.setDouble(1, item.getCurrentPrice());
 
-            if (item.getCurrentWinnerId() != null && !item.getCurrentWinnerId().isEmpty()) {
-                pstmt.setInt(2, Integer.parseInt(item.getCurrentWinnerId()));
-            } else {
-                pstmt.setNull(2, java.sql.Types.INTEGER);
+                if (item.getCurrentWinnerId() != null && !item.getCurrentWinnerId().isEmpty()) {
+                    pstmt.setInt(2, Integer.parseInt(item.getCurrentWinnerId()));
+                } else {
+                    pstmt.setNull(2, java.sql.Types.INTEGER);
+                }
+
+                pstmt.setString(3, item.getStatus().name());
+                pstmt.setString(4, item.getEndTime() != null ? item.getEndTime().format(DB_TIME_FORMAT) : null);
+                pstmt.setString(5, item.getImagePath()); // Cập nhật imagePath
+                pstmt.setInt(6, Integer.parseInt(item.getId()));
+                pstmt.executeUpdate();
+
+            } catch (SQLException e) {
+                logger.error("Lỗi cập nhật item vào DB: {}", e.getMessage(), e);
             }
-
-            pstmt.setString(3, item.getStatus().name());
-            pstmt.setString(4, item.getEndTime() != null ? item.getEndTime().format(DB_TIME_FORMAT) : null);
-            pstmt.setString(5, item.getImagePath()); // Cập nhật imagePath
-            pstmt.setInt(6, Integer.parseInt(item.getId()));
-            pstmt.executeUpdate();
-
-        } catch (SQLException e) {
-            logger.error("Lỗi cập nhật item vào DB: {}", e.getMessage(), e);
-        }
         });
+    }
+
+    private boolean isAuctionExpired(Item item) {
+        return item != null
+                && item.getStatus() == AuctionStatus.ACTIVE
+                && item.getEndTime() != null
+                && !LocalDateTime.now().isBefore(item.getEndTime());
     }
 
     public synchronized String startAuction(String itemId, int durationInMinutes) {
@@ -198,14 +205,17 @@ public class AuctionManager {
             return "Lỗi: Sản phẩm cần tìm không tồn tại.";
         }
 
+        if (targetItem.getStatus() == AuctionStatus.ACTIVE && isAuctionExpired(targetItem)) {
+            checkAndCloseExpiredAuctions();
+            return "Lỗi: Phiên đấu giá đã kết thúc.";
+        }
+
         if (targetItem.getStatus() != AuctionStatus.ACTIVE) {
             return "Lỗi: Phiên đấu giá chưa bắt đầu hoặc đã kết thúc.";
         }
 
-        if (targetItem.getEndTime() != null && LocalDateTime.now().isAfter(targetItem.getEndTime())) {
-            targetItem.setStatus(AuctionStatus.CLOSED);
-            updateItemDB(targetItem);
-            return "Lỗi: Phiên đấu giá đã kết thúc.";
+        if (targetItem.getEndTime() == null) {
+            return "Lỗi: Phiên đấu giá chưa có thời gian kết thúc hợp lệ.";
         }
 
         if (bidderId != null && bidderId.equals(targetItem.getSellerId())) {
@@ -404,9 +414,7 @@ public class AuctionManager {
         List<String> notifications = new ArrayList<>();
 
         for (Item item : auctionItems) {
-            if (item.getStatus() == AuctionStatus.ACTIVE
-                    && item.getEndTime() != null
-                    && LocalDateTime.now().isAfter(item.getEndTime())) {
+            if (isAuctionExpired(item)) {
 
                 item.setStatus(AuctionStatus.CLOSED);
                 updateItemDB(item);
