@@ -2136,8 +2136,6 @@ public class HomeController implements Initializable {
 
                 case "BID_RESPONSE":
                     handleBidResponse(message.getPayload());
-                    loadInitialItems();
-                    requestMyBidHistory();
                     break;
 
                 case "MY_BID_HISTORY_RESPONSE":
@@ -2175,8 +2173,6 @@ public class HomeController implements Initializable {
                     resultAlert.setContentText(notification);
                     resultAlert.showAndWait();
 
-                    loadInitialItems();
-                    requestMyBidHistory();
                     break;
 
                 case "ITEM_UPDATE":
@@ -2195,8 +2191,6 @@ public class HomeController implements Initializable {
                         items.removeIf(item -> item.getId().equals(newItem.getId()));
                         items.add(newItem);
                         refreshCurrentViews();
-                    } else {
-                        loadInitialItems();
                     }
                     break;
 
