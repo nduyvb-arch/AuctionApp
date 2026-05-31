@@ -26,6 +26,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import org.example.common.Message;
 import org.example.common.model.item.Item;
+import org.example.common.model.item.AuctionStatus;
 import org.example.common.model.chat.AuctionChatMessage;
 import org.example.common.model.user.User;
 
@@ -1168,6 +1169,11 @@ public class HomeController implements Initializable {
             return;
         }
 
+        if (!isAuctionAcceptingBids(activeBidDialogItem)) {
+            markActiveBidControlsClosed("Phiên đấu giá đã kết thúc. Bạn không thể đặt giá thêm.");
+            return;
+        }
+
         validateActiveBidAmount();
 
         if (activeBidSubmitButton != null && activeBidSubmitButton.isDisabled()) {
@@ -1203,13 +1209,12 @@ public class HomeController implements Initializable {
         String status = getDisplayStatus(activeBidDialogItem);
         String raw = activeBidAmountField.getText() == null ? "" : activeBidAmountField.getText().trim();
 
-        if (!"ACTIVE".equals(status)) {
-            activeBidSubmitButton.setDisable(true);
-            if (activeBidErrorLabel != null) {
-                activeBidErrorLabel.setText("Phiên đấu giá chưa diễn ra hoặc đã kết thúc.");
-            }
+        if (!"ACTIVE".equals(status) || !isAuctionAcceptingBids(activeBidDialogItem)) {
+            markActiveBidControlsClosed("Phiên đấu giá chưa diễn ra hoặc đã kết thúc.");
             return;
         }
+
+        activeBidAmountField.setDisable(false);
 
         if (isCurrentUserLastBidder(activeBidDialogItem)) {
             activeBidSubmitButton.setDisable(true);
@@ -1255,6 +1260,7 @@ public class HomeController implements Initializable {
             return;
         }
 
+        updateLocalAuctionStatusIfExpired(activeBidDialogItem);
         String status = getDisplayStatus(activeBidDialogItem);
 
         if (auctionRoomStatusBadge != null) {
@@ -1435,13 +1441,40 @@ public class HomeController implements Initializable {
             return "";
         }
 
-        String status = item.getStatus().name();
+        updateLocalAuctionStatusIfExpired(item);
+        return item.getStatus().name();
+    }
 
-        if ("ACTIVE".equals(status) && item.getEndTime() != null && !LocalDateTime.now().isBefore(item.getEndTime())) {
-            return "CLOSED";
+    private boolean isAuctionAcceptingBids(Item item) {
+        return item != null
+                && item.getStatus() == AuctionStatus.ACTIVE
+                && item.getEndTime() != null
+                && LocalDateTime.now().isBefore(item.getEndTime());
+    }
+
+    private void updateLocalAuctionStatusIfExpired(Item item) {
+        if (item != null
+                && item.getStatus() == AuctionStatus.ACTIVE
+                && item.getEndTime() != null
+                && !LocalDateTime.now().isBefore(item.getEndTime())) {
+            item.setStatus(AuctionStatus.CLOSED);
         }
+    }
 
-        return status;
+    private void markActiveBidControlsClosed(String message) {
+        if (activeBidSubmitButton != null) {
+            activeBidSubmitButton.setDisable(true);
+        }
+        if (activeBidAmountField != null) {
+            activeBidAmountField.setDisable(true);
+        }
+        if (activeBidErrorLabel != null) {
+            activeBidErrorLabel.setText(message);
+        }
+        if (activeBidStatusLabel != null) {
+            activeBidStatusLabel.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 12; -fx-font-weight: bold;");
+            activeBidStatusLabel.setText(message);
+        }
     }
 
     private String getCountdownText(Item item) {
@@ -1642,6 +1675,12 @@ public class HomeController implements Initializable {
                 return;
             }
 
+            if (!isAuctionAcceptingBids(item)) {
+                submitButton.setDisable(true);
+                errorLabel.setText("Phiên đấu giá đã kết thúc. Bạn không thể đặt giá thêm.");
+                return;
+            }
+
             if (isCurrentUserLastBidder(item)) {
                 submitButton.setDisable(true);
                 errorLabel.setText(getConsecutiveBidWarning());
@@ -1671,6 +1710,12 @@ public class HomeController implements Initializable {
             String raw = amountField.getText().trim();
             if (raw.isBlank()) {
                 errorLabel.setText("Vui lòng nhập số tiền đặt giá.");
+                submitButton.setDisable(true);
+                return;
+            }
+
+            if (!isAuctionAcceptingBids(item)) {
+                errorLabel.setText("Phiên đấu giá đã kết thúc. Bạn không thể đặt giá thêm.");
                 submitButton.setDisable(true);
                 return;
             }
@@ -1988,6 +2033,7 @@ public class HomeController implements Initializable {
         activeBidDialogItem.setCurrentWinnerId(updatedItem.getCurrentWinnerId());
         activeBidDialogItem.setStatus(updatedItem.getStatus());
         activeBidDialogItem.setEndTime(updatedItem.getEndTime());
+        updateLocalAuctionStatusIfExpired(activeBidDialogItem);
         activeBidDialogLastKnownWinnerId = updatedItem.getCurrentWinnerId();
 
         if (winnerChanged || priceChanged) {
@@ -2211,6 +2257,10 @@ public class HomeController implements Initializable {
                     handleTopUpResponse(message.getPayload());
                     break;
 
+                case "WITHDRAW_RESPONSE":
+                    handleWithdrawResponse(message.getPayload());
+                    break;
+
                 case "ACCOUNT_INFO_RESPONSE":
                     handleAccountInfoResponse(message.getPayload());
                     break;
@@ -2376,6 +2426,10 @@ public class HomeController implements Initializable {
             alert.setHeaderText("Phản hồi từ server");
             alert.setContentText(String.valueOf(payload));
             alert.showAndWait();
+
+            if (accountViewPaneController != null) {
+                accountViewPaneController.setTransactionButtonsEnabled(true);
+            }
             return;
         }
 
@@ -2391,6 +2445,12 @@ public class HomeController implements Initializable {
             if (accountViewPaneController != null) {
                 accountViewPaneController.updateUser(currentUser);
             }
+        } else if (accountViewPaneController != null) {
+            accountViewPaneController.setTransactionButtonsEnabled(true);
+        }
+
+        if (success) {
+            requestLatestCurrentUserFromServer();
         }
 
         Alert alert = new Alert(success ? Alert.AlertType.INFORMATION : Alert.AlertType.WARNING);
@@ -2398,6 +2458,53 @@ public class HomeController implements Initializable {
         alert.setHeaderText(success ? "Nạp tiền thành công" : "Nạp tiền thất bại");
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void handleWithdrawResponse(Object payload) {
+        if (!(payload instanceof Object[])) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Rút tiền");
+            alert.setHeaderText("Phản hồi từ server");
+            alert.setContentText(String.valueOf(payload));
+            alert.showAndWait();
+
+            if (accountViewPaneController != null) {
+                accountViewPaneController.setTransactionButtonsEnabled(true);
+            }
+            return;
+        }
+
+        Object[] data = (Object[]) payload;
+        boolean success = Boolean.TRUE.equals(data[0]);
+        String message = String.valueOf(data[1]);
+
+        if (success && data.length > 2 && data[2] instanceof User) {
+            currentUser = (User) data[2];
+            ClientApp.setCurrentUser(currentUser);
+            updateUserInfoLabel();
+
+            if (accountViewPaneController != null) {
+                accountViewPaneController.updateUser(currentUser);
+            }
+        } else if (accountViewPaneController != null) {
+            accountViewPaneController.setTransactionButtonsEnabled(true);
+        }
+
+        if (success) {
+            requestLatestCurrentUserFromServer();
+        }
+
+        Alert alert = new Alert(success ? Alert.AlertType.INFORMATION : Alert.AlertType.WARNING);
+        alert.setTitle("Rút tiền");
+        alert.setHeaderText(success ? "Rút tiền thành công" : "Rút tiền thất bại");
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void requestLatestCurrentUserFromServer() {
+        if (currentUser != null && currentUser.getId() != null) {
+            ClientApp.sendMessage(new Message("GET_ACCOUNT_INFO", currentUser.getId()));
+        }
     }
 
     private void onCurrentUserUpdated(User updatedUser) {

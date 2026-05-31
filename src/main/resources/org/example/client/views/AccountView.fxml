@@ -37,7 +37,7 @@
                                                         <Font name="System Bold" size="24" />
                                                     </font>
                                                 </Label>
-                                                <Label text="Xem thông tin cá nhân, số dư và nạp tiền vào tài khoản."
+                                                <Label text="Xem thông tin cá nhân, số dư, nạp tiền và rút tiền khỏi tài khoản."
                                                        textFill="#64748b" />
                                             </children>
                                         </VBox>
@@ -131,6 +131,12 @@
                                                                 prefHeight="42"
                                                                 style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 10 24; -fx-cursor: hand;" />
 
+                                                        <Button fx:id="withdrawButton"
+                                                                text="Rút tiền"
+                                                                onAction="#onWithdrawClicked"
+                                                                prefHeight="42"
+                                                                style="-fx-background-color: #f97316; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 10 24; -fx-cursor: hand;" />
+
                                                         <Button fx:id="refreshButton"
                                                                 text="Làm mới"
                                                                 onAction="#onRefreshAccountClicked"
@@ -142,14 +148,14 @@
                                                 <VBox spacing="8"
                                                       style="-fx-background-color: #f8fafc; -fx-background-radius: 12; -fx-padding: 14;">
                                                     <children>
-                                                        <Label text="Phương thức nạp tiền hỗ trợ:" textFill="#334155">
+                                                        <Label text="Phương thức giao dịch hỗ trợ:" textFill="#334155">
                                                             <font>
                                                                 <Font name="System Bold" size="12" />
                                                             </font>
                                                         </Label>
                                                         <Label text="• Chuyển khoản ngân hàng" textFill="#64748b" />
                                                         <Label text="• Ví điện tử" textFill="#64748b" />
-                                                        <Label text="• Mô phỏng nạp tiền cho demo bài tập" textFill="#64748b" />
+                                                        <Label text="• Mô phỏng nạp/rút tiền cho demo bài tập" textFill="#64748b" />
                                                     </children>
                                                 </VBox>
                                             </children>

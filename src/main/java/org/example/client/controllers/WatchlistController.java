@@ -15,12 +15,14 @@ import javafx.scene.text.Font;
 import javafx.application.Platform;
 import org.example.common.Message;
 import org.example.common.model.item.Item;
+import org.example.common.model.item.AuctionStatus;
 import org.example.common.model.user.User;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.URL;
 import java.text.NumberFormat;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -351,7 +353,24 @@ public class WatchlistController implements Initializable {
         dialog.getDialogPane().setContent(content);
 
         Optional<Double> result = dialog.showAndWait();
-        result.ifPresent(amount -> submitBid(item.getId(), amount));
+        result.ifPresent(amount -> {
+            if (!isAuctionAcceptingBids(item)) {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.setTitle("Đấu giá đã kết thúc");
+                alert.setHeaderText("Không thể đặt giá");
+                alert.setContentText("Phiên đấu giá đã kết thúc. Giá sẽ không được gửi lên server.");
+                alert.showAndWait();
+                return;
+            }
+            submitBid(item.getId(), amount);
+        });
+    }
+
+    private boolean isAuctionAcceptingBids(Item item) {
+        return item != null
+                && item.getStatus() == AuctionStatus.ACTIVE
+                && item.getEndTime() != null
+                && LocalDateTime.now().isBefore(item.getEndTime());
     }
 
     private void submitBid(String itemId, double bidAmount) {

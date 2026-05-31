@@ -8,6 +8,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import org.example.client.controllers.AccountViewController;
 import org.example.common.Message;
 import org.example.common.model.user.User;
 import org.slf4j.Logger;
@@ -163,6 +164,28 @@ public class ClientApp extends Application {
         Parent root = loader.load();
         Scene scene = new Scene(root);
         applyScene(scene, "Hệ thống đấu giá - Trang chủ", 1000, 700, 1200, 800);
+    }
+
+    public static void switchToAccountView() throws Exception {
+        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/AccountView.fxml"));
+        Parent root = loader.load();
+
+        AccountViewController controller = loader.getController();
+        if (controller != null) {
+            controller.setup(currentUser, updatedUser -> {
+                if (updatedUser != null) {
+                    currentUser = updatedUser;
+                }
+            });
+            setServerMessageHandler(controller::handleServerMessage);
+        }
+
+        Scene scene = new Scene(root);
+        applyScene(scene, "Hệ thống đấu giá - Tài khoản", 1000, 700, 1200, 800);
+
+        if (currentUser != null && currentUser.getId() != null) {
+            sendMessage(new Message("GET_ACCOUNT_INFO", currentUser.getId()));
+        }
     }
 
     public static void switchToAdmin() throws Exception {

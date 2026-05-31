@@ -112,9 +112,20 @@ public class ClientHandler implements Runnable, Observer {
                         String bidderId = (String) bidData[2];
 
                         String bidResult = AuctionManager.getInstance().placeBid(itemId, bidAmount, bidderId);
+                        boolean bidSuccess = bidResult.startsWith("Đặt giá thành công");
+                        boolean auctionClosedAfterBid = bidResult.contains("Phiên đấu giá đã kết thúc")
+                                || bidResult.contains("không còn nhận đặt giá");
                         sendMessage(new Message("BID_RESPONSE", bidResult));
 
-                        if (bidResult.startsWith("Đặt giá thành công")) {
+                        if (auctionClosedAfterBid) {
+                            notifyAllAccountInfo();
+                            String closeNotification = extractAuctionCloseNotification(bidResult);
+                            if (closeNotification != null) {
+                                notifier.notifyObservers(new Message("AUCTION_RESULT_NOTIFICATION", closeNotification));
+                            }
+                        }
+
+                        if (bidSuccess) {
                             User refreshedBidder = UserManager.getInstance().findUserById(bidderId);
 
                             if (currentUser != null && refreshedBidder != null
@@ -133,14 +144,19 @@ public class ClientHandler implements Runnable, Observer {
                              * thông tin tài khoản; hàm update() bên dưới sẽ lọc để mỗi client chỉ nhận user của chính nó.
                              */
                             notifyAllAccountInfo();
+                        }
 
-                            Item updatedItem = AuctionManager.getInstance().getAllItems().stream()
-                                    .filter(i -> i.getId().equals(itemId))
-                                    .findFirst()
-                                    .orElse(null);
+                        Item updatedItemAfterBid = AuctionManager.getInstance().getAllItems().stream()
+                                .filter(i -> i.getId().equals(itemId))
+                                .findFirst()
+                                .orElse(null);
 
-                            if (updatedItem != null) {
-                                notifier.notifyObservers(new Message("ITEM_UPDATE", updatedItem));
+                        if (updatedItemAfterBid != null) {
+                            if (bidSuccess || auctionClosedAfterBid) {
+                                notifier.notifyObservers(new Message("ITEM_UPDATE", updatedItemAfterBid));
+                            }
+
+                            if (bidSuccess) {
                                 notifier.notifyObservers(new Message(
                                         "ITEM_BID_HISTORY_UPDATE",
                                         new Object[]{itemId, AuctionManager.getInstance().getBidHistoryForItem(itemId)}
@@ -199,14 +215,16 @@ public class ClientHandler implements Runnable, Observer {
                         ));
                         break;
 
-                    case "TOP_UP":
+                    case "TOP_UP": {
                         Object[] topUpData = (Object[]) inputMessage.getPayload();
 
-                        String topUpUserId = (String) topUpData[0];
-                        double topUpAmount = (Double) topUpData[1];
-                        String topUpMethod = (String) topUpData[2];
+                        String topUpUserId = String.valueOf(topUpData[0]);
+                        double topUpAmount = parseMoneyAmount(topUpData[1]);
+                        String topUpMethod = String.valueOf(topUpData[2]);
 
-                        User updatedUser = UserManager.getInstance().topUpBalance(topUpUserId, topUpAmount, topUpMethod);
+                        User updatedUser = topUpAmount > 0
+                                ? UserManager.getInstance().topUpBalance(topUpUserId, topUpAmount, topUpMethod)
+                                : null;
 
                         if (updatedUser != null) {
                             if (currentUser != null && currentUser.getId().equals(updatedUser.getId())) {
@@ -218,6 +236,8 @@ public class ClientHandler implements Runnable, Observer {
                                     "Đã nạp thành công " + topUpAmount + " VNĐ bằng phương thức: " + topUpMethod,
                                     updatedUser
                             }));
+
+                            notifier.notifyObservers(new Message("ACCOUNT_INFO_RESPONSE", updatedUser));
                         } else {
                             sendMessage(new Message("TOP_UP_RESPONSE", new Object[]{
                                     false,
@@ -226,6 +246,40 @@ public class ClientHandler implements Runnable, Observer {
                             }));
                         }
                         break;
+                    }
+                    case "WITHDRAW": {
+                        Object[] withdrawData = (Object[]) inputMessage.getPayload();
+
+                        String withdrawUserId = String.valueOf(withdrawData[0]);
+                        double withdrawAmount = parseMoneyAmount(withdrawData[1]);
+                        String withdrawMethod = String.valueOf(withdrawData[2]);
+
+                        User withdrawnUser = withdrawAmount > 0
+                                ? UserManager.getInstance().withdrawBalance(withdrawUserId, withdrawAmount, withdrawMethod)
+                                : null;
+
+                        if (withdrawnUser != null) {
+                            if (currentUser != null && currentUser.getId().equals(withdrawnUser.getId())) {
+                                currentUser = withdrawnUser;
+                            }
+
+                            sendMessage(new Message("WITHDRAW_RESPONSE", new Object[]{
+                                    true,
+                                    "Đã rút thành công " + withdrawAmount + " VNĐ qua phương thức: " + withdrawMethod,
+                                    withdrawnUser
+                            }));
+
+                            notifier.notifyObservers(new Message("ACCOUNT_INFO_RESPONSE", withdrawnUser));
+                        } else {
+                            sendMessage(new Message("WITHDRAW_RESPONSE", new Object[]{
+                                    false,
+                                    "Rút tiền thất bại. Vui lòng kiểm tra lại số dư hoặc số tiền rút.",
+                                    null
+                            }));
+                        }
+                        break;
+                    }
+
                     case "START_AUCTION":
                         Object[] startData = (Object[]) inputMessage.getPayload();
 
@@ -488,6 +542,17 @@ public class ClientHandler implements Runnable, Observer {
         }
     }
 
+    private String extractAuctionCloseNotification(String bidResult) {
+        String marker = "ĐẤU GIÁ KẾT THÚC:";
+        int markerIndex = bidResult == null ? -1 : bidResult.indexOf(marker);
+
+        if (markerIndex < 0) {
+            return null;
+        }
+
+        return bidResult.substring(markerIndex);
+    }
+
     private void sendAuctionChatHistory(String itemId) {
         if (itemId == null || itemId.isBlank()) {
             sendMessage(new Message("AUCTION_CHAT_HISTORY", new Object[]{itemId, new ArrayList<AuctionChatMessage>()}));
@@ -560,6 +625,24 @@ public class ClientHandler implements Runnable, Observer {
         }
 
         notifier.notifyObservers(new Message("AUCTION_CHAT_MESSAGE", chatMessage));
+    }
+
+
+    private double parseMoneyAmount(Object rawAmount) {
+        if (rawAmount instanceof Number) {
+            return ((Number) rawAmount).doubleValue();
+        }
+
+        if (rawAmount == null) {
+            return -1;
+        }
+
+        try {
+            return Double.parseDouble(String.valueOf(rawAmount).trim().replace(".", "").replace(",", ""));
+        } catch (NumberFormatException e) {
+            logger.warn("Số tiền giao dịch không hợp lệ: {}", rawAmount);
+            return -1;
+        }
     }
 
     private boolean isLoginOrRegisterAction(String action) {

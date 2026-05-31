@@ -192,14 +192,22 @@ public class AuctionManager {
             return "Lỗi: Sản phẩm cần tìm không tồn tại.";
         }
 
+        String closeNotification = closeAuctionIfExpired(targetItem);
+
+        if (closeNotification != null) {
+            return "Lỗi: Phiên đấu giá đã kết thúc. " + closeNotification;
+        }
+
         if (targetItem.getStatus() != AuctionStatus.ACTIVE) {
             return "Lỗi: Phiên đấu giá chưa bắt đầu hoặc đã kết thúc.";
         }
 
-        if (targetItem.getEndTime() != null && LocalDateTime.now().isAfter(targetItem.getEndTime())) {
-            targetItem.setStatus(AuctionStatus.CLOSED);
-            updateItemDB(targetItem);
-            return "Lỗi: Phiên đấu giá đã kết thúc.";
+        if (targetItem.getEndTime() == null) {
+            return "Lỗi: Phiên đấu giá chưa có thời gian kết thúc hợp lệ.";
+        }
+
+        if (!isAuctionAcceptingBids(targetItem)) {
+            return "Lỗi: Phiên đấu giá đã kết thúc hoặc không còn nhận đặt giá.";
         }
 
         if (bidderId != null && bidderId.equals(targetItem.getSellerId())) {
@@ -396,32 +404,45 @@ public class AuctionManager {
         List<String> notifications = new ArrayList<>();
 
         for (Item item : auctionItems) {
-            if (item.getStatus() == AuctionStatus.ACTIVE
-                    && item.getEndTime() != null
-                    && LocalDateTime.now().isAfter(item.getEndTime())) {
+            String msg = closeAuctionIfExpired(item);
 
-                item.setStatus(AuctionStatus.CLOSED);
-                updateItemDB(item);
-
-                String msg;
-
-                if (item.getCurrentWinnerId() != null && !item.getCurrentWinnerId().isEmpty()) {
-                    /*
-                     * Tiền của người thắng đã được giữ ngay khi đặt giá.
-                     * Khi phiên kết thúc chỉ cần chuyển số tiền đó cho người bán, không trừ người thắng lần nữa.
-                     */
-                    UserManager.getInstance().addBalance(item.getSellerId(), item.getCurrentPrice());
-                    msg = "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] đã có người thắng là user #"
-                            + item.getCurrentWinnerId() + " với giá " + item.getCurrentPrice() + " VNĐ.";
-                } else {
-                    msg = "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] không có ai đặt giá.";
-                }
-
+            if (msg != null) {
                 notifications.add(msg);
             }
         }
 
         return notifications;
+    }
+
+    private boolean isAuctionAcceptingBids(Item item) {
+        return item != null
+                && item.getStatus() == AuctionStatus.ACTIVE
+                && item.getEndTime() != null
+                && LocalDateTime.now().isBefore(item.getEndTime());
+    }
+
+    private String closeAuctionIfExpired(Item item) {
+        if (item == null
+                || item.getStatus() != AuctionStatus.ACTIVE
+                || item.getEndTime() == null
+                || LocalDateTime.now().isBefore(item.getEndTime())) {
+            return null;
+        }
+
+        item.setStatus(AuctionStatus.CLOSED);
+        updateItemDB(item);
+
+        if (item.getCurrentWinnerId() != null && !item.getCurrentWinnerId().isEmpty()) {
+            /*
+             * Tiền của người thắng đã được giữ ngay khi đặt giá.
+             * Khi phiên kết thúc chỉ cần chuyển số tiền đó cho người bán, không trừ người thắng lần nữa.
+             */
+            UserManager.getInstance().addBalance(item.getSellerId(), item.getCurrentPrice());
+            return "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] đã có người thắng là user #"
+                    + item.getCurrentWinnerId() + " với giá " + item.getCurrentPrice() + " VNĐ.";
+        }
+
+        return "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] không có ai đặt giá.";
     }
 
     public synchronized String cancelAuctionByAdmin(String itemId) {

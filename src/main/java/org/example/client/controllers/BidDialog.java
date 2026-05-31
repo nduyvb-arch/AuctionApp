@@ -8,10 +8,12 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import org.example.common.Message;
 import org.example.common.model.item.Item;
+import org.example.common.model.item.AuctionStatus;
 import org.example.common.model.user.User;
 
 import java.io.ObjectOutputStream;
 import java.text.NumberFormat;
+import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -98,6 +100,13 @@ public class BidDialog extends Dialog<Double> {
         placeBidButton.setOnAction(e -> {
             String input = bidTextField.getText().trim();
             try {
+                if (!isAuctionAcceptingBids()) {
+                    errorLabel.setText("❌ Phiên đấu giá đã kết thúc. Bạn không thể đặt giá thêm.");
+                    placeBidButton.setDisable(true);
+                    bidTextField.setDisable(true);
+                    return;
+                }
+
                 double bidAmount = Double.parseDouble(input);
 
                 if (bidAmount < minBidAmount) {
@@ -148,6 +157,13 @@ public class BidDialog extends Dialog<Double> {
 
         // Hide default buttons
         this.getDialogPane().getButtonTypes().remove(0);
+    }
+
+    private boolean isAuctionAcceptingBids() {
+        return item != null
+                && item.getStatus() == AuctionStatus.ACTIVE
+                && item.getEndTime() != null
+                && LocalDateTime.now().isBefore(item.getEndTime());
     }
 
     public static void showBidDialog(Item item, User currentUser, ObjectOutputStream out) {

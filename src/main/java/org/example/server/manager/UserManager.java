@@ -470,89 +470,131 @@ public class UserManager {
             return null;
         }
 
-        boolean success = addBalance(userId, amount);
+        User updatedUser = changeBalance(userId, amount, true);
 
-        if (!success) {
+        if (updatedUser != null) {
+            logger.info("User {} nạp {} VNĐ bằng phương thức {}", userId, amount, method);
+        }
+
+        return updatedUser;
+    }
+
+    public synchronized User withdrawBalance(String userId, double amount, String method) {
+        if (userId == null || userId.isBlank() || amount <= 0) {
             return null;
         }
 
-        return findUserById(userId);
+        User currentUser = findUserByIdFromDB(userId);
+        if (currentUser == null || currentUser.isBanned()) {
+            return null;
+        }
+
+        if (currentUser.getBalance() < amount) {
+            logger.warn("User {} rút thất bại: số dư {} nhỏ hơn số tiền {}", userId, currentUser.getBalance(), amount);
+            return null;
+        }
+
+        User updatedUser = changeBalance(userId, amount, false);
+
+        if (updatedUser != null) {
+            logger.info("User {} rút {} VNĐ bằng phương thức {}. Số dư mới: {}",
+                    userId, amount, method, updatedUser.getBalance());
+        }
+
+        return updatedUser;
     }
 
     public synchronized boolean addBalance(String userId, double amount) {
-        if (userId == null || userId.isBlank() || amount <= 0) {
-            System.out.println("ADD BALANCE FAILED: userId hoặc amount không hợp lệ");
-            return false;
-        }
-
-        String sql = "UPDATE users SET balance = balance + ? WHERE id = ?";
-
-        try (
-                Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)
-        ) {
-            pstmt.setDouble(1, amount);
-            pstmt.setInt(2, Integer.parseInt(userId));
-
-            int affectedRows = pstmt.executeUpdate();
-
-            System.out.println("ADD BALANCE affectedRows = " + affectedRows);
-
-            if (affectedRows <= 0) {
-                System.out.println("Không tìm thấy user trong database với id = " + userId);
-                return false;
-            }
-
-            User user = findUserById(userId);
-
-            if (user != null) {
-                user.setBalance(user.getBalance() + amount);
-                System.out.println("Balance mới trong RAM = " + user.getBalance());
-            } else {
-                System.out.println("Không tìm thấy user trong list RAM với id = " + userId);
-                return false;
-            }
-
-            return true;
-
-        } catch (Exception e) {
-            logger.error("Lỗi cộng tiền cho user {}: {}", userId, e.getMessage(), e);
-            return false;
-        }
+        return changeBalance(userId, amount, true) != null;
     }
 
     public synchronized boolean subtractBalance(String userId, double amount) {
+        return changeBalance(userId, amount, false) != null;
+    }
+
+    private User changeBalance(String userId, double amount, boolean increase) {
         if (userId == null || userId.isBlank() || amount <= 0) {
-            return false;
+            return null;
         }
 
-        String sql = "UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?";
+        String sql = increase
+                ? "UPDATE users SET balance = balance + ? WHERE id = ?"
+                : "UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?";
 
         try (
                 Connection conn = DatabaseManager.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)
         ) {
             pstmt.setDouble(1, amount);
-            pstmt.setInt(2, Integer.parseInt(userId));
-            pstmt.setDouble(3, amount);
+            pstmt.setString(2, userId);
+            if (!increase) {
+                pstmt.setDouble(3, amount);
+            }
 
             int affectedRows = pstmt.executeUpdate();
-
             if (affectedRows <= 0) {
-                return false;
+                logger.warn("Không cập nhật được số dư cho user {}. increase={}, amount={}", userId, increase, amount);
+                return null;
             }
 
-            User user = findUserById(userId);
-
-            if (user != null) {
-                user.setBalance(user.getBalance() - amount);
+            /*
+             * Sau khi UPDATE, luôn đọc lại user trực tiếp từ database rồi đồng bộ vào RAM.
+             * Cách này tránh lỗi client/server giữ object User cũ nên giao diện nhìn như chưa bị trừ tiền.
+             */
+            User updatedUser = findUserByIdFromDB(userId);
+            if (updatedUser == null) {
+                logger.warn("Đã cập nhật số dư nhưng không đọc lại được user {} từ database", userId);
+                return null;
             }
 
-            return true;
+            syncUserInMemory(updatedUser);
+            return updatedUser;
 
-        } catch (Exception e) {
-            logger.error("Lỗi trừ tiền user {}: {}", userId, e.getMessage(), e);
-            return false;
+        } catch (SQLException e) {
+            logger.error("Lỗi cập nhật số dư user {}: {}", userId, e.getMessage(), e);
+            return null;
+        }
+    }
+
+    private User findUserByIdFromDB(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return null;
+        }
+
+        String sql = "SELECT * FROM users WHERE id = ?";
+        try (
+                Connection conn = DatabaseManager.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)
+        ) {
+            pstmt.setString(1, userId);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+
+                String id = rs.getString("id");
+                String username = rs.getString("username");
+                String password = rs.getString("password");
+                String role = rs.getString("role");
+                double balance = rs.getDouble("balance");
+
+                boolean isBanned = false;
+                try {
+                    isBanned = rs.getInt("is_banned") == 1;
+                } catch (SQLException ignored) {
+                    // Bỏ qua nếu database cũ chưa có cột is_banned
+                }
+
+                User user = createUserByRole(id, username, password, role, balance);
+                if (user != null) {
+                    user.setBanned(isBanned);
+                }
+                return user;
+            }
+        } catch (SQLException e) {
+            logger.error("Lỗi đọc user {} từ database: {}", userId, e.getMessage(), e);
+            return null;
         }
     }
 
