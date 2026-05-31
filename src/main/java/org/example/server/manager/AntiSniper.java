@@ -13,16 +13,16 @@ public class AntiSniper {
     // =========================================================================
     // PHẦN 1: TÍNH NĂNG MỚI (DÀNH CHO AUCTION MANAGER & DATABASE)
     // =========================================================================
-    private static final int TRIGGER_THRESHOLD_SECONDS = 30;
+    private static final int TRIGGER_THRESHOLD_MILLIS = 30_000;
     private static final int EXTENSION_SECONDS = 30;
 
     public static boolean applyAntiSniper(Item item) {
         if (item.getEndTime() == null) return false;
 
         LocalDateTime now = LocalDateTime.now();
-        long secondsLeft = ChronoUnit.SECONDS.between(now, item.getEndTime());
+        long milisLeft = ChronoUnit.MILLIS.between(now, item.getEndTime());
 
-        if (secondsLeft > 0 && secondsLeft <= TRIGGER_THRESHOLD_SECONDS) {
+        if (milisLeft > 0 && milisLeft <= TRIGGER_THRESHOLD_MILLIS) {
             LocalDateTime newEndTime = item.getEndTime().plusSeconds(EXTENSION_SECONDS);
             item.setEndTime(newEndTime);
             logger.info("[ANTI-SNIPER] Phát hiện 'bắn tỉa' sản phẩm '{}'! Gia hạn thêm {} giây.",

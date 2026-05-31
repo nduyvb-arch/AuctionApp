@@ -13,6 +13,8 @@ import java.sql.*;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class UserManager {
 
@@ -20,6 +22,8 @@ public class UserManager {
 
     private static volatile UserManager instance;
     private List<User> users;
+
+    private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
 
     private UserManager() {
         users = new ArrayList<>();
@@ -479,81 +483,49 @@ public class UserManager {
         return findUserById(userId);
     }
 
-    public synchronized boolean addBalance(String userId, double amount) {
-        if (userId == null || userId.isBlank() || amount <= 0) {
-            System.out.println("ADD BALANCE FAILED: userId hoặc amount không hợp lệ");
-            return false;
-        }
-
-        String sql = "UPDATE users SET balance = balance + ? WHERE id = ?";
-
-        try (
-                Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)
-        ) {
-            pstmt.setDouble(1, amount);
-            pstmt.setInt(2, Integer.parseInt(userId));
-
-            int affectedRows = pstmt.executeUpdate();
-
-            System.out.println("ADD BALANCE affectedRows = " + affectedRows);
-
-            if (affectedRows <= 0) {
-                System.out.println("Không tìm thấy user trong database với id = " + userId);
-                return false;
-            }
-
-            User user = findUserById(userId);
-
-            if (user != null) {
-                user.setBalance(user.getBalance() + amount);
-                System.out.println("Balance mới trong RAM = " + user.getBalance());
-            } else {
-                System.out.println("Không tìm thấy user trong list RAM với id = " + userId);
-                return false;
-            }
-
-            return true;
-
-        } catch (Exception e) {
-            logger.error("Lỗi cộng tiền cho user {}: {}", userId, e.getMessage(), e);
-            return false;
-        }
-    }
-
     public synchronized boolean subtractBalance(String userId, double amount) {
-        if (userId == null || userId.isBlank() || amount <= 0) {
-            return false;
-        }
+        User user = findUserById(userId);
+        if (user != null && user.getBalance() >= amount) {
+            // 1. Cập nhật RAM NGAY LẬP TỨC (0 mili-giây)
+            user.setBalance(user.getBalance() - amount);
 
-        String sql = "UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?";
-
-        try (
-                Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)
-        ) {
-            pstmt.setDouble(1, amount);
-            pstmt.setInt(2, Integer.parseInt(userId));
-            pstmt.setDouble(3, amount);
-
-            int affectedRows = pstmt.executeUpdate();
-
-            if (affectedRows <= 0) {
-                return false;
-            }
-
-            User user = findUserById(userId);
-
-            if (user != null) {
-                user.setBalance(user.getBalance() - amount);
-            }
-
+            // 2. Ném việc lưu DB cho luồng ngầm làm, không bắt Client phải chờ
+            dbExecutor.submit(() -> {
+                String sql = "UPDATE users SET balance = ? WHERE id = ?";
+                try (Connection conn = DatabaseManager.getConnection();
+                     PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setDouble(1, user.getBalance());
+                    pstmt.setInt(2, Integer.parseInt(user.getId()));
+                    pstmt.executeUpdate();
+                } catch (SQLException e) {
+                    logger.error("Lỗi cập nhật trừ tiền user: {}", e.getMessage());
+                }
+            });
             return true;
-
-        } catch (Exception e) {
-            logger.error("Lỗi trừ tiền user {}: {}", userId, e.getMessage(), e);
-            return false;
         }
+        return false;
     }
 
+    public synchronized boolean addBalance(String userId, double amount) {
+        User user = findUserById(userId);
+        if (user != null) {
+            // 1. Cập nhật RAM NGAY LẬP TỨC
+            user.setBalance(user.getBalance() + amount);
+
+            // 2. Ném việc lưu DB cho luồng ngầm làm
+            dbExecutor.submit(() -> {
+                String sql = "UPDATE users SET balance = ? WHERE id = ?";
+                try (Connection conn = DatabaseManager.getConnection();
+                     PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setDouble(1, user.getBalance());
+                    pstmt.setInt(2, Integer.parseInt(user.getId()));
+                    pstmt.executeUpdate();
+                } catch (SQLException e) {
+                    logger.error("Lỗi cập nhật cộng tiền user: {}", e.getMessage());
+                }
+            });
+            return true;
+        }
+        return false;
+    }
 }
