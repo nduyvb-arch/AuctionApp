@@ -1,5 +1,5 @@
 # Hệ thống đấu giá trực tuyến - Nhóm 2
-
+[![Maven CI/CD](https://github.com/nduyvb-arch/AuctionApp/actions/workflows/maven.yml/badge.svg?branch=main)](https://github.com/nduyvb-arch/AuctionApp/actions/workflows/maven.yml)
 ## 1. Giới thiệu đề tài
 
 Đây là ứng dụng đấu giá trực tuyến được xây dựng bằng JavaFX theo mô hình Client-Server.  
