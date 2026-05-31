@@ -1,4 +1,4 @@
-name: Maven CI/CD for BTL
+name: Maven CI/CD
 
 on:
   push:
