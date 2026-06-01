@@ -5,8 +5,6 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.Spinner;
-import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
@@ -29,8 +27,6 @@ public class AddItemViewController implements Initializable {
     @FXML private TextArea itemDescriptionTextArea;
     @FXML private TextField startPriceTextField;
     @FXML private TextField bidIncrementTextField;
-    @FXML private Spinner<Integer> durationSpinner;
-
     @FXML private Button chooseImageButton;
     @FXML private Label selectedImageLabel;
     @FXML private ImageView imagePreview;
@@ -50,8 +46,6 @@ public class AddItemViewController implements Initializable {
         itemTypeComboBox.getItems().setAll("Electronic", "Vehicle", "Art");
         itemTypeComboBox.setValue("Electronic");
 
-        durationSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 10080, 60));
-        durationSpinner.setEditable(true);
 
         selectedImageLabel.setText("Chưa chọn ảnh");
     }
@@ -106,10 +100,8 @@ public class AddItemViewController implements Initializable {
         try {
             double startPrice = Double.parseDouble(startPriceTextField.getText().trim());
             double bidIncrement = Double.parseDouble(bidIncrementTextField.getText().trim());
-            int duration = durationSpinner.getValue();
-
-            if (startPrice <= 0 || bidIncrement <= 0 || duration <= 0) {
-                showMessage("Giá và thời gian đấu giá phải lớn hơn 0.", false);
+            if (startPrice <= 0 || bidIncrement <= 0) {
+                showMessage("Giá khởi điểm và bước giá tối thiểu phải lớn hơn 0.", false);
                 return;
             }
 
@@ -129,7 +121,7 @@ public class AddItemViewController implements Initializable {
 
             Object[] itemData = new Object[]{
                     itemTypeComboBox.getValue(), name, description, startPrice,
-                    bidIncrement, currentUser.getId(), duration, imageBytes
+                    bidIncrement, currentUser.getId(), imageBytes
             };
 
             // 🔥 DÙNG CHUNG ĐƯỜNG ỐNG
@@ -157,8 +149,6 @@ public class AddItemViewController implements Initializable {
         itemDescriptionTextArea.clear();
         startPriceTextField.clear();
         bidIncrementTextField.clear();
-        durationSpinner.getValueFactory().setValue(60);
-
         selectedImagePath = null;
         selectedImageFile = null;
         selectedImageLabel.setText("Chưa chọn ảnh");

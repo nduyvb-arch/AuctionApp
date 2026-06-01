@@ -53,7 +53,7 @@ public class MyItemsController implements Initializable {
     // TỐI ƯU 2: Danh sách chứa các hàm cập nhật UI của từng thẻ sản phẩm
     private final List<Runnable> uiUpdaters = new ArrayList<>();
 
-    private static final NumberFormat currencyFormat = NumberFormat.getInstance(Locale.of("vi", "VN"));
+    private static final NumberFormat currencyFormat = NumberFormat.getInstance(Locale.forLanguageTag("vi-VN"));
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -65,10 +65,6 @@ public class MyItemsController implements Initializable {
         myItemsSearchTextField.setOnKeyReleased(e -> refreshMyItemsView());
         myItemsStatusComboBox.setOnAction(e -> refreshMyItemsView());
         myItemsSortComboBox.setOnAction(e -> refreshMyItemsView());
-
-        myItemsFlowPane.setAlignment(Pos.TOP_LEFT);
-        myItemsFlowPane.setHgap(24);
-        myItemsFlowPane.setVgap(24);
 
         // Khởi tạo Master Timeline (Đập nhịp 1 giây/lần)
         masterTimeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
@@ -162,103 +158,234 @@ public class MyItemsController implements Initializable {
     }
 
     private Node createItemCard(Item item) {
-        VBox card = new VBox(10);
-        card.setPrefSize(320, 300);
-        card.setMinSize(300, 300);
-        card.setMaxSize(340, 300);
-        card.setPadding(new Insets(20, 20, 18, 20));
-        card.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-background-radius: 16;" +
-                        "-fx-border-color: #e2e8f0;" +
-                        "-fx-border-radius: 16;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 12, 0, 0, 4);"
-        );
+        VBox card = new VBox(12);
+        card.setPrefSize(285, 335);
+        card.setMinSize(285, 335);
+        card.setMaxSize(285, 335);
+        card.setAlignment(Pos.TOP_LEFT);
+        card.setPadding(new Insets(16));
+        card.setStyle(getMyItemCardStyle());
 
         String displayStatus = getDisplayStatus(item);
 
-        Label nameLabel = new Label(safeText(item.getItemName()));
+        Label nameLabel = new Label(item.getItemName());
         nameLabel.setWrapText(true);
-        nameLabel.setMaxWidth(Double.MAX_VALUE);
-        nameLabel.setStyle("-fx-text-fill: #0f172a; -fx-font-size: 16; -fx-font-weight: bold;");
+        nameLabel.setMaxWidth(165);
+        nameLabel.setStyle(
+                "-fx-text-fill: #0f172a;" +
+                        "-fx-font-size: 16;" +
+                        "-fx-font-weight: bold;"
+        );
+
+        Label statusBadge = createStatusBadge(displayStatus);
+
+        HBox headerRow = new HBox(10, nameLabel, statusBadge);
+        headerRow.setAlignment(Pos.TOP_LEFT);
         HBox.setHgrow(nameLabel, Priority.ALWAYS);
 
-        Label statusBadge = new Label(getStatusText(displayStatus));
-        statusBadge.setAlignment(Pos.CENTER);
-        statusBadge.setMinWidth(Region.USE_PREF_SIZE);
-        statusBadge.setStyle(getStatusBadgeStyle(displayStatus));
-
-        HBox headerBox = new HBox(12, nameLabel, statusBadge);
-        headerBox.setAlignment(Pos.CENTER_LEFT);
-        headerBox.setMinHeight(46);
-
         Label typeLabel = new Label("Loại: " + safeText(item.getType()));
-        typeLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12;");
+        typeLabel.setStyle(
+                "-fx-text-fill: #475569;" +
+                        "-fx-font-size: 12;" +
+                        "-fx-background-color: #f1f5f9;" +
+                        "-fx-padding: 5 9;" +
+                        "-fx-background-radius: 999;"
+        );
+
+        Label timeLabel = new Label(getCardTimeText(item));
+        timeLabel.setWrapText(true);
+        timeLabel.setMaxWidth(Double.MAX_VALUE);
+        timeLabel.setStyle(getTimeLabelStyle(displayStatus));
 
         Label descLabel = new Label(item.getDescription() != null && !item.getDescription().isBlank()
-                ? item.getDescription() : "Không có mô tả");
+                ? item.getDescription()
+                : "Không có mô tả");
         descLabel.setWrapText(true);
         descLabel.setMaxWidth(Double.MAX_VALUE);
-        descLabel.setMinHeight(42);
-        descLabel.setPrefHeight(48);
-        descLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11;");
+        descLabel.setMinHeight(56);
+        descLabel.setPrefHeight(56);
+        descLabel.setStyle(
+                "-fx-text-fill: #64748b;" +
+                        "-fx-font-size: 12;" +
+                        "-fx-background-color: #f8fafc;" +
+                        "-fx-padding: 10;" +
+                        "-fx-background-radius: 12;" +
+                        "-fx-border-color: #e2e8f0;" +
+                        "-fx-border-radius: 12;"
+        );
+
+        VBox priceBox = createInfoBlock(
+                "Giá hiện tại",
+                currencyFormat.format(item.getCurrentPrice()) + " VNĐ",
+                true
+        );
+
+        VBox bidCountBox = createInfoBlock(
+                "Lượt đặt giá",
+                String.valueOf(getEstimatedBidCount(item)),
+                false
+        );
+
+        HBox statsRow = new HBox(10, priceBox, bidCountBox);
+        HBox.setHgrow(priceBox, Priority.ALWAYS);
+        HBox.setHgrow(bidCountBox, Priority.ALWAYS);
+
+        Label winnerLabel = new Label(getWinnerText(item));
+        winnerLabel.setWrapText(true);
+        winnerLabel.setMaxWidth(Double.MAX_VALUE);
+        winnerLabel.setStyle(
+                "-fx-text-fill: #475569;" +
+                        "-fx-font-size: 12;" +
+                        "-fx-background-color: #eef2ff;" +
+                        "-fx-padding: 8 10;" +
+                        "-fx-background-radius: 12;"
+        );
+
+        Button startButton = new Button("▶ Bắt đầu đấu giá");
+        startButton.setMaxWidth(Double.MAX_VALUE);
+        startButton.setPrefHeight(40);
+        startButton.setDisable(!"PENDING".equals(displayStatus));
+        startButton.setOpacity(1.0);
+        startButton.setStyle(getStartButtonStyle("PENDING".equals(displayStatus)));
+        startButton.setOnAction(e -> startAuction(item));
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        Label priceLabel = new Label("Giá hiện tại");
-        priceLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11;");
-
-        Label priceValueLabel = new Label(currencyFormat.format(item.getCurrentPrice()) + " VNĐ");
-        priceValueLabel.setStyle("-fx-text-fill: #2563eb; -fx-font-size: 16; -fx-font-weight: bold;");
-
-        Label winnerLabel = new Label(item.getCurrentWinnerId() == null
-                ? "Chưa có người đặt giá" : "Người thắng hiện tại: #" + item.getCurrentWinnerId());
-        winnerLabel.setWrapText(true);
-        winnerLabel.setMaxWidth(Double.MAX_VALUE);
-        winnerLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11;");
-
-        Label countdownLabel = new Label(getCountdownText(item));
-        countdownLabel.setMaxWidth(Double.MAX_VALUE);
-        countdownLabel.setAlignment(Pos.CENTER);
-        countdownLabel.setStyle(getCountdownStyle(displayStatus));
-        updateCountdownVisibility(countdownLabel, displayStatus);
-
-        Button startButton = new Button("▶ Bắt đầu đấu giá");
-        startButton.setMaxWidth(Double.MAX_VALUE);
-        startButton.setDisable(!"PENDING".equals(displayStatus));
-        startButton.setStyle(getStartButtonStyle("PENDING".equals(displayStatus)));
-        startButton.setOnAction(e -> startAuction(item));
-
         card.getChildren().addAll(
-                headerBox,
+                headerRow,
                 typeLabel,
+                timeLabel,
                 descLabel,
-                spacer,
-                priceLabel,
-                priceValueLabel,
+                statsRow,
                 winnerLabel,
-                countdownLabel,
+                spacer,
                 startButton
         );
 
-        // TỐI ƯU 3: Không tạo Timeline riêng cho từng thẻ, chỉ đăng ký hàm cập nhật vào Master Timeline.
         Runnable updater = () -> {
             String newStatus = getDisplayStatus(item);
             statusBadge.setText(getStatusText(newStatus));
             statusBadge.setStyle(getStatusBadgeStyle(newStatus));
-
-            countdownLabel.setText(getCountdownText(item));
-            countdownLabel.setStyle(getCountdownStyle(newStatus));
-            updateCountdownVisibility(countdownLabel, newStatus);
+            timeLabel.setText(getCardTimeText(item));
+            timeLabel.setStyle(getTimeLabelStyle(newStatus));
+            priceBox.getChildren().set(1, createInfoValue(currencyFormat.format(item.getCurrentPrice()) + " VNĐ", true));
+            bidCountBox.getChildren().set(1, createInfoValue(String.valueOf(getEstimatedBidCount(item)), false));
+            winnerLabel.setText(getWinnerText(item));
 
             boolean canStart = "PENDING".equals(newStatus);
             startButton.setDisable(!canStart);
+            startButton.setOpacity(1.0);
             startButton.setStyle(getStartButtonStyle(canStart));
         };
         uiUpdaters.add(updater);
 
         return card;
+    }
+
+    private String getMyItemCardStyle() {
+        return "-fx-background-color: white;" +
+                "-fx-background-radius: 18;" +
+                "-fx-border-color: #e2e8f0;" +
+                "-fx-border-radius: 18;" +
+                "-fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 14, 0, 0, 4);";
+    }
+
+    private Label createStatusBadge(String status) {
+        Label label = new Label(getStatusText(status));
+        label.setStyle(getStatusBadgeStyle(status));
+        return label;
+    }
+
+    private String getStatusBadgeStyle(String status) {
+        return "-fx-background-color: " + getStatusColor(status) + ";" +
+                "-fx-text-fill: white;" +
+                "-fx-padding: 6 11;" +
+                "-fx-background-radius: 999;" +
+                "-fx-font-size: 11;" +
+                "-fx-font-weight: bold;";
+    }
+
+    private String getCardTimeText(Item item) {
+        String status = getDisplayStatus(item);
+        if ("ACTIVE".equals(status)) {
+            return "⏱ " + getCountdownText(item);
+        }
+        if ("PENDING".equals(status)) {
+            return "⏱ Chưa bắt đầu phiên đấu giá";
+        }
+        if ("CLOSED".equals(status)) {
+            return "⏱ Phiên đấu giá đã kết thúc";
+        }
+        if ("CANCELED".equals(status)) {
+            return "⏱ Phiên đấu giá đã bị hủy";
+        }
+        return "⏱ Không khả dụng";
+    }
+
+    private String getTimeLabelStyle(String status) {
+        if ("ACTIVE".equals(status)) {
+            return "-fx-background-color: #dcfce7;" +
+                    "-fx-text-fill: #166534;" +
+                    "-fx-padding: 7 10;" +
+                    "-fx-background-radius: 12;" +
+                    "-fx-font-size: 12;" +
+                    "-fx-font-weight: bold;";
+        }
+        return "-fx-background-color: #f1f5f9;" +
+                "-fx-text-fill: #475569;" +
+                "-fx-padding: 7 10;" +
+                "-fx-background-radius: 12;" +
+                "-fx-font-size: 12;" +
+                "-fx-font-weight: bold;";
+    }
+
+    private VBox createInfoBlock(String title, String value, boolean highlight) {
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11;");
+
+        Label valueLabel = createInfoValue(value, highlight);
+
+        VBox box = new VBox(4, titleLabel, valueLabel);
+        box.setPadding(new Insets(10));
+        box.setMaxWidth(Double.MAX_VALUE);
+        box.setStyle(
+                "-fx-background-color: #f8fafc;" +
+                        "-fx-background-radius: 12;" +
+                        "-fx-border-color: #e2e8f0;" +
+                        "-fx-border-radius: 12;"
+        );
+        return box;
+    }
+
+    private Label createInfoValue(String value, boolean highlight) {
+        Label valueLabel = new Label(value);
+        valueLabel.setWrapText(true);
+        valueLabel.setStyle(
+                "-fx-text-fill: " + (highlight ? "#2563eb" : "#0f172a") + ";" +
+                        "-fx-font-size: " + (highlight ? "15" : "14") + ";" +
+                        "-fx-font-weight: bold;"
+        );
+        return valueLabel;
+    }
+
+    private String getWinnerText(Item item) {
+        return item.getCurrentWinnerId() == null
+                ? "Chưa có người đặt giá"
+                : "Người thắng hiện tại: #" + item.getCurrentWinnerId();
+    }
+
+    private int getEstimatedBidCount(Item item) {
+        if (item.getBidIncrement() <= 0) {
+            return 0;
+        }
+
+        double diff = item.getCurrentPrice() - item.getStartingPrice();
+        if (diff <= 0) {
+            return 0;
+        }
+
+        return Math.max(1, (int) Math.round(diff / item.getBidIncrement()));
     }
 
     private void startAuction(Item item) {
@@ -319,21 +446,6 @@ public class MyItemsController implements Initializable {
         return String.format("Còn %02d:%02d:%02d", hours, minutes, seconds);
     }
 
-    private String getStatusBadgeStyle(String status) {
-        return "-fx-background-color: " + getStatusColor(status) + ";" +
-                "-fx-text-fill: white;" +
-                "-fx-padding: 6 12;" +
-                "-fx-background-radius: 999;" +
-                "-fx-font-size: 11;" +
-                "-fx-font-weight: bold;";
-    }
-
-    private void updateCountdownVisibility(Label countdownLabel, String status) {
-        boolean shouldShow = "ACTIVE".equals(status) || "PENDING".equals(status);
-        countdownLabel.setVisible(shouldShow);
-        countdownLabel.setManaged(shouldShow);
-    }
-
     private String getCountdownStyle(String status) {
         if ("ACTIVE".equals(status)) {
             return "-fx-background-color: #dcfce7;" + "-fx-text-fill: #166534;" + "-fx-padding: 6 10;" +
@@ -346,10 +458,10 @@ public class MyItemsController implements Initializable {
     private String getStartButtonStyle(boolean enabled) {
         if (enabled) {
             return "-fx-background-color: #10b981;" + "-fx-text-fill: white;" + "-fx-font-weight: bold;" +
-                    "-fx-background-radius: 8;" + "-fx-padding: 9 12;" + "-fx-cursor: hand;";
+                    "-fx-background-radius: 10;" + "-fx-padding: 9 12;" + "-fx-cursor: hand;";
         }
-        return "-fx-background-color: #cbd5e1;" + "-fx-text-fill: white;" + "-fx-font-weight: bold;" +
-                "-fx-background-radius: 8;" + "-fx-padding: 9 12;";
+        return "-fx-background-color: #e2e8f0;" + "-fx-text-fill: #64748b;" + "-fx-font-weight: bold;" +
+                "-fx-background-radius: 10;" + "-fx-padding: 9 12;" + "-fx-opacity: 1;";
     }
 
     private Label createEmptyLabel(String text) { Label label = new Label(text); label.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 14;"); label.setPadding(new Insets(20)); return label; }

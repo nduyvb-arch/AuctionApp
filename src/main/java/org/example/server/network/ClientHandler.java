@@ -258,8 +258,13 @@ public class ClientHandler implements Runnable, Observer {
                         double startPrice = (Double) itemData[3];
                         double increment = (Double) itemData[4];
                         String sellerId = String.valueOf(itemData[5]);
-                        int addDuration = (Integer) itemData[6];
-                        byte[] imageBytes = (byte[]) itemData[7]; // Lấy bytes của ảnh
+                        byte[] imageBytes = null;
+                        if (itemData.length >= 8 && itemData[7] instanceof byte[]) {
+                            // Tương thích với client cũ: [6] từng là thời gian mặc định.
+                            imageBytes = (byte[]) itemData[7];
+                        } else if (itemData.length >= 7 && itemData[6] instanceof byte[]) {
+                            imageBytes = (byte[]) itemData[6];
+                        }
 
                         String savedImagePath = null;
                         if (imageBytes != null && imageBytes.length > 0) {
@@ -290,7 +295,9 @@ public class ClientHandler implements Runnable, Observer {
                         }
 
                         newItem.setSellerId(sellerId);
-                        newItem.setEndTime(LocalDateTime.now().plusMinutes(addDuration));
+                        // Không đặt thời gian kết thúc khi đăng sản phẩm.
+                        // Thời gian chỉ được thiết lập khi người bán bấm "Bắt đầu đấu giá".
+                        newItem.setEndTime(null);
                         newItem.setImagePath(savedImagePath); // Gán đường dẫn ảnh đã lưu
 
                         AuctionManager.getInstance().addItem(newItem);
@@ -512,10 +519,7 @@ public class ClientHandler implements Runnable, Observer {
             return;
         }
 
-        if (!"bidder".equalsIgnoreCase(currentUser.getRole())) {
-            sendMessage(new Message("AUCTION_CHAT_ERROR", "Chỉ người đấu giá mới được chat trong phòng đấu giá."));
-            return;
-        }
+        refreshCurrentUserFromStore();
 
         if (!(payload instanceof Object[])) {
             sendMessage(new Message("AUCTION_CHAT_ERROR", "Dữ liệu tin nhắn không hợp lệ."));
@@ -530,8 +534,27 @@ public class ClientHandler implements Runnable, Observer {
 
         String itemId = String.valueOf(data[0]);
         String content = String.valueOf(data[1]).trim();
+        String selectedRole = data.length >= 3 && data[2] != null ? String.valueOf(data[2]) : null;
 
         if (itemId.isBlank() || content.isBlank()) {
+            return;
+        }
+
+        Item chatItem = AuctionManager.getInstance().getAllItems().stream()
+                .filter(item -> item.getId().equals(itemId))
+                .findFirst()
+                .orElse(null);
+
+        if (chatItem != null && currentUser.getId() != null && currentUser.getId().equals(chatItem.getSellerId())) {
+            sendMessage(new Message("AUCTION_CHAT_ERROR", "Người bán không thể chat trong phòng đấu giá sản phẩm của chính mình."));
+            return;
+        }
+
+        boolean storedRoleIsBidder = "bidder".equalsIgnoreCase(currentUser.getRole());
+        boolean selectedRoleIsBidder = "bidder".equalsIgnoreCase(selectedRole);
+
+        if (!storedRoleIsBidder && !selectedRoleIsBidder) {
+            sendMessage(new Message("AUCTION_CHAT_ERROR", "Chỉ người đấu giá mới được chat trong phòng đấu giá."));
             return;
         }
 
@@ -560,6 +583,17 @@ public class ClientHandler implements Runnable, Observer {
         }
 
         notifier.notifyObservers(new Message("AUCTION_CHAT_MESSAGE", chatMessage));
+    }
+
+    private void refreshCurrentUserFromStore() {
+        if (currentUser == null || currentUser.getId() == null) {
+            return;
+        }
+
+        User latestUser = UserManager.getInstance().findUserById(currentUser.getId());
+        if (latestUser != null) {
+            currentUser = latestUser;
+        }
     }
 
     private boolean isLoginOrRegisterAction(String action) {

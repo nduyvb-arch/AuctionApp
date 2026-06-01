@@ -6,7 +6,6 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
-<?import javafx.scene.control.Spinner?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.ImageView?>
@@ -114,17 +113,7 @@
                                         </children>
                                     </VBox>
 
-                                    <VBox spacing="6" GridPane.columnIndex="0" GridPane.rowIndex="3">
-                                        <children>
-                                            <Label text="Thời gian đấu giá mặc định (phút)" style="-fx-font-weight: bold; -fx-text-fill: #334155;" />
-                                            <Spinner fx:id="durationSpinner"
-                                                     prefHeight="40"
-                                                     maxWidth="Infinity"
-                                                     style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-radius: 8;" />
-                                        </children>
-                                    </VBox>
-
-                                    <VBox spacing="10" GridPane.columnIndex="1" GridPane.rowIndex="3" GridPane.rowSpan="2">
+                                    <VBox spacing="10" GridPane.columnIndex="0" GridPane.rowIndex="3" GridPane.columnSpan="2">
                                         <children>
                                             <Label text="Ảnh sản phẩm" style="-fx-font-weight: bold; -fx-text-fill: #334155;" />
 

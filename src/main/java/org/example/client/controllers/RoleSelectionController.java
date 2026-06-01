@@ -23,7 +23,7 @@ public class RoleSelectionController implements Initializable {
     @FXML private Button accountButton;
 
     private User currentUser;
-    private final NumberFormat currencyFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
+    private final NumberFormat currencyFormat = NumberFormat.getInstance(Locale.forLanguageTag("vi-VN"));
     private String selectedRoleForSwitch;
 
     @Override
@@ -66,8 +66,12 @@ public class RoleSelectionController implements Initializable {
 
         if ("success".equals(message.getPayload())) {
             try {
-                // Chuyển màn hình với vai trò đã được chọn trước đó
+                // Đồng bộ cả vai trò đang chọn ở client để chat/đặt giá không bị lệch trạng thái.
                 ClientApp.setSelectedRole(selectedRoleForSwitch);
+                if (currentUser != null) {
+                    currentUser.setRole(selectedRoleForSwitch);
+                    ClientApp.setCurrentUser(currentUser);
+                }
                 ClientApp.switchToHome();
             } catch (Exception e) {
                 showError("Lỗi giao diện", "Không thể mở trang chủ: " + e.getMessage());
