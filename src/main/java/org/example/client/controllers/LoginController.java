@@ -12,11 +12,16 @@ import javafx.scene.control.TextField;
 import javafx.util.Duration;
 import org.example.common.Message;
 import org.example.common.model.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URL;
 import java.util.ResourceBundle;
 
 public class LoginController implements Initializable {
+
+    // ── Logger ─────────────────────────────────────────────────────────────────
+    private static final Logger logger = LoggerFactory.getLogger(LoginController.class);
 
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
@@ -25,9 +30,10 @@ public class LoginController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        logger.debug("LoginController initializing...");
         errorLabel.setText("");
-        // Đăng ký handler để xử lý phản hồi từ server
         ClientApp.setServerMessageHandler(this::handleServerMessage);
+        logger.info("LoginController initialized. Server message handler registered.");
     }
 
     @FXML
@@ -35,7 +41,11 @@ public class LoginController implements Initializable {
         String username = usernameField.getText().trim();
         String password = passwordField.getText();
 
+        // Log attempt — KHÔNG bao giờ log mật khẩu
+        logger.info("Login attempt for username: '{}'", username);
+
         if (username.isEmpty() || password.isEmpty()) {
+            logger.warn("Login validation failed: username or password field is empty.");
             showError("Vui lòng nhập tên đăng nhập và mật khẩu");
             return;
         }
@@ -43,18 +53,19 @@ public class LoginController implements Initializable {
         loginButton.setDisable(true);
         loginButton.setText("Đang đăng nhập...");
 
-        // Tách việc kết nối và gửi tin nhắn ra một luồng riêng để không block UI
         new Thread(() -> {
             try {
-                // Bước 1: Kết nối tới server. ClientApp sẽ tự quản lý việc này.
+                logger.debug("Attempting to connect to server for user: '{}'", username);
                 ClientApp.connectToServer();
+                logger.info("Connected to server successfully. Sending LOGIN message for user: '{}'", username);
 
-                // Bước 2: Gửi thông tin đăng nhập
                 String[] loginData = {username, password};
                 ClientApp.sendMessage(new Message("LOGIN", loginData));
 
             } catch (Exception e) {
-                // Nếu kết nối thất bại, hiển thị lỗi trên luồng UI
+                // Log đầy đủ stack trace ở mức ERROR
+                logger.error("Connection error during login attempt for user '{}': {}", username, e.getMessage(), e);
+
                 Platform.runLater(() -> {
                     showError("Lỗi kết nối: Không thể kết nối tới server.");
                     resetLoginButton();
@@ -68,10 +79,17 @@ public class LoginController implements Initializable {
      * Phương thức này được gọi bởi luồng lắng nghe của ClientApp.
      */
     private void handleServerMessage(Message message) {
-        if (message == null || !"LOGIN_RESPONSE".equals(message.getAction())) {
+        if (message == null) {
+            logger.warn("Received a null message from server. Ignoring.");
             return;
         }
 
+        if (!"LOGIN_RESPONSE".equals(message.getAction())) {
+            logger.debug("Ignoring non-login message with action: '{}'", message.getAction());
+            return;
+        }
+
+        logger.debug("Processing LOGIN_RESPONSE from server.");
         Object payload = message.getPayload();
         User user = null;
 
@@ -79,48 +97,57 @@ public class LoginController implements Initializable {
             user = (User) ((Object[]) payload)[0];
         } else if (payload instanceof User) {
             user = (User) payload;
+        } else {
+            logger.warn("Unexpected payload type in LOGIN_RESPONSE: {}",
+                    payload == null ? "null" : payload.getClass().getName());
         }
 
         if (user == null) {
+            logger.warn("Login failed: invalid credentials or account locked.");
             showError("Tài khoản không tồn tại, sai mật khẩu, hoặc đã bị khóa!");
             resetLoginButton();
             return;
         }
 
         // Đăng nhập thành công
+        logger.info("Login successful for user: '{}' (role: {})",
+                user.getUsername(), ClientApp.isAdminUser(user) ? "ADMIN" : "USER");
         ClientApp.setCurrentUser(user);
-        System.out.println("Đăng nhập thành công: " + user.getUsername());
 
         try {
             if (ClientApp.isAdminUser(user)) {
+                logger.debug("Routing user '{}' to Admin screen.", user.getUsername());
                 ClientApp.setSelectedRole("admin");
                 ClientApp.switchToAdmin();
             } else {
-                ClientApp.setSelectedRole("bidder"); // Mặc định là bidder khi vào màn chọn vai trò
+                logger.debug("Routing user '{}' to Role Selection screen.", user.getUsername());
+                ClientApp.setSelectedRole("bidder");
                 ClientApp.switchToRoleSelection();
             }
         } catch (Exception e) {
+            logger.error("Screen transition failed for user '{}': {}", user.getUsername(), e.getMessage(), e);
             showError("Lỗi chuyển màn hình: " + e.getMessage());
             resetLoginButton();
         }
     }
 
     private void resetLoginButton() {
+        logger.debug("Resetting login button state.");
         loginButton.setDisable(false);
         loginButton.setText("Đăng nhập");
     }
 
     @FXML
     public void onSignUpButtonClicked() {
+        logger.info("User navigating to Sign Up screen.");
         try {
             ClientApp.switchToSignUp();
         } catch (Exception e) {
-            System.err.println("Error switching to sign up: " + e.getMessage());
+            logger.error("Failed to switch to Sign Up screen: {}", e.getMessage(), e);
         }
     }
 
     private void showError(String message) {
-        // Đảm bảo việc cập nhật UI luôn chạy trên luồng chính
         Platform.runLater(() -> {
             errorLabel.setText(message);
             errorLabel.setStyle("-fx-text-fill: #d32f2f; -fx-font-size: 12;");

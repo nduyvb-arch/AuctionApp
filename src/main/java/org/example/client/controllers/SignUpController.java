@@ -12,11 +12,15 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.util.Duration;
 import org.example.common.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URL;
 import java.util.ResourceBundle;
 
 public class SignUpController implements Initializable {
+
+    private static final Logger logger = LoggerFactory.getLogger(SignUpController.class);
 
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
@@ -27,6 +31,7 @@ public class SignUpController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         errorLabel.setText("");
+        logger.debug("Initializing SignUpController");
         // Đăng ký handler để xử lý phản hồi từ server ngay khi controller được tạo
         ClientApp.setServerMessageHandler(this::handleServerMessage);
     }
@@ -40,34 +45,42 @@ public class SignUpController implements Initializable {
 
         if (username.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
             showError("Vui lòng điền đầy đủ thông tin");
+            logger.warn("Sign up attempt with missing fields (username present? {}).", !username.isEmpty());
             return;
         }
         if (username.length() < 3) {
             showError("Tên đăng nhập phải có ít nhất 3 ký tự");
+            logger.warn("Username too short: '{}'", username);
             return;
         }
         if (password.length() < 6) {
             showError("Mật khẩu phải có ít nhất 6 ký tự");
+            logger.warn("Password too short for user '{}'", username);
             return;
         }
         if (!password.equals(confirmPassword)) {
             showError("Mật khẩu xác nhận không khớp");
+            logger.warn("Password and confirmation do not match for user '{}'", username);
             return;
         }
 
         signUpButton.setDisable(true);
         signUpButton.setText("Đang xử lý...");
+        logger.info("Starting sign up process for username='{}'", username);
 
         // Chạy kết nối và gửi tin nhắn trên luồng nền
         new Thread(() -> {
             try {
                 // ClientApp sẽ tự quản lý việc có cần kết nối mới hay không
                 ClientApp.connectToServer();
+                logger.debug("Connected to server (or confirmed existing connection) for user '{}'", username);
 
                 String[] regData = {username, password, role};
                 ClientApp.sendMessage(new Message("REGISTER", regData));
+                logger.debug("Sent REGISTER message for user '{}'", username);
 
             } catch (Exception e) {
+                logger.error("Error connecting to server while registering user '{}': {}", username, e.getMessage(), e);
                 Platform.runLater(() -> {
                     showError("Lỗi kết nối tới Server!");
                     resetSignUpButton();
@@ -78,12 +91,16 @@ public class SignUpController implements Initializable {
 
     private void handleServerMessage(Message message) {
         if (!"REGISTER_RESPONSE".equals(message.getAction())) {
+            logger.debug("Received non-register message in SignUpController: action={}", message.getAction());
             return;
         }
 
-        String result = (String) message.getPayload();
+        Object payload = message.getPayload();
+        String result = payload != null ? payload.toString() : "";
+        logger.info("Received REGISTER_RESPONSE: {}", result);
 
         if (result.contains("thành công")) {
+            logger.info("Registration success response received.");
             Platform.runLater(() -> {
                 Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
                 successAlert.setTitle("Thành công");
@@ -95,13 +112,15 @@ public class SignUpController implements Initializable {
                 pause.setOnFinished(e -> {
                     try {
                         ClientApp.switchToLogin();
+                        logger.debug("Switched to login view after successful registration.");
                     } catch (Exception ex) {
-                        ex.printStackTrace();
+                        logger.error("Error switching to login view after registration: {}", ex.getMessage(), ex);
                     }
                 });
                 pause.play();
             });
         } else {
+            logger.warn("Registration failed or returned error: {}", result);
             showError(result); // Hiển thị lỗi từ server
             resetSignUpButton();
         }
@@ -110,9 +129,10 @@ public class SignUpController implements Initializable {
     @FXML
     public void onBackToLoginClicked() {
         try {
+            logger.debug("Back to login clicked");
             ClientApp.switchToLogin();
         } catch (Exception e) {
-            System.err.println("Error switching to login: " + e.getMessage());
+            logger.error("Error switching to login: {}", e.getMessage(), e);
         }
     }
 
@@ -120,10 +140,12 @@ public class SignUpController implements Initializable {
         Platform.runLater(() -> {
             signUpButton.setDisable(false);
             signUpButton.setText("Đăng Ký");
+            logger.debug("Sign up button reset to enabled state");
         });
     }
 
     private void showError(String message) {
+        logger.warn("Showing error to user: {}", message);
         Platform.runLater(() -> {
             errorLabel.setText(message);
             errorLabel.setStyle("-fx-text-fill: #d32f2f; -fx-font-size: 12;");
