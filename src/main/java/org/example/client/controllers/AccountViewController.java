@@ -1,12 +1,10 @@
 package org.example.client.controllers;
 
-import org.example.client.ClientApp; // ADDED
-import javafx.application.Platform;
+import org.example.client.ClientApp;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextInputDialog;
@@ -35,16 +33,26 @@ public class AccountViewController implements Initializable {
     private User currentUser;
     private UserUpdateCallback userUpdateCallback;
 
-    private static final NumberFormat currencyFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
+    private static final NumberFormat currencyFormat = NumberFormat.getInstance(Locale.forLanguageTag("vi-VN"));
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {}
 
-    // XÓA THAM SỐ out
+    // Dùng khi AccountView được include trong HomeMenu.
     public void setup(User currentUser, UserUpdateCallback userUpdateCallback) {
         this.currentUser = currentUser;
         this.userUpdateCallback = userUpdateCallback;
         updateUser(currentUser);
+    }
+
+    // Dùng khi mở AccountView như một màn hình độc lập từ RoleSelection.
+    public void setupStandalone(User currentUser) {
+        setup(currentUser, updatedUser -> {
+            if (updatedUser != null) {
+                ClientApp.setCurrentUser(updatedUser);
+            }
+        });
+        ClientApp.setServerMessageHandler(this::handleServerMessage);
     }
 
     public void updateUser(User user) {
@@ -126,6 +134,79 @@ public class AccountViewController implements Initializable {
     private void onBackToRoleSelectionClicked() {
         try { ClientApp.switchToRoleSelection(); }
         catch (Exception e) { showAlert(Alert.AlertType.ERROR, "Tài khoản", e.getMessage()); }
+    }
+
+    private void handleServerMessage(Message message) {
+        if (message == null) {
+            return;
+        }
+
+        switch (message.getAction()) {
+            case "TOP_UP_RESPONSE":
+                handleTopUpResponse(message.getPayload());
+                break;
+            case "ACCOUNT_INFO_RESPONSE":
+                handleAccountInfoResponse(message.getPayload());
+                break;
+            default:
+                // AccountView độc lập chỉ xử lý thông tin tài khoản.
+                break;
+        }
+    }
+
+    private void handleAccountInfoResponse(Object payload) {
+        if (!(payload instanceof User)) {
+            if (refreshButton != null) {
+                refreshButton.setDisable(false);
+            }
+            return;
+        }
+
+        User updatedUser = (User) payload;
+        if (currentUser != null && currentUser.getId() != null
+                && updatedUser.getId() != null
+                && !currentUser.getId().equals(updatedUser.getId())) {
+            return;
+        }
+
+        ClientApp.setCurrentUser(updatedUser);
+        updateUser(updatedUser);
+
+        if (userUpdateCallback != null) {
+            userUpdateCallback.onUpdated(updatedUser);
+        }
+    }
+
+    private void handleTopUpResponse(Object payload) {
+        if (!(payload instanceof Object[])) {
+            if (topUpButton != null) {
+                topUpButton.setDisable(false);
+            }
+            showAlert(Alert.AlertType.INFORMATION, "Nạp tiền", String.valueOf(payload));
+            return;
+        }
+
+        Object[] data = (Object[]) payload;
+        boolean success = data.length > 0 && Boolean.TRUE.equals(data[0]);
+        String message = data.length > 1 ? String.valueOf(data[1]) : "Không có phản hồi từ server.";
+
+        if (success && data.length > 2 && data[2] instanceof User) {
+            User updatedUser = (User) data[2];
+            ClientApp.setCurrentUser(updatedUser);
+            updateUser(updatedUser);
+
+            if (userUpdateCallback != null) {
+                userUpdateCallback.onUpdated(updatedUser);
+            }
+        } else if (topUpButton != null) {
+            topUpButton.setDisable(false);
+        }
+
+        showAlert(
+                success ? Alert.AlertType.INFORMATION : Alert.AlertType.WARNING,
+                success ? "Nạp tiền thành công" : "Nạp tiền thất bại",
+                message
+        );
     }
 
     private String getRoleText(String role) {

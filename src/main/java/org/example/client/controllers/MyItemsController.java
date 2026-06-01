@@ -13,9 +13,11 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
-import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.FlowPane;
-import javafx.scene.text.Font;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import org.example.client.ClientApp;
 import org.example.common.Message;
@@ -51,7 +53,7 @@ public class MyItemsController implements Initializable {
     // TỐI ƯU 2: Danh sách chứa các hàm cập nhật UI của từng thẻ sản phẩm
     private final List<Runnable> uiUpdaters = new ArrayList<>();
 
-    private static final NumberFormat currencyFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
+    private static final NumberFormat currencyFormat = NumberFormat.getInstance(Locale.of("vi", "VN"));
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -63,6 +65,10 @@ public class MyItemsController implements Initializable {
         myItemsSearchTextField.setOnKeyReleased(e -> refreshMyItemsView());
         myItemsStatusComboBox.setOnAction(e -> refreshMyItemsView());
         myItemsSortComboBox.setOnAction(e -> refreshMyItemsView());
+
+        myItemsFlowPane.setAlignment(Pos.TOP_LEFT);
+        myItemsFlowPane.setHgap(24);
+        myItemsFlowPane.setVgap(24);
 
         // Khởi tạo Master Timeline (Đập nhịp 1 giây/lần)
         masterTimeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
@@ -156,92 +162,103 @@ public class MyItemsController implements Initializable {
     }
 
     private Node createItemCard(Item item) {
-        AnchorPane pane = new AnchorPane();
-        pane.setPrefSize(270, 335);
-        pane.setMinSize(270, 335);
-        pane.setMaxSize(270, 335);
-        pane.setStyle(
+        VBox card = new VBox(10);
+        card.setPrefSize(320, 300);
+        card.setMinSize(300, 300);
+        card.setMaxSize(340, 300);
+        card.setPadding(new Insets(20, 20, 18, 20));
+        card.setStyle(
                 "-fx-background-color: white;" +
                         "-fx-background-radius: 16;" +
                         "-fx-border-color: #e2e8f0;" +
                         "-fx-border-radius: 16;" +
-                        "-fx-padding: 15;" +
                         "-fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 12, 0, 0, 4);"
         );
 
         String displayStatus = getDisplayStatus(item);
 
-        Label statusBadge = new Label(getStatusText(displayStatus));
-        statusBadge.setStyle(
-                "-fx-background-color: " + getStatusColor(displayStatus) + ";" +
-                        "-fx-text-fill: white;" + "-fx-padding: 5 10;" +
-                        "-fx-background-radius: 999;" + "-fx-font-size: 10;" + "-fx-font-weight: bold;"
-        );
-        AnchorPane.setTopAnchor(statusBadge, 12.0); AnchorPane.setRightAnchor(statusBadge, 12.0);
-
-        Label countdownLabel = new Label(getCountdownText(item));
-        countdownLabel.setAlignment(Pos.CENTER);
-        countdownLabel.setStyle(getCountdownStyle(displayStatus));
-        AnchorPane.setTopAnchor(countdownLabel, 48.0); AnchorPane.setRightAnchor(countdownLabel, 12.0);
-
-        Label nameLabel = new Label(item.getItemName());
-        nameLabel.setFont(new Font("System Bold", 15));
+        Label nameLabel = new Label(safeText(item.getItemName()));
         nameLabel.setWrapText(true);
-        nameLabel.setStyle("-fx-text-fill: #0f172a;");
-        AnchorPane.setTopAnchor(nameLabel, 84.0); AnchorPane.setLeftAnchor(nameLabel, 12.0); AnchorPane.setRightAnchor(nameLabel, 12.0);
+        nameLabel.setMaxWidth(Double.MAX_VALUE);
+        nameLabel.setStyle("-fx-text-fill: #0f172a; -fx-font-size: 16; -fx-font-weight: bold;");
+        HBox.setHgrow(nameLabel, Priority.ALWAYS);
+
+        Label statusBadge = new Label(getStatusText(displayStatus));
+        statusBadge.setAlignment(Pos.CENTER);
+        statusBadge.setMinWidth(Region.USE_PREF_SIZE);
+        statusBadge.setStyle(getStatusBadgeStyle(displayStatus));
+
+        HBox headerBox = new HBox(12, nameLabel, statusBadge);
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+        headerBox.setMinHeight(46);
 
         Label typeLabel = new Label("Loại: " + safeText(item.getType()));
-        typeLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11;");
-        AnchorPane.setTopAnchor(typeLabel, 132.0); AnchorPane.setLeftAnchor(typeLabel, 12.0);
+        typeLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12;");
 
-        Label descLabel = new Label(item.getDescription() != null && !item.getDescription().isEmpty()
+        Label descLabel = new Label(item.getDescription() != null && !item.getDescription().isBlank()
                 ? item.getDescription() : "Không có mô tả");
-        descLabel.setWrapText(true); descLabel.setPrefHeight(45);
-        descLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10;");
-        AnchorPane.setTopAnchor(descLabel, 154.0); AnchorPane.setLeftAnchor(descLabel, 12.0); AnchorPane.setRightAnchor(descLabel, 12.0);
+        descLabel.setWrapText(true);
+        descLabel.setMaxWidth(Double.MAX_VALUE);
+        descLabel.setMinHeight(42);
+        descLabel.setPrefHeight(48);
+        descLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11;");
+
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
 
         Label priceLabel = new Label("Giá hiện tại");
         priceLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11;");
-        AnchorPane.setTopAnchor(priceLabel, 208.0); AnchorPane.setLeftAnchor(priceLabel, 12.0);
 
         Label priceValueLabel = new Label(currencyFormat.format(item.getCurrentPrice()) + " VNĐ");
-        priceValueLabel.setFont(new Font("System Bold", 15));
-        priceValueLabel.setStyle("-fx-text-fill: #2563eb;");
-        AnchorPane.setTopAnchor(priceValueLabel, 228.0); AnchorPane.setLeftAnchor(priceValueLabel, 12.0);
+        priceValueLabel.setStyle("-fx-text-fill: #2563eb; -fx-font-size: 16; -fx-font-weight: bold;");
 
         Label winnerLabel = new Label(item.getCurrentWinnerId() == null
                 ? "Chưa có người đặt giá" : "Người thắng hiện tại: #" + item.getCurrentWinnerId());
         winnerLabel.setWrapText(true);
+        winnerLabel.setMaxWidth(Double.MAX_VALUE);
         winnerLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11;");
-        AnchorPane.setTopAnchor(winnerLabel, 256.0); AnchorPane.setLeftAnchor(winnerLabel, 12.0); AnchorPane.setRightAnchor(winnerLabel, 12.0);
+
+        Label countdownLabel = new Label(getCountdownText(item));
+        countdownLabel.setMaxWidth(Double.MAX_VALUE);
+        countdownLabel.setAlignment(Pos.CENTER);
+        countdownLabel.setStyle(getCountdownStyle(displayStatus));
+        updateCountdownVisibility(countdownLabel, displayStatus);
 
         Button startButton = new Button("▶ Bắt đầu đấu giá");
+        startButton.setMaxWidth(Double.MAX_VALUE);
         startButton.setDisable(!"PENDING".equals(displayStatus));
         startButton.setStyle(getStartButtonStyle("PENDING".equals(displayStatus)));
         startButton.setOnAction(e -> startAuction(item));
 
-        AnchorPane.setBottomAnchor(startButton, 12.0); AnchorPane.setLeftAnchor(startButton, 12.0); AnchorPane.setRightAnchor(startButton, 12.0);
+        card.getChildren().addAll(
+                headerBox,
+                typeLabel,
+                descLabel,
+                spacer,
+                priceLabel,
+                priceValueLabel,
+                winnerLabel,
+                countdownLabel,
+                startButton
+        );
 
-        pane.getChildren().addAll(statusBadge, countdownLabel, nameLabel, typeLabel, descLabel, priceLabel, priceValueLabel, winnerLabel, startButton);
-
-        //  TỐI ƯU 3: Thay vì tạo Timeline mới, ta tạo hàm cập nhật và nhét vào giỏ uiUpdaters
+        // TỐI ƯU 3: Không tạo Timeline riêng cho từng thẻ, chỉ đăng ký hàm cập nhật vào Master Timeline.
         Runnable updater = () -> {
             String newStatus = getDisplayStatus(item);
             statusBadge.setText(getStatusText(newStatus));
-            statusBadge.setStyle("-fx-background-color: " + getStatusColor(newStatus) + ";" +
-                    "-fx-text-fill: white;" + "-fx-padding: 5 10;" +
-                    "-fx-background-radius: 999;" + "-fx-font-size: 10;" + "-fx-font-weight: bold;");
+            statusBadge.setStyle(getStatusBadgeStyle(newStatus));
 
             countdownLabel.setText(getCountdownText(item));
             countdownLabel.setStyle(getCountdownStyle(newStatus));
+            updateCountdownVisibility(countdownLabel, newStatus);
 
             boolean canStart = "PENDING".equals(newStatus);
             startButton.setDisable(!canStart);
             startButton.setStyle(getStartButtonStyle(canStart));
         };
-        uiUpdaters.add(updater); // Master Timeline sẽ tự gọi đống này mỗi giây
+        uiUpdaters.add(updater);
 
-        return pane;
+        return card;
     }
 
     private void startAuction(Item item) {
@@ -300,6 +317,21 @@ public class MyItemsController implements Initializable {
         long minutes = (secondsLeft % 3600) / 60; long seconds = secondsLeft % 60;
         if (days > 0) return String.format("Còn %dd %02d:%02d:%02d", days, hours, minutes, seconds);
         return String.format("Còn %02d:%02d:%02d", hours, minutes, seconds);
+    }
+
+    private String getStatusBadgeStyle(String status) {
+        return "-fx-background-color: " + getStatusColor(status) + ";" +
+                "-fx-text-fill: white;" +
+                "-fx-padding: 6 12;" +
+                "-fx-background-radius: 999;" +
+                "-fx-font-size: 11;" +
+                "-fx-font-weight: bold;";
+    }
+
+    private void updateCountdownVisibility(Label countdownLabel, String status) {
+        boolean shouldShow = "ACTIVE".equals(status) || "PENDING".equals(status);
+        countdownLabel.setVisible(shouldShow);
+        countdownLabel.setManaged(shouldShow);
     }
 
     private String getCountdownStyle(String status) {
