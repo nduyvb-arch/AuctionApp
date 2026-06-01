@@ -454,7 +454,7 @@ public class HomeController implements Initializable {
     // ═══════════════════════════════════════════════════════════
     private Node createItemCard(Item item) {
         VBox card = new VBox(12);
-        card.setPrefSize(250, 175);
+        card.setPrefSize(250, 160);
         card.setAlignment(Pos.TOP_LEFT);
         card.setPadding(new Insets(18));
         card.setStyle(getNormalCardStyle());
@@ -490,15 +490,6 @@ public class HomeController implements Initializable {
                         "-fx-font-weight: bold;"
         );
 
-        Label bidCountLabel = new Label("Số lần đặt giá: " + getEstimatedBidCount(item));
-        bidCountLabel.setStyle(
-                "-fx-text-fill: #475569;" +
-                        "-fx-font-size: 12;" +
-                        "-fx-background-color: #f1f5f9;" +
-                        "-fx-padding: 6 10;" +
-                        "-fx-background-radius: 999;"
-        );
-
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
@@ -510,7 +501,6 @@ public class HomeController implements Initializable {
                 nameLabel,
                 priceTitle,
                 priceLabel,
-                bidCountLabel,
                 spacer,
                 hintLabel
         );
@@ -694,11 +684,6 @@ public class HomeController implements Initializable {
                 currencyFormat.format(item.getBidIncrement()) + " VNĐ"
         );
 
-        Label bidCountLabel = createDetailLine(
-                "Số lần đặt giá",
-                String.valueOf(getEstimatedBidCount(item))
-        );
-
         Label endTimeLabel = createDetailLine(
                 "Thời gian kết thúc",
                 item.getEndTime() == null ? "Chưa thiết lập" : item.getEndTime().format(END_TIME_FORMATTER)
@@ -796,7 +781,6 @@ public class HomeController implements Initializable {
                 startingPriceLabel,
                 currentPriceLabel,
                 incrementLabel,
-                bidCountLabel,
                 endTimeLabel,
                 descriptionTitle,
                 descriptionLabel,
@@ -1329,7 +1313,7 @@ public class HomeController implements Initializable {
             return;
         }
 
-        ClientApp.sendMessage(new Message("SEND_AUCTION_CHAT", new Object[]{activeBidDialogItemId, text}));
+        ClientApp.sendMessage(new Message("SEND_AUCTION_CHAT", new Object[]{activeBidDialogItemId, text, ClientApp.getSelectedRole()}));
         auctionRoomChatField.clear();
     }
 

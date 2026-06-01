@@ -61,7 +61,7 @@ BTL/
 │   │   │   ├── common/model/        # User, Item, AuctionStatus, ChatMessage
 │   │   │   ├── server/              # Logic server
 │   │   │   ├── server/data/         # DatabaseManager, ItemDAO
-│   │   │   ├── server/manager/      # AuctionManager, UserManager, AutoBid, AntiSniper
+│   │   │   ├── server/manager/      # AuctionManager, UserManager, AntiSniper
 │   │   │   └── server/network/      # ServerMain, AuctionServer, ClientHandler
 │   │   └── resources/
 │   │       ├── org/example/client/views/       # Các file FXML
