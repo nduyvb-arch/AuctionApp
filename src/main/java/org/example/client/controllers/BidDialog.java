@@ -9,6 +9,9 @@ import javafx.scene.text.Font;
 import org.example.common.Message;
 import org.example.common.model.item.Item;
 import org.example.common.model.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 import java.io.ObjectOutputStream;
 import java.text.NumberFormat;
@@ -16,6 +19,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 public class BidDialog extends Dialog<Double> {
+    private static final Logger logger = LoggerFactory.getLogger(BidDialog.class);
 
     private Item item;
     private User currentUser;
@@ -101,7 +105,7 @@ public class BidDialog extends Dialog<Double> {
                 double bidAmount = Double.parseDouble(input);
 
                 if (bidAmount < minBidAmount) {
-                    errorLabel.setText("❌ Giá đặt phải lớn hơn hoặc bằng " + currencyFormat.format(minBidAmount));
+                    errorLabel.setText(" Giá đặt phải lớn hơn hoặc bằng " + currencyFormat.format(minBidAmount));
                     return;
                 }
 
@@ -118,9 +122,9 @@ public class BidDialog extends Dialog<Double> {
                     this.close();
                 }
             } catch (NumberFormatException ex) {
-                errorLabel.setText("❌ Vui lòng nhập một số hợp lệ");
+                errorLabel.setText(" Vui lòng nhập một số hợp lệ");
             } catch (Exception ex) {
-                errorLabel.setText("❌ Lỗi: " + ex.getMessage());
+                errorLabel.setText(" Lỗi: " + ex.getMessage());
             }
         });
 
@@ -154,7 +158,7 @@ public class BidDialog extends Dialog<Double> {
         BidDialog dialog = new BidDialog(item, currentUser, out);
         Optional<Double> result = dialog.showAndWait();
         result.ifPresent(bidAmount -> {
-            System.out.println("Đặt giá " + bidAmount + " cho sản phẩm " + item.getItemName());
+            logger.info("Đặt giá {} cho sản phẩm {}", bidAmount, item.getItemName());
         });
     }
 }

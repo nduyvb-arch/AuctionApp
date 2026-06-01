@@ -40,10 +40,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.ResourceBundle;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 import javafx.util.Duration;
+import java.util.logging.Logger;
+
+
 
 public class HomeController implements Initializable {
+    private static final Logger logger = Logger.getLogger(HomeController.class.getName());
 
     // ═══════════════════════════════════════════════════════════
     // SIDEBAR COMPONENTS
@@ -214,7 +219,7 @@ public class HomeController implements Initializable {
     private void switchToAddItemView() {
         clearAuctionRoomState();
         showView(addItemViewPane);
-        pageTitle.setText("➕ Đăng sản phẩm mới");
+        pageTitle.setText(" Đăng sản phẩm mới");
     }
 
     @FXML
@@ -279,6 +284,7 @@ public class HomeController implements Initializable {
         try {
             ClientApp.switchToRoleSelection();
         } catch (Exception e) {
+            logger.log(Level.SEVERE, "Không thể quay lại màn chọn vai trò", e);
             showError("Không thể quay lại màn chọn vai trò", e.getMessage());
         }
     }
@@ -622,6 +628,7 @@ public class HomeController implements Initializable {
                 }
             });
             loadImageTask.setOnFailed(e -> {
+                logger.log(Level.WARNING, "Không tải được ảnh sản phẩm (popup chi tiết): {0}", item.getImagePath());
                 imageBox.getChildren().add(createImagePlaceholder("Lỗi tải ảnh"));
             });
             ClientApp.executorService.submit(loadImageTask);
@@ -1139,6 +1146,7 @@ public class HomeController implements Initializable {
             }
         });
         loadImageTask.setOnFailed(e -> {
+            logger.log(Level.WARNING, "Không tải được ảnh sản phẩm (auction room): {0}", item.getImagePath());
             imageBox.getChildren().clear();
             imageBox.getChildren().add(createImagePlaceholder("Lỗi tải ảnh"));
         });
@@ -1173,6 +1181,8 @@ public class HomeController implements Initializable {
 
             submitBid(activeBidDialogItem.getId(), amount);
         } catch (NumberFormatException e) {
+            logger.log(Level.WARNING, "Người dùng nhập số tiền đặt giá không hợp lệ: {0}",
+                    activeBidAmountField != null ? activeBidAmountField.getText() : "null");
             if (activeBidErrorLabel != null) {
                 activeBidErrorLabel.setText("Số tiền không hợp lệ.");
             }
@@ -2181,24 +2191,16 @@ public class HomeController implements Initializable {
                 case "ADD_ITEM_RESPONSE":
                 case "START_AUCTION_RESPONSE":
                 case "SWITCH_ROLE_RESPONSE":
-                    System.out.println("Server: " + message.getPayload());
+                    logger.log(Level.INFO, "Server response: {0}", message.getPayload());
                     loadInitialItems();
                     break;
 
-                case "TOP_UP_RESPONSE":
-                    handleTopUpResponse(message.getPayload());
-                    break;
-
-                case "ACCOUNT_INFO_RESPONSE":
-                    handleAccountInfoResponse(message.getPayload());
-                    break;
-
                 case "SYSTEM_NOTIFICATION":
-                    System.out.println("Server: " + message.getPayload());
+                    logger.log(Level.INFO, "System notification: {0}", message.getPayload());
                     break;
 
                 default:
-                    System.out.println("Unknown server message: " + message.getAction());
+                    logger.log(Level.WARNING, "Unknown server message: {0}", message.getAction());
                     break;
             }
         });
@@ -2276,7 +2278,7 @@ public class HomeController implements Initializable {
                     result
             );
         } catch (Exception e) {
-            System.err.println("Không đọc được một dòng lịch sử đặt giá sản phẩm: " + e.getMessage());
+            logger.log(Level.SEVERE, "Không đọc được một dòng lịch sử đặt giá sản phẩm", e);
             return null;
         }
     }
@@ -2317,7 +2319,7 @@ public class HomeController implements Initializable {
                             result
                     ));
                 } catch (Exception e) {
-                    System.err.println("Không đọc được một dòng lịch sử đấu giá: " + e.getMessage());
+                    logger.log(Level.SEVERE, "Không đọc được một dòng lịch sử đấu giá", e);
                 }
             }
         }
@@ -2434,7 +2436,7 @@ public class HomeController implements Initializable {
         try {
             ClientApp.switchToLogin();
         } catch (Exception e) {
-            System.err.println("Error switching to login: " + e.getMessage());
+            logger.log(Level.SEVERE, "Error switching to login", e);
         }
     }
 }

@@ -24,6 +24,8 @@ import org.example.common.Message;
 import org.example.common.model.item.AuctionStatus;
 import org.example.common.model.item.Item;
 import org.example.common.model.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URL;
 import java.text.NumberFormat;
@@ -36,6 +38,8 @@ import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
 public class MyItemsController implements Initializable {
+
+    private static final Logger logger = LoggerFactory.getLogger(MyItemsController.class);
 
     @FXML private TextField myItemsSearchTextField;
     @FXML private ComboBox<String> myItemsStatusComboBox;
@@ -57,19 +61,36 @@ public class MyItemsController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        logger.debug("Initializing MyItemsController");
+
         myItemsStatusComboBox.getItems().setAll("Tất cả", "Chờ", "Đang diễn ra", "Đã kết thúc", "Bị hủy");
         myItemsStatusComboBox.setValue("Tất cả");
         myItemsSortComboBox.getItems().setAll("Mặc định", "Giá thấp → cao", "Giá cao → thấp", "Sắp hết hạn");
         myItemsSortComboBox.setValue("Mặc định");
 
-        myItemsSearchTextField.setOnKeyReleased(e -> refreshMyItemsView());
-        myItemsStatusComboBox.setOnAction(e -> refreshMyItemsView());
-        myItemsSortComboBox.setOnAction(e -> refreshMyItemsView());
+        myItemsSearchTextField.setOnKeyReleased(e -> {
+            logger.debug("Search text changed: {}", myItemsSearchTextField.getText());
+            refreshMyItemsView();
+        });
+        myItemsStatusComboBox.setOnAction(e -> {
+            logger.debug("Status filter changed: {}", myItemsStatusComboBox.getValue());
+            refreshMyItemsView();
+        });
+        myItemsSortComboBox.setOnAction(e -> {
+            logger.debug("Sort option changed: {}", myItemsSortComboBox.getValue());
+            refreshMyItemsView();
+        });
 
         // Khởi tạo Master Timeline (Đập nhịp 1 giây/lần)
         masterTimeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
+            // log ở mức trace để tránh ồn nếu không cần
+            logger.trace("Master timeline tick - updating {} updaters", uiUpdaters.size());
             for (Runnable updater : uiUpdaters) {
-                updater.run(); // Cập nhật hàng loạt tất cả các thẻ cùng 1 lúc
+                try {
+                    updater.run(); // Cập nhật hàng loạt tất cả các thẻ cùng 1 lúc
+                } catch (Exception ex) {
+                    logger.error("Updater threw exception", ex);
+                }
             }
         }));
         masterTimeline.setCycleCount(Timeline.INDEFINITE);
@@ -77,6 +98,7 @@ public class MyItemsController implements Initializable {
     }
 
     public void setup(List<Item> items, User currentUser, Runnable onItemsChanged) {
+        logger.info("Setup MyItemsController for user id={} with {} items", currentUser == null ? "null" : currentUser.getId(), items == null ? 0 : items.size());
         this.items = items;
         this.currentUser = currentUser;
         this.onItemsChanged = onItemsChanged;
@@ -84,12 +106,14 @@ public class MyItemsController implements Initializable {
     }
 
     public void updateData(List<Item> items) {
+        logger.debug("updateData called with {} items", items == null ? 0 : items.size());
         this.items = items;
         refreshMyItemsView();
     }
 
     @FXML
     private void onMyItemsRefreshClicked() {
+        logger.info("Manual refresh clicked");
         if (onItemsChanged != null) {
             onItemsChanged.run();
         }
@@ -97,10 +121,12 @@ public class MyItemsController implements Initializable {
     }
 
     public void refreshMyItemsView() {
+        logger.debug("Refreshing MyItems view");
         uiUpdaters.clear(); // Xóa sạch danh sách cập nhật cũ
         myItemsFlowPane.getChildren().clear();
 
         if (currentUser == null) {
+            logger.warn("refreshMyItemsView called but currentUser is null");
             myItemsFlowPane.getChildren().add(createEmptyLabel("Bạn chưa đăng nhập."));
             return;
         }
@@ -117,6 +143,7 @@ public class MyItemsController implements Initializable {
 
         applySorting(filtered, sort);
         myItemsSummaryLabel.setText("Tổng: " + filtered.size() + " sản phẩm");
+        logger.debug("Filtered items count: {}", filtered.size());
 
         if (filtered.isEmpty()) {
             myItemsFlowPane.getChildren().add(createEmptyLabel(" Bạn chưa có sản phẩm nào.\nHãy sang mục Đăng sản phẩm mới."));
@@ -390,6 +417,7 @@ public class MyItemsController implements Initializable {
 
     private void startAuction(Item item) {
         if (!"PENDING".equals(getDisplayStatus(item))) {
+            logger.info("Attempt to start auction for item {} but status is not PENDING (status={})", item.getId(), getDisplayStatus(item));
             showInfo("Chỉ sản phẩm đang chờ mới có thể bắt đầu đấu giá.");
             return;
         }
@@ -404,6 +432,7 @@ public class MyItemsController implements Initializable {
                 int duration = Integer.parseInt(value.trim());
                 if (duration <= 0) throw new NumberFormatException();
 
+                logger.info("Sending START_AUCTION for itemId={} duration={}min", item.getId(), duration);
                 ClientApp.sendMessage(new Message("START_AUCTION", new Object[]{item.getId(), duration}));
 
                 item.setStatus(AuctionStatus.ACTIVE);
@@ -413,8 +442,10 @@ public class MyItemsController implements Initializable {
 
                 showInfo("Đã bắt đầu đấu giá. Trạng thái sản phẩm đã chuyển sang Đang diễn ra.");
             } catch (NumberFormatException ex) {
+                logger.warn("Invalid auction duration entered: {}", value, ex);
                 showInfo("Thời gian đấu giá phải là số nguyên lớn hơn 0.");
             } catch (Exception ex) {
+                logger.error("Error when sending START_AUCTION for item " + item.getId(), ex);
                 showInfo("Lỗi khi gửi yêu cầu: " + ex.getMessage());
             }
         });
@@ -424,7 +455,9 @@ public class MyItemsController implements Initializable {
         if (item == null || item.getStatus() == null) return "";
         String status = item.getStatus().name();
         if ("ACTIVE".equals(status) && item.getEndTime() != null && !LocalDateTime.now().isBefore(item.getEndTime())) {
-            item.setStatus(AuctionStatus.CLOSED); return "CLOSED";
+            item.setStatus(AuctionStatus.CLOSED);
+            logger.info("Auto-updated item {} status to CLOSED (endTime passed)", item.getId());
+            return "CLOSED";
         }
         return status;
     }
@@ -465,7 +498,23 @@ public class MyItemsController implements Initializable {
     }
 
     private Label createEmptyLabel(String text) { Label label = new Label(text); label.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 14;"); label.setPadding(new Insets(20)); return label; }
-    private void showInfo(String text) { Alert alert = new Alert(Alert.AlertType.INFORMATION); alert.setHeaderText(null); alert.setContentText(text); alert.showAndWait(); }
+
+    // Ghi log đồng thời hiển thị alert - giúp dev theo dõi các message gửi tới user
+    private void showInfo(String text) {
+        logger.info("User message: {}", text);
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setHeaderText(null);
+        alert.setContentText(text);
+        alert.showAndWait();
+    }
+
+    private void showError(String text, Throwable t) {
+        logger.error(text, t);
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setHeaderText(null);
+        alert.setContentText(text);
+        alert.showAndWait();
+    }
 
     private String getStatusText(String status) {
         switch (status) {

@@ -13,6 +13,8 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.application.Platform;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.example.common.Message;
 import org.example.common.model.item.Item;
 import org.example.common.model.user.User;
@@ -49,6 +51,8 @@ public class WatchlistController implements Initializable {
     private static final NumberFormat currencyFormat =
             NumberFormat.getInstance(new Locale("vi_VN"));
 
+    // Logger
+    private static final Logger logger = LoggerFactory.getLogger(WatchlistController.class);
     // ============================================================
     // JAVAFX INITIALIZE
     // ============================================================
@@ -56,6 +60,7 @@ public class WatchlistController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         // Chỉ khởi tạo ComboBox – dữ liệu thực sẽ được set sau qua setup()
+        logger.debug("Initializing WatchlistController and setting up view filters");
         setupWatchlistViewFilters();
     }
 
@@ -70,6 +75,8 @@ public class WatchlistController implements Initializable {
         this.out              = out;
         this.in               = in;
         this.currentUser      = currentUser;
+        logger.info("WatchlistController.setup called for userId={}",
+                currentUser != null ? currentUser.getId() : "<null>");
         refreshWatchlistDisplay();
     }
 
@@ -80,6 +87,9 @@ public class WatchlistController implements Initializable {
     public void updateData(List<Item> items, Set<String> watchlistItemIds) {
         this.items            = items;
         this.watchlistItemIds = watchlistItemIds;
+        logger.debug("WatchlistController.updateData called. items={} watchlistSize={}",
+                items != null ? items.size() : 0,
+                watchlistItemIds != null ? watchlistItemIds.size() : 0);
         refreshWatchlistDisplay();
     }
 
@@ -124,11 +134,15 @@ public class WatchlistController implements Initializable {
     }
 
     private void refreshWatchlistDisplay() {
+        logger.trace("Refreshing watchlist display");
         watchlistFlowPane.getChildren().clear();
 
         String searchText   = watchlistSearchTextField.getText().toLowerCase();
         String statusFilter = watchlistFilterComboBox.getValue();
         String sortOption   = watchlistSortComboBox.getValue();
+
+        logger.debug("Applying filters: search='{}' status='{}' sort='{}'",
+                searchText, statusFilter, sortOption);
 
         List<Item> filtered = items.stream()
                 .filter(item -> watchlistItemIds.contains(item.getId()))
@@ -317,11 +331,15 @@ public class WatchlistController implements Initializable {
             button.setText("☆");
             button.setStyle("-fx-background-color: transparent; -fx-text-fill: #cbd5e1; " +
                     "-fx-padding: 8 12; -fx-cursor: hand;");
+            logger.info("Removed item {} from watchlist (user={})",
+                    item.getId(), currentUser != null ? currentUser.getId() : "<null>");
         } else {
             watchlistItemIds.add(item.getId());
             button.setText("⭐");
             button.setStyle("-fx-background-color: transparent; -fx-text-fill: #f59e0b; " +
                     "-fx-padding: 8 12; -fx-cursor: hand;");
+            logger.info("Added item {} to watchlist (user={})",
+                    item.getId(), currentUser != null ? currentUser.getId() : "<null>");
         }
     }
 
@@ -330,6 +348,7 @@ public class WatchlistController implements Initializable {
     // ============================================================
 
     private void openBidDialog(Item item) {
+        logger.debug("Opening bid dialog for itemId={} name={}", item.getId(), item.getItemName());
         Dialog<Double> dialog = new Dialog<>();
         dialog.setTitle("Đặt Giá - " + item.getItemName());
         dialog.setHeaderText("Nhập mức giá mà bạn muốn đặt");
@@ -358,18 +377,35 @@ public class WatchlistController implements Initializable {
         Task<Void> task = new Task<Void>() {
             @Override
             protected Void call() throws Exception {
-                Object[] bidData = {itemId, bidAmount, currentUser.getId()};
-                Message request  = new Message("BID", bidData);
-                out.writeObject(request);
-                Message response = (Message) in.readObject();
+                try {
+                    logger.info("Submitting bid: itemId={} amount={} user={}",
+                            itemId, bidAmount, currentUser != null ? currentUser.getId() : "<null>");
+                    Object[] bidData = {itemId, bidAmount, currentUser.getId()};
+                    Message request  = new Message("BID", bidData);
+                    out.writeObject(request);
+                    out.flush();
+                    Message response = (Message) in.readObject();
 
-                Platform.runLater(() -> {
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                    alert.setTitle("Kết quả đặt giá");
-                    alert.setHeaderText("Phản hồi từ server");
-                    alert.setContentText((String) response.getPayload());
-                    alert.showAndWait();
-                });
+                    logger.debug("Received bid response for itemId={}: {}",
+                            itemId, response != null ? response.getPayload() : "<null>");
+
+                    Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("Kết quả đặt giá");
+                        alert.setHeaderText("Phản hồi từ server");
+                        alert.setContentText((String) (response != null ? response.getPayload() : "Không có phản hồi"));
+                        alert.showAndWait();
+                    });
+                } catch (Exception ex) {
+                    logger.error("Error while submitting bid for itemId={}", itemId, ex);
+                    Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.ERROR);
+                        alert.setTitle("Lỗi đặt giá");
+                        alert.setHeaderText("Không thể gửi yêu cầu đặt giá");
+                        alert.setContentText(ex.getMessage());
+                        alert.showAndWait();
+                    });
+                }
                 return null;
             }
         };

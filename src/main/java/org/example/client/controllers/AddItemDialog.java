@@ -9,6 +9,9 @@ import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 import org.example.common.Message;
 import org.example.common.model.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 import java.io.File;
 import java.io.IOException;
@@ -22,6 +25,8 @@ public class AddItemDialog extends Dialog<Boolean> {
     private ObjectOutputStream out;
     private byte[] selectedImageBytes; // Thêm trường để lưu trữ bytes của ảnh
     private Label imageFileNameLabel; // Label để hiển thị tên file ảnh
+    private static final Logger logger = LoggerFactory.getLogger(AddItemDialog.class);
+
 
     public AddItemDialog(User currentUser, ObjectOutputStream out) {
         this.currentUser = currentUser;
@@ -222,7 +227,7 @@ public class AddItemDialog extends Dialog<Boolean> {
         Optional<Boolean> result = dialog.showAndWait();
         result.ifPresent(success -> {
             if (success) {
-                System.out.println("Sản phẩm đã được đăng thành công");
+                logger.info("Đăng sản phẩm thành công");
             }
         });
     }
