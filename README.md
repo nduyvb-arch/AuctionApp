@@ -55,7 +55,6 @@ BTL/
 │   │   ├── java/org/example/
 │   │   │   ├── client/              # Ứng dụng client JavaFX
 │   │   │   ├── client/controllers/  # Controller cho các màn hình người dùng, admin
-│   │   │   ├── client/network/      # Kết nối client tới server
 │   │   │   ├── common/              # Message và model dùng chung
 │   │   │   ├── common/model/        # User, Item, AuctionStatus, ChatMessage
 │   │   │   ├── server/              # Logic server
@@ -219,7 +218,5 @@ mvn javafx:run
 * Đọc thông tin cấu hình database từ file `.env`.
 
 ## 9. Link báo cáo PDF và video demo
-```markdown
-- Báo cáo PDF: https://drive.google.com/...
-- Video demo: https://youtu.be/...
-```
+- Báo cáo PDF: https://drive.google.com/file/d/11F4MWAhHIs5eJsoDjNyyasNYV7P_aan6/view?usp=drive_link
+- Video demo: https://drive.google.com/file/d/12l-vic47i_rvq9WOXsTGIBugI5Oe_Tiu/view?usp=drive_link
