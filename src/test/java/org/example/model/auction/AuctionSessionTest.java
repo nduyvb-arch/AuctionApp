@@ -1,6 +1,5 @@
 package org.example.model.auction;
 
-import org.example.server.network.AuctionSession;
 import org.example.exception.AuctionClosedException;
 import org.example.exception.InvalidBidException;
 import org.junit.jupiter.api.*;

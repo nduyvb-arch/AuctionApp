@@ -1,6 +1,5 @@
 package org.example.client.controllers.auction;
 
-import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -32,10 +31,9 @@ import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
 /**
- * Controller điều khiển màn hình lịch sử đấu giá, tích hợp biểu đồ xu hướng giá realtime.
- * Triển khai BidObserver để nhận dữ liệu đồng bộ từ luồng mạng Socket.
+ * Controller điều khiển màn hình lịch sử đấu giá và biểu đồ xu hướng giá.
  */
-public class BidHistoryController implements Initializable, BidObserver {
+public class BidHistoryController implements Initializable {
 
     @FXML
     private TextField bidHistorySearchTextField;
@@ -161,17 +159,6 @@ public class BidHistoryController implements Initializable, BidObserver {
     }
 
     /**
-     * THỰC HIỆN VIỆC 2: Ghi đè hàm từ Interface BidObserver.
-     * Hàm này đóng vai trò là "Trạm tiếp nhận thông tin" (Callback), nhận gói tin chứa lượt đặt giá
-     * mới từ tiến trình mạng chạy ngầm (Socket Thread) và đẩy vào logic xử lý đồ thị.
-     */
-    @Override
-    public void onNewBidReceived(BidHistoryRecord newRecord) {
-        // Chuyển tiếp luồng dữ liệu sang hàm xử lý giao diện đa luồng an toàn
-        this.handleIncomingNewBidRealtime(newRecord);
-    }
-
-    /**
      * Khởi tạo cấu hình đồ thị và đăng ký lắng nghe sự kiện TableView click
      */
     private void setupRealtimeChart() {
@@ -215,33 +202,6 @@ public class BidHistoryController implements Initializable, BidObserver {
             String timeLabel = record.getBidTime().format(timeFormatter);
             priceSeries.getData().add(new XYChart.Data<>(timeLabel, record.getBidAmount()));
         }
-    }
-
-    /**
-     * CHỨC NĂNG REALTIME (SOCKET CLIENT CALL):
-     * Hàm này sẽ được gọi từ luồng nhận gói tin mạng Socket (Background Thread)
-     * mỗi khi server báo có ai đó (hoặc chính bạn) vừa đặt thêm một mức giá mới.
-     */
-    public void handleIncomingNewBidRealtime(BidHistoryRecord newRecord) {
-        // Đầu tiên, bổ sung bản ghi mới nhận được vào danh sách tổng của bộ nhớ Client
-        Platform.runLater(() -> {
-            bidHistory.add(newRecord);
-            refreshBidHistoryDisplay(); // Cập nhật lại TableView để người dùng thấy dòng mới nhất
-
-            // KIỂM TRA ĐIỀU KIỆN REALTIME: Nếu bản ghi mới thuộc sản phẩm mà người dùng ĐANG CHỌN xem biểu đồ
-            if (selectedItemId != null && selectedItemId.equals(newRecord.getItemId())) {
-                String timeLabel = newRecord.getBidTime().format(timeFormatter);
-
-                // Thêm một node điểm mới vào cuối biểu đồ ngay lập tức
-                priceSeries.getData().add(new XYChart.Data<>(timeLabel, newRecord.getBidAmount()));
-
-                // Cuộn biểu đồ: Nếu sản phẩm bị đấu giá quá nhiều (ví dụ > 12 bước giá),
-                // xóa điểm cũ nhất ở đầu đồ thị đi để tránh việc các cột thời gian bị đè chữ lên nhau
-                if (priceSeries.getData().size() > 12) {
-                    priceSeries.getData().remove(0);
-                }
-            }
-        });
     }
 
     private void setupBidHistoryViewFilters() {

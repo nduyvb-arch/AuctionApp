@@ -7,7 +7,6 @@ import javafx.scene.control.Label;
 public class HomeSidebarController {
 
     @FXML private Label currentRoleLabel;
-    @FXML private Button roleSwitcherButton;
     @FXML private Button bidHistoryMenuItem;
     @FXML private Button addItemMenuItem;
     @FXML private Button myItemsMenuItem;
@@ -54,9 +53,6 @@ public class HomeSidebarController {
 
         if (currentRoleLabel != null) {
             currentRoleLabel.setText(isSeller ? "Người bán" : "Người đấu giá");
-        }
-        if (roleSwitcherButton != null) {
-            roleSwitcherButton.setText(isSeller ? "Chuyển sang Người đấu giá" : "Chuyển sang Người bán");
         }
     }
 

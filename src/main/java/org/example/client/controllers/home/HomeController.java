@@ -58,10 +58,19 @@ public class HomeController implements Initializable {
 
     private final List<Item> items = new ArrayList<>();
     private final List<BidHistoryController.BidHistoryRecord> bidHistory = new ArrayList<>();
-    private final List<String> notifications = new ArrayList<>();
 
     private User currentUser;
     private boolean sellerMode;
+
+    private enum ActiveView {
+        NONE, HOME, AUCTION_ROOM, BID_HISTORY, ADD_ITEM, MY_ITEMS, SALES_HISTORY, ACCOUNT
+    }
+
+    private ActiveView activeView = ActiveView.NONE;
+    private boolean itemsLoadedOnce;
+    private boolean itemsRequestInProgress;
+    private boolean bidHistoryLoadedOnce;
+    private boolean bidHistoryRequestInProgress;
 
 
     @Override
@@ -72,16 +81,14 @@ public class HomeController implements Initializable {
         hideAllViews();
         setupChildControllers();
         updateUIBasedOnRole();
+        listenForServerUpdates();
 
-        if (ClientApp.shouldOpenAccountOnHomeLoad()) {
-            switchToAccountView();
-        } else if (sellerMode) {
+        if (sellerMode) {
             switchToAddItemView();
         } else {
             switchToHomeView();
         }
 
-        listenForServerUpdates();
         loadInitialItems();
     }
 
@@ -99,7 +106,7 @@ public class HomeController implements Initializable {
         }
 
         if (homeViewPaneController != null) {
-            homeViewPaneController.setup(items, this::loadInitialItems, this::openAuctionRoom);
+            homeViewPaneController.setup(items, this::reloadItemsFromServer, this::openAuctionRoom);
         }
 
         if (auctionRoomViewPaneController != null) {
@@ -119,15 +126,15 @@ public class HomeController implements Initializable {
         }
 
         if (addItemViewPaneController != null) {
-            addItemViewPaneController.setup(currentUser, this::loadInitialItems);
+            addItemViewPaneController.setup(currentUser, this::reloadItemsFromServer);
         }
 
         if (myItemsViewPaneController != null) {
-            myItemsViewPaneController.setup(items, currentUser, this::loadInitialItems);
+            myItemsViewPaneController.setup(items, currentUser, this::reloadItemsFromServer);
         }
 
         if (salesHistoryViewPaneController != null) {
-            salesHistoryViewPaneController.setup(items, currentUser, this::loadInitialItems);
+            salesHistoryViewPaneController.setup(items, currentUser, this::reloadItemsFromServer);
         }
 
         if (accountViewPaneController != null) {
@@ -136,81 +143,60 @@ public class HomeController implements Initializable {
     }
 
     private void switchToHomeView() {
-        clearAuctionRoomState();
-        showView(homeViewPane);
+        boolean changed = showView(homeViewPane, ActiveView.HOME);
         setPageTitle("Trang chủ sàn đấu giá");
-        loadInitialItems();
+
+        if (!itemsLoadedOnce) {
+            loadInitialItems();
+        } else if (changed && homeViewPaneController != null) {
+            homeViewPaneController.refreshHomeView();
+        }
     }
 
     private void switchToBidHistoryView() {
-        clearAuctionRoomState();
-        showView(bidHistoryViewPane);
+        boolean changed = showView(bidHistoryViewPane, ActiveView.BID_HISTORY);
         setPageTitle("Lịch sử đấu giá");
-        requestMyBidHistory();
+        requestMyBidHistoryIfNeeded();
 
-        if (bidHistoryViewPaneController != null) {
+        if (changed && bidHistoryViewPaneController != null) {
             bidHistoryViewPaneController.refreshBidHistoryView();
         }
     }
 
     private void switchToAddItemView() {
-        clearAuctionRoomState();
-        showView(addItemViewPane);
+        showView(addItemViewPane, ActiveView.ADD_ITEM);
         setPageTitle(" Đăng sản phẩm mới");
     }
 
     private void switchToMyItemsView() {
-        clearAuctionRoomState();
-        showView(myItemsViewPane);
+        boolean changed = showView(myItemsViewPane, ActiveView.MY_ITEMS);
         setPageTitle("Sản phẩm của tôi");
 
-        if (myItemsViewPaneController != null) {
+        if (!itemsLoadedOnce) {
+            loadInitialItems();
+        } else if (changed && myItemsViewPaneController != null) {
             myItemsViewPaneController.updateData(items);
         }
     }
 
     private void switchToSalesHistoryView() {
-        clearAuctionRoomState();
-        showView(salesHistoryViewPane);
+        boolean changed = showView(salesHistoryViewPane, ActiveView.SALES_HISTORY);
         setPageTitle("Lịch sử bán hàng");
 
-        if (salesHistoryViewPaneController != null) {
+        if (!itemsLoadedOnce) {
+            loadInitialItems();
+        } else if (changed && salesHistoryViewPaneController != null) {
             salesHistoryViewPaneController.updateData(items);
         }
     }
 
     private void switchToAccountView() {
-        clearAuctionRoomState();
-        showView(accountViewPane);
+        boolean changed = showView(accountViewPane, ActiveView.ACCOUNT);
         setPageTitle("Tài khoản");
 
-        if (accountViewPaneController != null) {
+        if (changed && accountViewPaneController != null) {
             accountViewPaneController.updateUser(currentUser);
         }
-    }
-
-    @SuppressWarnings("unused")
-    private void switchToNotificationsView() {
-        setPageTitle("Thông báo");
-
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Thông báo");
-        alert.setHeaderText("Thông báo của bạn");
-
-        if (notifications.isEmpty()) {
-            alert.setContentText("Chưa có thông báo nào.");
-        } else {
-            StringBuilder builder = new StringBuilder();
-
-            for (int i = notifications.size() - 1; i >= 0; i--) {
-                builder.append("• ").append(notifications.get(i)).append("\n\n");
-            }
-
-            alert.setContentText(builder.toString());
-        }
-
-        alert.getDialogPane().setPrefWidth(600);
-        alert.showAndWait();
     }
 
     private void switchToRoleSelectionView() {
@@ -227,14 +213,25 @@ public class HomeController implements Initializable {
             return;
         }
 
+        showView(auctionRoomViewPane, ActiveView.AUCTION_ROOM);
         auctionRoomViewPaneController.openAuctionRoom(item);
-        showView(auctionRoomViewPane);
         setPageTitle("Phòng đấu giá - " + item.getItemName());
     }
 
-    private void showView(VBox view) {
+    private boolean showView(VBox view, ActiveView targetView) {
+        if (view == null) {
+            return false;
+        }
+
+        if (activeView == targetView && view.isVisible()) {
+            return false;
+        }
+
+        clearAuctionRoomStateIfLeaving(targetView);
         hideAllViews();
         setViewState(view, true);
+        activeView = targetView;
+        return true;
     }
 
     private void hideAllViews() {
@@ -271,6 +268,23 @@ public class HomeController implements Initializable {
     }
 
     private void loadInitialItems() {
+        requestItemsFromServer(false);
+    }
+
+    private void reloadItemsFromServer() {
+        requestItemsFromServer(true);
+    }
+
+    private void requestItemsFromServer(boolean forceReload) {
+        if (itemsRequestInProgress) {
+            return;
+        }
+
+        if (!forceReload && itemsLoadedOnce) {
+            return;
+        }
+
+        itemsRequestInProgress = true;
         ClientApp.sendMessage(new Message("GET_ALL_ITEMS", null));
     }
 
@@ -295,28 +309,6 @@ public class HomeController implements Initializable {
         }
     }
 
-    @FXML
-    public void onRoleSwitcherClicked() {
-        sellerMode = !sellerMode;
-
-        String newRole = sellerMode ? "seller" : "bidder";
-        ClientApp.setSelectedRole(newRole);
-        if (currentUser != null) {
-            currentUser.setRole(newRole);
-            ClientApp.setCurrentUser(currentUser);
-        }
-
-        updateUIBasedOnRole();
-
-        if (sellerMode) {
-            switchToAddItemView();
-        } else {
-            switchToHomeView();
-        }
-
-        ClientApp.sendMessage(new Message("SWITCH_ROLE", newRole));
-    }
-
     private void listenForServerUpdates() {
         ClientApp.setServerMessageHandler(this::handleServerMessage);
     }
@@ -326,8 +318,9 @@ public class HomeController implements Initializable {
         Platform.runLater(() -> {
             switch (message.getAction()) {
                 case "GET_ALL_ITEMS_RESPONSE":
+                    itemsRequestInProgress = false;
+                    itemsLoadedOnce = true;
                     updateItemsFromServer((List<Item>) message.getPayload());
-                    requestMyBidHistory();
                     break;
 
                 case "BID_RESPONSE":
@@ -366,13 +359,11 @@ public class HomeController implements Initializable {
                     break;
 
                 case "BID_HISTORY_REFRESH_REQUIRED":
-                    requestMyBidHistory();
+                    requestMyBidHistory(true);
                     break;
 
                 case "AUCTION_RESULT_NOTIFICATION":
                     String notification = String.valueOf(message.getPayload());
-                    notifications.add(notification);
-
                     Alert resultAlert = new Alert(Alert.AlertType.INFORMATION);
                     resultAlert.setTitle("Thông báo đấu giá");
                     resultAlert.setHeaderText("Kết quả đấu giá");
@@ -406,7 +397,7 @@ public class HomeController implements Initializable {
                 case "START_AUCTION_RESPONSE":
                 case "SWITCH_ROLE_RESPONSE":
                     logger.log(Level.INFO, "Server response: {0}", message.getPayload());
-                    loadInitialItems();
+                    reloadItemsFromServer();
                     break;
 
                 case "SYSTEM_NOTIFICATION":
@@ -442,14 +433,26 @@ public class HomeController implements Initializable {
         ClientApp.sendMessage(new Message("SEND_AUCTION_CHAT", new Object[]{itemId, text, ClientApp.getSelectedRole()}));
     }
 
-    private void requestMyBidHistory() {
-        if (currentUser == null) {
+    private void requestMyBidHistoryIfNeeded() {
+        requestMyBidHistory(false);
+    }
+
+    private void requestMyBidHistory(boolean forceReload) {
+        if (currentUser == null || bidHistoryRequestInProgress) {
             return;
         }
+
+        if (!forceReload && bidHistoryLoadedOnce) {
+            return;
+        }
+
+        bidHistoryRequestInProgress = true;
         ClientApp.sendMessage(new Message("GET_MY_BID_HISTORY", currentUser.getId()));
     }
 
     private void updateBidHistoryFromPayload(Object payload) {
+        bidHistoryRequestInProgress = false;
+        bidHistoryLoadedOnce = true;
         bidHistory.clear();
 
         if (payload instanceof List<?>) {
@@ -570,9 +573,6 @@ public class HomeController implements Initializable {
             items.addAll(fetchedItems);
         }
 
-        if (homeViewPaneController != null) {
-            homeViewPaneController.updateData(items);
-        }
         if (auctionRoomViewPaneController != null) {
             auctionRoomViewPaneController.updateItemsReference(items);
         }
@@ -596,6 +596,12 @@ public class HomeController implements Initializable {
         if (auctionRoomViewPaneController != null && auctionRoomViewPaneController.isActive()
                 && auctionRoomViewPaneController.getActiveItem() != null) {
             auctionRoomViewPaneController.refreshAuctionRoom();
+        }
+    }
+
+    private void clearAuctionRoomStateIfLeaving(ActiveView targetView) {
+        if (activeView == ActiveView.AUCTION_ROOM && targetView != ActiveView.AUCTION_ROOM) {
+            clearAuctionRoomState();
         }
     }
 
