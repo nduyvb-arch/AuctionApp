@@ -1,4 +1,4 @@
-package org.example.client.controllers;
+package org.example.client.controllers.seller;
 
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -185,10 +185,11 @@ public class MyItemsController implements Initializable {
     }
 
     private Node createItemCard(Item item) {
-        VBox card = new VBox(12);
-        card.setPrefSize(285, 335);
-        card.setMinSize(285, 335);
-        card.setMaxSize(285, 335);
+        VBox card = new VBox(8);
+        card.setPrefSize(285, 390);
+        card.setMinSize(285, 390);
+        card.setMaxSize(285, 390);
+        card.setFillWidth(true);
         card.setAlignment(Pos.TOP_LEFT);
         card.setPadding(new Insets(16));
         card.setStyle(getMyItemCardStyle());
@@ -197,18 +198,22 @@ public class MyItemsController implements Initializable {
 
         Label nameLabel = new Label(item.getItemName());
         nameLabel.setWrapText(true);
-        nameLabel.setMaxWidth(165);
+        nameLabel.setMaxWidth(150);
+        nameLabel.setMinHeight(42);
         nameLabel.setStyle(
                 "-fx-text-fill: #0f172a;" +
-                        "-fx-font-size: 16;" +
+                        "-fx-font-size: 15;" +
                         "-fx-font-weight: bold;"
         );
 
         Label statusBadge = createStatusBadge(displayStatus);
+        statusBadge.setMinWidth(Region.USE_PREF_SIZE);
 
-        HBox headerRow = new HBox(10, nameLabel, statusBadge);
+        Region headerSpacer = new Region();
+        HBox.setHgrow(headerSpacer, Priority.ALWAYS);
+        HBox headerRow = new HBox(10, nameLabel, headerSpacer, statusBadge);
         headerRow.setAlignment(Pos.TOP_LEFT);
-        HBox.setHgrow(nameLabel, Priority.ALWAYS);
+        headerRow.setMinHeight(42);
 
         Label typeLabel = new Label("Loại: " + safeText(item.getType()));
         typeLabel.setStyle(
@@ -224,13 +229,12 @@ public class MyItemsController implements Initializable {
         timeLabel.setMaxWidth(Double.MAX_VALUE);
         timeLabel.setStyle(getTimeLabelStyle(displayStatus));
 
-        Label descLabel = new Label(item.getDescription() != null && !item.getDescription().isBlank()
-                ? item.getDescription()
-                : "Không có mô tả");
+        Label descLabel = new Label(getShortDescription(item));
         descLabel.setWrapText(true);
         descLabel.setMaxWidth(Double.MAX_VALUE);
-        descLabel.setMinHeight(56);
-        descLabel.setPrefHeight(56);
+        descLabel.setMinHeight(48);
+        descLabel.setPrefHeight(48);
+        descLabel.setMaxHeight(48);
         descLabel.setStyle(
                 "-fx-text-fill: #64748b;" +
                         "-fx-font-size: 12;" +
@@ -253,7 +257,10 @@ public class MyItemsController implements Initializable {
                 false
         );
 
+        priceBox.setPrefWidth(121);
+        bidCountBox.setPrefWidth(121);
         HBox statsRow = new HBox(10, priceBox, bidCountBox);
+        statsRow.setFillHeight(true);
         HBox.setHgrow(priceBox, Priority.ALWAYS);
         HBox.setHgrow(bidCountBox, Priority.ALWAYS);
 
@@ -270,7 +277,7 @@ public class MyItemsController implements Initializable {
 
         Button startButton = new Button("▶ Bắt đầu đấu giá");
         startButton.setMaxWidth(Double.MAX_VALUE);
-        startButton.setPrefHeight(40);
+        startButton.setPrefHeight(38);
         startButton.setDisable(!"PENDING".equals(displayStatus));
         startButton.setOpacity(1.0);
         startButton.setStyle(getStartButtonStyle("PENDING".equals(displayStatus)));
@@ -375,6 +382,8 @@ public class MyItemsController implements Initializable {
 
         VBox box = new VBox(4, titleLabel, valueLabel);
         box.setPadding(new Insets(10));
+        box.setMinHeight(68);
+        box.setPrefHeight(68);
         box.setMaxWidth(Double.MAX_VALUE);
         box.setStyle(
                 "-fx-background-color: #f8fafc;" +
@@ -400,6 +409,18 @@ public class MyItemsController implements Initializable {
         return item.getCurrentWinnerId() == null
                 ? "Chưa có người đặt giá"
                 : "Người thắng hiện tại: #" + item.getCurrentWinnerId();
+    }
+
+    private String getShortDescription(Item item) {
+        String description = item.getDescription();
+        if (description == null || description.isBlank()) {
+            return "Không có mô tả";
+        }
+        description = description.trim();
+        if (description.length() <= 90) {
+            return description;
+        }
+        return description.substring(0, 87) + "...";
     }
 
     private int getEstimatedBidCount(Item item) {

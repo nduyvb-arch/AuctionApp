@@ -13,7 +13,7 @@
 
 <VBox xmlns="http://javafx.com/javafx/25"
       xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="org.example.client.controllers.MyItemsController"
+      fx:controller="org.example.client.controllers.seller.MyItemsController"
       spacing="12"
       style="-fx-padding: 20; -fx-background-color: #f8fafc;"
       VBox.vgrow="ALWAYS">
@@ -41,11 +41,17 @@
             </children>
         </FlowPane>
 
-        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-background: #f8fafc; -fx-padding: 0;">
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS"
+                    style="-fx-background-color: transparent; -fx-background: #f8fafc; -fx-padding: 0;">
             <content>
-                <FlowPane fx:id="myItemsFlowPane" hgap="20" vgap="20" style="-fx-background-color: #f8fafc;">
+                <FlowPane fx:id="myItemsFlowPane"
+                          alignment="TOP_LEFT"
+                          hgap="18"
+                          vgap="18"
+                          prefWrapLength="880"
+                          style="-fx-background-color: #f8fafc;">
                     <padding>
-                        <Insets top="6" right="0" bottom="20" left="0" />
+                        <Insets top="8" right="0" bottom="24" left="0" />
                     </padding>
                 </FlowPane>
             </content>

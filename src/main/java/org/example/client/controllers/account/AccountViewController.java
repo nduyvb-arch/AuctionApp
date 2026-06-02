@@ -1,4 +1,4 @@
-package org.example.client.controllers;
+package org.example.client.controllers.account;
 
 import org.example.client.ClientApp;
 import javafx.fxml.FXML;

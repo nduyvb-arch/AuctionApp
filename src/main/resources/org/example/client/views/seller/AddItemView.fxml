@@ -20,7 +20,7 @@
       style="-fx-background-color: #f8fafc;"
       xmlns="http://javafx.com/javafx/25"
       xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="org.example.client.controllers.AddItemViewController">
+      fx:controller="org.example.client.controllers.seller.AddItemViewController">
 
     <children>
         <ScrollPane fitToWidth="true"

@@ -1,4 +1,4 @@
-package org.example.client.controllers;
+package org.example.client.controllers.auction;
 
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
