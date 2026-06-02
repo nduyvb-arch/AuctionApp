@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
+
+<AnchorPane prefHeight="800.0" prefWidth="1200.0" style="-fx-background-color: #f8fafc;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.home.HomeController">
+   <children>
+      <fx:include fx:id="sidebarPane" source="HomeSidebarView.fxml" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="0.0" />
+
+      <VBox AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="280.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <children>
+            <fx:include fx:id="topBarPane" source="HomeTopBarView.fxml" />
+
+            <VBox fx:id="contentContainer" style="-fx-background-color: #f8fafc;" VBox.vgrow="ALWAYS">
+               <children>
+                  <fx:include fx:id="homeViewPane" source="HomeListView.fxml" VBox.vgrow="ALWAYS" />
+                  <fx:include fx:id="auctionRoomViewPane" source="../auction/AuctionRoomView.fxml" VBox.vgrow="ALWAYS" />
+
+                  <fx:include fx:id="bidHistoryViewPane" source="../auction/BidHistoryView.fxml" VBox.vgrow="ALWAYS" />
+                  <fx:include fx:id="addItemViewPane" source="../seller/AddItemView.fxml" VBox.vgrow="ALWAYS" />
+                  <fx:include fx:id="myItemsViewPane" source="../seller/MyItemsView.fxml" VBox.vgrow="ALWAYS" />
+                  <fx:include fx:id="salesHistoryViewPane" source="../seller/SalesHistoryView.fxml" VBox.vgrow="ALWAYS" />
+                  <fx:include fx:id="accountViewPane" source="../account/AccountView.fxml" VBox.vgrow="ALWAYS" />
+               </children>
+            </VBox>
+         </children>
+      </VBox>
+   </children>
+</AnchorPane>

@@ -1,4 +1,4 @@
-package org.example.client.controllers;
+package org.example.client.controllers.watchlist;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;

@@ -2,7 +2,7 @@ package org.example.client.network;
 
 import javafx.application.Platform;
 import org.example.common.Message;
-import org.example.client.controllers.BidObserver;
+import org.example.client.controllers.auction.BidObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,13 +107,13 @@ public class NetworkClient {
 
                 // --- XỬ LÝ ĐẨY DỮ LIỆU SANG BIỂU ĐỒ REALTIME ---
                 // Khớp chính xác phương thức getAction() và getPayload() của nhóm bạn
-                if ("BID_UPDATE".equals(finalMsg.getAction()) || finalMsg.getPayload() instanceof org.example.client.controllers.BidHistoryController.BidHistoryRecord) {
+                if ("BID_UPDATE".equals(finalMsg.getAction()) || finalMsg.getPayload() instanceof org.example.client.controllers.auction.BidHistoryController.BidHistoryRecord) {
 
                     Object dataPayload = finalMsg.getPayload();
 
-                    if (dataPayload instanceof org.example.client.controllers.BidHistoryController.BidHistoryRecord) {
-                        org.example.client.controllers.BidHistoryController.BidHistoryRecord record =
-                                (org.example.client.controllers.BidHistoryController.BidHistoryRecord) dataPayload;
+                    if (dataPayload instanceof org.example.client.controllers.auction.BidHistoryController.BidHistoryRecord) {
+                        org.example.client.controllers.auction.BidHistoryController.BidHistoryRecord record =
+                                (org.example.client.controllers.auction.BidHistoryController.BidHistoryRecord) dataPayload;
 
                         // Bắn thông tin về đồ thị qua interface
                         if (bidObserver != null) {

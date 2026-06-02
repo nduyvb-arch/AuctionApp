@@ -1,4 +1,4 @@
-package org.example.client.controllers;
+package org.example.client.controllers.seller;
 
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;

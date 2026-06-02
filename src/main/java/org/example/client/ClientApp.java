@@ -141,7 +141,7 @@ public class ClientApp extends Application {
 
     public static void switchToLogin() throws Exception {
         closeConnection(); // Đảm bảo đóng kết nối cũ trước khi về màn hình login
-        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/LoginMenu.fxml"));
+        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/auth/LoginMenu.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
         applyScene(scene, "Hệ thống đấu giá - Đăng nhập", 1000, 700, 1200, 800);
@@ -152,14 +152,14 @@ public class ClientApp extends Application {
             switchToAdmin();
             return;
         }
-        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/RoleSelection.fxml"));
+        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/auth/RoleSelection.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
         applyScene(scene, "Hệ thống đấu giá - Chọn vai trò", 1000, 700, 1200, 800);
     }
 
     public static void switchToHome() throws Exception {
-        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/HomeMenu.fxml"));
+        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/home/HomeMenu.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
         applyScene(scene, "Hệ thống đấu giá - Trang chủ", 1000, 700, 1200, 800);
@@ -171,10 +171,10 @@ public class ClientApp extends Application {
      * nên sẽ không còn dính sidebar/top bar của giao diện người bán.
      */
     public static void switchToAccount() throws Exception {
-        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/AccountView.fxml"));
+        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/account/AccountView.fxml"));
         Parent root = loader.load();
 
-        org.example.client.controllers.AccountViewController controller = loader.getController();
+        org.example.client.controllers.account.AccountViewController controller = loader.getController();
         if (controller != null) {
             controller.setupStandalone(currentUser);
         }
@@ -191,7 +191,7 @@ public class ClientApp extends Application {
     }
 
     public static void switchToSignUp() throws Exception {
-        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/SignUpMenu.fxml"));
+        FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("/org/example/client/views/auth/SignUpMenu.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
         applyScene(scene, "Hệ thống đấu giá - Đăng ký", 1000, 700, 1200, 800);

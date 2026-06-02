@@ -14,7 +14,7 @@
             style="-fx-background-color: linear-gradient(to bottom right, #eff6ff, #f8fafc);"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="org.example.client.controllers.RoleSelectionController">
+            fx:controller="org.example.client.controllers.auth.RoleSelectionController">
     <children>
         <!-- TITLE BAR -->
         <HBox alignment="CENTER_LEFT" prefHeight="72.0" spacing="16.0"

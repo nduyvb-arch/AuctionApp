@@ -1,4 +1,4 @@
-package org.example.client.controllers;
+package org.example.client.controllers.seller;
 
 import java.net.URL;
 import java.text.NumberFormat;

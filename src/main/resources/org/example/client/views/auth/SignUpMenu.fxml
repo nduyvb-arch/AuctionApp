@@ -13,13 +13,13 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="700.0" prefWidth="1000.0" style="-fx-background-color: linear-gradient(to bottom right, #667eea 0%, #764ba2 100%);" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.SignUpController">
+<AnchorPane prefHeight="700.0" prefWidth="1000.0" style="-fx-background-color: linear-gradient(to bottom right, #667eea 0%, #764ba2 100%);" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.auth.SignUpController">
    <children>
       <AnchorPane prefHeight="200.0" prefWidth="200.0" mouseTransparent="true">
          <children>
             <ImageView fitHeight="870.0" fitWidth="888.0" layoutX="-213.0" layoutY="-129.0" opacity="0.1" pickOnBounds="true" preserveRatio="true">
                <image>
-                  <Image url="@../../../../images/icon.png" />
+                  <Image url="@../../../../../images/icon.png" />
                </image>
             </ImageView>
          </children>

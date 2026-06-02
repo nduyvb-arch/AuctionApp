@@ -12,7 +12,7 @@
 
 <VBox xmlns="http://javafx.com/javafx/25"
       xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="org.example.client.controllers.WatchlistController"
+      fx:controller="org.example.client.controllers.watchlist.WatchlistController"
       spacing="12"
       style="-fx-padding: 20; -fx-background-color: #f8fafc;"
       VBox.vgrow="ALWAYS">

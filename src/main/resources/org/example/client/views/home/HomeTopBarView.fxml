@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<HBox fx:id="topBarRoot" alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0" style="-fx-background-color: white; -fx-padding: 20; -fx-border-color: #e2e8f0; -fx-border-width: 0 0 1 0;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.client.controllers.home.HomeTopBarController">
+   <children>
+      <Label fx:id="pageTitle" text="Trang chủ sàn đấu giá" textFill="#0f172a">
+         <font><Font name="System Bold" size="22.0" /></font>
+      </Label>
+      <HBox HBox.hgrow="ALWAYS" />
+      <VBox alignment="CENTER_RIGHT" spacing="5.0">
+         <children>
+            <Label fx:id="userInfoLabel" text="..." textFill="#334155">
+               <font><Font name="System Bold" size="13.0" /></font>
+            </Label>
+            <Label fx:id="balanceLabel" text="Số dư: 0 VNĐ" textFill="#64748b">
+               <font><Font size="11.0" /></font>
+            </Label>
+         </children>
+      </VBox>
+   </children>
+</HBox>
