@@ -54,13 +54,12 @@ BTL/
 │   ├── main/
 │   │   ├── java/org/example/
 │   │   │   ├── client/              # Ứng dụng client JavaFX
-│   │   │   ├── client/controllers/  # Controller cho các màn hình người dùng
-│   │   │   ├── client/controllers/admin/ # Controller cho giao diện admin
+│   │   │   ├── client/controllers/  # Controller cho các màn hình người dùng, admin
 │   │   │   ├── client/network/      # Kết nối client tới server
 │   │   │   ├── common/              # Message và model dùng chung
 │   │   │   ├── common/model/        # User, Item, AuctionStatus, ChatMessage
 │   │   │   ├── server/              # Logic server
-│   │   │   ├── server/data/         # DatabaseManager, ItemDAO
+│   │   │   ├── server/data/         # DatabaseManager
 │   │   │   ├── server/manager/      # AuctionManager, UserManager, AntiSniper
 │   │   │   └── server/network/      # ServerMain, AuctionServer, ClientHandler
 │   │   └── resources/
@@ -73,7 +72,7 @@ BTL/
 ├── pom.xml                         # Cấu hình Maven
 ├── checkstyle.xml
 └── README.md
-
+```
 ## 6. Cấu hình file `.env`
 
 Trước khi chạy chương trình, cần tạo file `.env` ở thư mục gốc của project, cùng cấp với file `pom.xml`.
