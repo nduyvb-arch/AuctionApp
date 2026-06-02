@@ -32,18 +32,6 @@ public class ClientApp extends Application {
     private static Stage primaryStage;
     private static User currentUser;
 
-    private static boolean openAccountOnHomeLoad = false;
-
-    public static void setOpenAccountOnHomeLoad(boolean value) {
-        openAccountOnHomeLoad = value;
-    }
-
-    public static boolean shouldOpenAccountOnHomeLoad() {
-        boolean result = openAccountOnHomeLoad;
-        openAccountOnHomeLoad = false;
-        return result;
-    }
-
     private static Socket socket;
     private static ObjectOutputStream outputStream;
     private static ObjectInputStream inputStream;

@@ -38,7 +38,6 @@
          </children>
       </VBox>
 
-      <Button fx:id="roleSwitcherButton" managed="false" mnemonicParsing="false" prefWidth="0.0" style="-fx-background-color: transparent;" text="" visible="false" />
 
       <Separator style="-fx-padding: 15 0; -fx-border-color: #334155;" />
 
