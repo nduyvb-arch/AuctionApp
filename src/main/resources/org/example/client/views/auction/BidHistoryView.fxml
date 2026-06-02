@@ -18,7 +18,7 @@
       fx:controller="org.example.client.controllers.auction.BidHistoryController"
       spacing="12"
       style="-fx-padding: 20; -fx-background-color: #f8fafc;"
-      stylesheets="@../../../../styles/chart-style.css"
+      stylesheets="@../../../../../styles/chart-style.css"
       VBox.vgrow="ALWAYS">
 
     <children>
