@@ -1,57 +1,50 @@
 ```mermaid
 classDiagram
-namespace org_example_common_model {
-        class Message { #String sender }
+    %% Cụm Người dùng (User)
+    class User {
+        <<abstract>>
+        #String id
+        #String username
+        #String password
+        +getUsername() String
     }
-    namespace org_example_common_model_user {
-        class Entity { #String id }
-        class User { #String username }
-        class Admin { }
-        class Seller { }
-        class Bidder { }
+    class Admin {
+        +banUser(User user) void
     }
-    namespace org_example_common_model_item {
-        class Item { #String name }
-        class Vehicle { }
-        class Art { }
-        class Electronic { }
-        class ItemFactory { }
-        class AuctionStatus { <<enumeration>> }
+    class Seller {
+        +createItem() void
     }
-    namespace org_example_server_data {
-        class DatabaseManager { }
-        class ItemDAO { }
+    class Bidder {
+        +placeBid() void
     }
-    namespace org_example_server_manager {
-        class AuctionManager { }
-        class UserManager { }
-        class AntiSniper { }
-        class AutoBid { }
+
+    %% Cụm Sản phẩm (Item)
+    class Item {
+        <<abstract>>
+        #String name
+        #double startingPrice
     }
-    namespace org_example_server_network {
-        class Subject { <<interface>> }
-        class Observer { <<interface>> }
-        class AuctionServer { }
-        class ClientHandler { }
-        class AuctionSession { }
-        class AuctionNotifier { }
+    class Vehicle { -int yearOfManufacture }
+    class Art { -String artistName }
+    class Electronic { -int warrantyMonths }
+
+    %% Cụm Quản lý Đấu giá (AuctionManager)
+    class AuctionManager {
+        <<Singleton>>
+        -static AuctionManager instance
+        -List activeAuctions
+        +getInstance() AuctionManager
+        +createAuction() void
     }
-    namespace org_example_client_controllers {
-        class LoginController { }
-        class HomeController { }
-        class SignUpController { }
-        class BidObserver { <<interface>> }
-    }
-User --|> Entity
-    Item --|> Entity
+
+    %% Mối quan hệ kế thừa và liên kết
     Admin --|> User
     Seller --|> User
     Bidder --|> User
+    
     Vehicle --|> Item
     Art --|> Item
     Electronic --|> Item
-    AuctionNotifier ..|> Subject
-    ClientHandler ..|> Observer
-    ItemDAO o-- DatabaseManager
-    LoginController ..> NetworkClient
-    HomeController o-- NetworkClient
+
+    AuctionManager ..> Item : Manages
+    AuctionManager ..> User : Verifies
