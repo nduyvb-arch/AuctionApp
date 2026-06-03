@@ -1,5 +1,5 @@
 classDiagram
-    %% Gói common.model (Shared Data Structures)
+    %% Gói common.model
     namespace org_example_common_model {
         class Message {
             #String sender
@@ -38,9 +38,15 @@ classDiagram
             #String name
             #double startingPrice
         }
-        class Vehicle { -int yearOfManufacture }
-        class Art { -String artistName }
-        class Electronic { -int warrantyMonths }
+        class Vehicle {
+            -int yearOfManufacture
+        }
+        class Art {
+            -String artistName
+        }
+        class Electronic {
+            -int warrantyMonths
+        }
         class ItemFactory {
             <<Factory>>
             +createItem() Item
@@ -60,7 +66,7 @@ classDiagram
         }
     }
 
-    %% Gói server (Backend Logic)
+    %% Gói server
     namespace org_example_server_data {
         class DatabaseManager {
             -Connection connection
@@ -97,16 +103,28 @@ classDiagram
             <<interface>>
             +update() void
         }
-        class AuctionServer { -int port }
-        class ClientHandler { -Socket socket }
-        class AuctionSession { -String sessionId }
-        class AuctionNotifier { -List observers }
+        class AuctionServer {
+            -int port
+        }
+        class ClientHandler {
+            -Socket socket
+        }
+        class AuctionSession {
+            -String sessionId
+        }
+        class AuctionNotifier {
+            -List observers
+        }
     }
 
-    %% Gói client (Frontend UI & Network)
+    %% Gói client
     namespace org_example_client {
-        class ClientApp { +start() void }
-        class Launcher { +main() void }
+        class ClientApp {
+            +start() void
+        }
+        class Launcher {
+            +main() void
+        }
     }
     namespace org_example_client_network {
         class NetworkClient {
@@ -115,8 +133,12 @@ classDiagram
         }
     }
     namespace org_example_client_controllers {
-        class LoginController { +handleLogin() void }
-        class HomeController { +handleJoinAuction() void }
+        class LoginController {
+            +handleLogin() void
+        }
+        class HomeController {
+            +handleJoinAuction() void
+        }
         class SignUpController {}
         class AccountViewController {}
         class MyItemsController {}
@@ -127,10 +149,14 @@ classDiagram
         class AddItemViewController {}
         class BidDialog {}
         class BidHistoryController {}
-        class BidObserver { <<interface>> }
+        class BidObserver {
+            <<interface>>
+        }
     }
     namespace org_example_client_controllers_admin {
-        class AdminChildController { <<interface>> }
+        class AdminChildController {
+            <<interface>>
+        }
         class AdminDashboardController {}
         class AdminAuctionsController {}
         class AdminItemsController {}
@@ -154,6 +180,6 @@ classDiagram
     AdminDashboardController o-- AdminChildController
     ItemDAO o-- DatabaseManager
     
-    NetworkClient ..> ClientHandler : Socket Connection
+    NetworkClient ..> ClientHandler
     LoginController ..> NetworkClient
     HomeController o-- NetworkClient
