@@ -89,9 +89,9 @@ BTL/
 Nội dung file `.env`:
 
 ```env
-DB_URL=jdbc:mysql://localhost:3306/auction_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-DB_USER=root
-DB_PASSWORD=your_password
+DB_URL=jdbc:mysql://auction-db-auctionapp1.l.aivencloud.com:15255/defaultdb?useSSL=true&requireSSL=true
+DB_USER=username
+DB_PASSWORD=pasword
 ```
 
 Trong đó:
@@ -100,36 +100,106 @@ Trong đó:
 * `DB_USER`: tên tài khoản MySQL.
 * `DB_PASSWORD`: mật khẩu MySQL.
 
-## 7. Câu lệnh dòng lệnh để chạy chương trình
 
-Project sử dụng JavaFX 25.0.3 và cấu hình Java 25 trong `pom.xml`, vì vậy nên dùng JDK 25 hoặc mới hơn.
+## 7. Build và chạy chương trình bằng file JAR
 
-Biên dịch project:
+Dự án được tách thành 2 file JAR riêng:
 
-```bash
-mvn clean compile
+| File JAR             | Chức năng                      |
+| -------------------- | ------------------------------ |
+| `auction-server.jar` | Khởi động server               |
+| `auction-client.jar` | Mở ứng dụng JavaFX phía client |
+
+Server phải được chạy trước, sau đó mới chạy client.
+
+---
+### 7.1. Build project để tạo file JAR
+
+Mở terminal tại thư mục gốc của project, tức là thư mục chứa file `pom.xml`.
+
+| Windows PowerShell         | macOS / Linux Terminal  |
+| -------------------------- | ----------------------- |
+| `cd "D:\Java project\BTL"` | `cd ~/Java_project/BTL` |
+| `mvn clean package`        | `mvn clean package`     |
+
+Nếu muốn build nhanh và bỏ qua bước chạy test, dùng lệnh:
+
+| Windows PowerShell              | macOS / Linux Terminal          |
+| ------------------------------- | ------------------------------- |
+| `mvn -DskipTests clean package` | `mvn -DskipTests clean package` |
+
+Sau khi build thành công, Maven sẽ tạo ra 2 file JAR trong thư mục `target`:
+
+```text
+target/
+├── auction-server.jar
+└── auction-client.jar
 ```
 
-Chạy kiểm thử:
+Trong đó:
 
-```bash
-mvn test
+* `auction-server.jar`: dùng để khởi động server.
+* `auction-client.jar`: dùng để mở ứng dụng client JavaFX.
+
+---
+
+### 7.2. Chạy server
+
+Server cần được chạy trước client.
+
+Mở terminal thứ nhất tại thư mục gốc project:
+
+| Windows PowerShell                    | macOS / Linux Terminal                |
+| ------------------------------------- | ------------------------------------- |
+| `cd "D:\Java project\BTL"`            | `cd ~/Java_project/BTL`               |
+| `java -jar target\auction-server.jar` | `java -jar target/auction-server.jar` |
+
+Nếu server chạy thành công, terminal sẽ hiển thị thông báo server đang được khởi động và lắng nghe kết nối.
+
+Không tắt terminal server trong lúc sử dụng chương trình.
+
+---
+
+### 7.3. Chạy client
+
+Sau khi server đã chạy, mở terminal thứ hai để chạy client.
+
+| Windows PowerShell                    | macOS / Linux Terminal                |
+| ------------------------------------- | ------------------------------------- |
+| `cd "D:\Java project\BTL"`            | `cd ~/Java_project/BTL`               |
+| `java -jar target\auction-client.jar` | `java -jar target/auction-client.jar` |
+
+Nếu muốn mở nhiều client để kiểm tra chức năng realtime, có thể mở thêm terminal khác và chạy lại lệnh client
+
+---
+
+### 7.4. Chạy chương trình trong một thư mục riêng
+
+Sau khi build xong, có thể copy các file cần thiết sang một thư mục riêng để chạy mà không cần mở trực tiếp trong thư mục project.
+
+Cấu trúc thư mục chạy nên có dạng:
+
+```text
+AuctionAppRun/
+├── auction-server.jar
+├── auction-client.jar
+├── .env
+└── images/
 ```
 
-Chạy server:
+---
 
-<img src="images/img.png" width="600">
+### 7.5. Lưu ý khi chạy client và server trên hai máy khác nhau
 
-Chạy client:
+Nếu server và client chạy trên cùng một máy, có thể giữ địa chỉ server là:
 
-```bash
-mvn javafx:run
+```java
+private static final String SERVER_ADDRESS = "localhost";
 ```
 
-Lưu ý: tất cả các câu lệnh trên cần được chạy tại thư mục gốc của project, tức là thư mục chứa file `pom.xml`.
+Nếu server chạy trên máy A và client chạy trên máy B, thì `localhost` trên máy B sẽ trỏ về chính máy B, không phải máy A.
 
-
-Nếu client chạy trên máy khác với máy đang chạy server, cần sửa địa chỉ server trong file:
+Khi đó cần sửa địa chỉ server trong file:
 
 ```text
 src/main/java/org/example/client/ClientApp.java
@@ -141,17 +211,20 @@ Tìm dòng:
 private static final String SERVER_ADDRESS = "localhost";
 ```
 
-Thay `localhost` bằng địa chỉ IP của máy đang chạy server, ví dụ:
+Thay bằng địa chỉ IP của máy đang chạy server, ví dụ:
 
 ```java
 private static final String SERVER_ADDRESS = "192.168.1.10";
 ```
 
-Sau đó chạy lại client bằng:
+Sau khi sửa xong, build lại project:
 
-```bash
-mvn javafx:run
-```
+| Windows PowerShell  | macOS / Linux Terminal |
+| ------------------- | ---------------------- |
+| `mvn clean package` | `mvn clean package`    |
+
+Sau đó chạy lại server và client theo các bước ở trên.
+
 
 ## 8. Danh sách chức năng đã hoàn thành
 
@@ -219,4 +292,4 @@ mvn javafx:run
 
 ## 9. Link báo cáo PDF và video demo
 - Báo cáo PDF: https://drive.google.com/file/d/11F4MWAhHIs5eJsoDjNyyasNYV7P_aan6/view?usp=drive_link
-- Video demo: https://drive.google.com/file/d/12l-vic47i_rvq9WOXsTGIBugI5Oe_Tiu/view?usp=drive_link
+- Video demo: https://drive.google.com/file/d/10az9bNchZVN6i4GB0ZkeWdlZKlqhNnXL/view?usp=drive_link
