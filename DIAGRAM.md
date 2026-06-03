@@ -1,172 +1,48 @@
+```mermaid
 classDiagram
-    %% Gói common.model
-    namespace org_example_common_model {
-        class Message {
-            #String sender
-            #String content
-            #LocalDateTime timestamp
-        }
+namespace org_example_common_model {
+        class Message { #String sender }
     }
     namespace org_example_common_model_user {
-        class Entity {
-            <<abstract>>
-            #String id
-            +getId() String
-            +setId(String id) void
-        }
-        class User {
-            <<abstract>>
-            #String username
-            #String password
-            +getUsername() String
-            +getPassword() String
-            +displayRole()* void
-        }
-        class Admin {
-            +banUser(User user) void
-        }
-        class Seller {
-            +createItem() void
-        }
-        class Bidder {
-            +placeBid() void
-        }
+        class Entity { #String id }
+        class User { #String username }
+        class Admin { }
+        class Seller { }
+        class Bidder { }
     }
     namespace org_example_common_model_item {
-        class Item {
-            <<abstract>>
-            #String name
-            #double startingPrice
-        }
-        class Vehicle {
-            -int yearOfManufacture
-        }
-        class Art {
-            -String artistName
-        }
-        class Electronic {
-            -int warrantyMonths
-        }
-        class ItemFactory {
-            <<Factory>>
-            +createItem() Item
-        }
-        class AuctionStatus {
-            <<enumeration>>
-            OPEN
-            RUNNING
-            FINISHED
-            PAID
-            CANCELED
-        }
+        class Item { #String name }
+        class Vehicle { }
+        class Art { }
+        class Electronic { }
+        class ItemFactory { }
+        class AuctionStatus { <<enumeration>> }
     }
-    namespace org_example_common_model_chat {
-        class AuctionChatMessage {
-            -String auctionId
-        }
-    }
-
-    %% Gói server
     namespace org_example_server_data {
-        class DatabaseManager {
-            -Connection connection
-            +connect() void
-        }
-        class ItemDAO {
-            -DatabaseManager db
-            +save(Item item) void
-        }
+        class DatabaseManager { }
+        class ItemDAO { }
     }
     namespace org_example_server_manager {
-        class AuctionManager {
-            <<Singleton>>
-            -static AuctionManager instance
-            +getInstance() AuctionManager
-        }
-        class UserManager {
-            <<Singleton>>
-            -Map users
-        }
-        class AntiSniper {
-            +checkAndExtend() void
-        }
-        class AutoBid {
-            +executeAutoBid() void
-        }
+        class AuctionManager { }
+        class UserManager { }
+        class AntiSniper { }
+        class AutoBid { }
     }
     namespace org_example_server_network {
-        class Subject {
-            <<interface>>
-            +registerObserver() void
-        }
-        class Observer {
-            <<interface>>
-            +update() void
-        }
-        class AuctionServer {
-            -int port
-        }
-        class ClientHandler {
-            -Socket socket
-        }
-        class AuctionSession {
-            -String sessionId
-        }
-        class AuctionNotifier {
-            -List observers
-        }
-    }
-
-    %% Gói client
-    namespace org_example_client {
-        class ClientApp {
-            +start() void
-        }
-        class Launcher {
-            +main() void
-        }
-    }
-    namespace org_example_client_network {
-        class NetworkClient {
-            <<Singleton>>
-            -Socket socket
-        }
+        class Subject { <<interface>> }
+        class Observer { <<interface>> }
+        class AuctionServer { }
+        class ClientHandler { }
+        class AuctionSession { }
+        class AuctionNotifier { }
     }
     namespace org_example_client_controllers {
-        class LoginController {
-            +handleLogin() void
-        }
-        class HomeController {
-            +handleJoinAuction() void
-        }
-        class SignUpController {}
-        class AccountViewController {}
-        class MyItemsController {}
-        class WatchlistController {}
-        class SalesHistoryController {}
-        class RoleSelectionController {}
-        class AddItemDialog {}
-        class AddItemViewController {}
-        class BidDialog {}
-        class BidHistoryController {}
-        class BidObserver {
-            <<interface>>
-        }
+        class LoginController { }
+        class HomeController { }
+        class SignUpController { }
+        class BidObserver { <<interface>> }
     }
-    namespace org_example_client_controllers_admin {
-        class AdminChildController {
-            <<interface>>
-        }
-        class AdminDashboardController {}
-        class AdminAuctionsController {}
-        class AdminItemsController {}
-        class AdminOverviewController {}
-        class AdminStatsController {}
-        class AdminUsersController {}
-    }
-
-    %% Mối quan hệ giữa các lớp
-    User --|> Entity
+User --|> Entity
     Item --|> Entity
     Admin --|> User
     Seller --|> User
@@ -174,12 +50,8 @@ classDiagram
     Vehicle --|> Item
     Art --|> Item
     Electronic --|> Item
-    AuctionChatMessage --|> Message
     AuctionNotifier ..|> Subject
     ClientHandler ..|> Observer
-    AdminDashboardController o-- AdminChildController
     ItemDAO o-- DatabaseManager
-    
-    NetworkClient ..> ClientHandler
     LoginController ..> NetworkClient
     HomeController o-- NetworkClient
