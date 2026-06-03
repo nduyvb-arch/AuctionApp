@@ -51,7 +51,7 @@ public class MyItemsController implements Initializable {
     private User currentUser;
     private Runnable onItemsChanged;
 
-    //  TỐI ƯU 1: Chỉ dùng DUY NHẤT 1 Timeline cho toàn bộ màn hình
+
     private Timeline masterTimeline;
 
     // TỐI ƯU 2: Danh sách chứa các hàm cập nhật UI của từng thẻ sản phẩm

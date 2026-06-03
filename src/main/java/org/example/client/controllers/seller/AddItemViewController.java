@@ -50,7 +50,6 @@ public class AddItemViewController implements Initializable {
         selectedImageLabel.setText("Chưa chọn ảnh");
     }
 
-    // 🔥 XÓA THAM SỐ out
     public void setup(User currentUser, Runnable onItemCreated) {
         this.currentUser = currentUser;
         this.onItemCreated = onItemCreated;
@@ -124,7 +123,6 @@ public class AddItemViewController implements Initializable {
                     bidIncrement, currentUser.getId(), imageBytes
             };
 
-            // 🔥 DÙNG CHUNG ĐƯỜNG ỐNG
             ClientApp.sendMessage(new Message("ADD_ITEM", itemData));
 
             showMessage("Đã gửi yêu cầu đăng sản phẩm. Danh sách sẽ tự làm mới.", true);

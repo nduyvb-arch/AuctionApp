@@ -15,7 +15,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class AuctionServer {
-    // Khởi tạo máy ghi log
     private static final Logger logger = LoggerFactory.getLogger(AuctionServer.class);
 
     private int port;
@@ -27,7 +26,7 @@ public class AuctionServer {
     }
 
     public void startServer() {
-        // Đánh thức bộ não & Database
+        // load item từ Database lên ram
         AuctionManager.getInstance();
         logger.info("Dữ liệu Database được tải lên RAM thành công");
 

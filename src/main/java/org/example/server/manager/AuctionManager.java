@@ -71,11 +71,8 @@ public class AuctionManager {
                 try {
                     imagePath = rs.getString("image_path");
                 } catch (SQLException ignored) {
-                    // Database cũ chưa có cột image_path thì bỏ qua, app vẫn chạy bình thường.
                 }
-
                 Item item = createItemByType(type, name, description, startingPrice, bidIncrement);
-
                 item.setId(id);
                 item.setCurrentPrice(currentPrice);
                 item.setCurrentWinnerId(currentWinnerId);
@@ -89,7 +86,6 @@ public class AuctionManager {
 
                 auctionItems.add(item);
             }
-
             checkAndCloseExpiredAuctions();
 
             logger.info("Đã tải {} vật phẩm từ database", auctionItems.size());
@@ -415,8 +411,8 @@ public class AuctionManager {
 
                 if (item.getCurrentWinnerId() != null && !item.getCurrentWinnerId().isEmpty()) {
                     /*
-                     * Tiền của người thắng đã được giữ ngay khi đặt giá.
-                     * Khi phiên kết thúc chỉ cần chuyển số tiền đó cho người bán, không trừ người thắng lần nữa.
+                      Tiền của người thắng đã được giữ ngay khi đặt giá.
+                      Khi phiên kết thúc chỉ cần chuyển số tiền đó cho người bán, không trừ người thắng lần nữa.
                      */
                     UserManager.getInstance().addBalance(item.getSellerId(), item.getCurrentPrice());
                     msg = "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] đã có người thắng là user #"

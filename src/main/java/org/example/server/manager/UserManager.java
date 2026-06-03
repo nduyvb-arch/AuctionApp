@@ -54,7 +54,6 @@ public class UserManager {
                 try {
                     isBanned = rs.getInt("is_banned") == 1;
                 } catch (SQLException ignored) {
-                    // Bỏ qua nếu DB chưa có cột này
                 }
 
                 User user = createUserByRole(id, username, password, role, balance);
