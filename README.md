@@ -291,5 +291,5 @@ Sau đó chạy lại server và client theo các bước ở trên.
 * Đọc thông tin cấu hình database từ file `.env`.
 
 ## 9. Link báo cáo PDF và video demo
-- Báo cáo PDF: https://drive.google.com/file/d/11F4MWAhHIs5eJsoDjNyyasNYV7P_aan6/view?usp=drive_link
+- Báo cáo PDF: https://drive.google.com/file/d/1mlwteQHID4r7ccfJcXateZaSow6LZtVI/view?usp=drive_link
 - Video demo: https://drive.google.com/file/d/10az9bNchZVN6i4GB0ZkeWdlZKlqhNnXL/view?usp=drive_link
