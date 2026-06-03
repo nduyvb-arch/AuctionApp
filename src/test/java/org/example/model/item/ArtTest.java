@@ -8,7 +8,6 @@ class ArtTest {
 
     @Test
     void testArtFullConstructor() {
-        // Test constructor 5 tham số
         Art art = new Art("Mona Lisa", "Art", "Classic", 1000.0, 50.0);
         assertNotNull(art);
         assertEquals("Mona Lisa", art.getItemName());
@@ -16,7 +15,6 @@ class ArtTest {
 
     @Test
     void testArtShortConstructor() {
-        // Test constructor 4 tham số
         Art art = new Art("Starry Night", "Art", 2000.0, 100.0);
         assertNotNull(art);
         assertEquals(2000.0, art.getStartingPrice());

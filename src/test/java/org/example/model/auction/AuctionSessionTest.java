@@ -16,8 +16,6 @@ class AuctionSessionTest {
         session = new AuctionSession("Sản phẩm A", 100.0);
     }
 
-    // ========== TEST CŨ GIỮ NGUYÊN ==========
-
     @Test
     void testValidBid() throws Exception {
         session.placeBid("Lương", 150.0);
@@ -57,10 +55,8 @@ class AuctionSessionTest {
         session.placeBid("UserB", 130.0);
 
         assertEquals(130.0, session.getCurrentPrice());
-        assertEquals("UserB", session.getWinnerName()); // bỏ comment vì đã có getWinnerName()
+        assertEquals("UserB", session.getWinnerName());
     }
-
-    // ========== TEST ANTI SNIPING ==========
 
     @Nested
     @DisplayName("Anti Sniping Tests")
@@ -82,23 +78,19 @@ class AuctionSessionTest {
         @Test
         @DisplayName("Phiên được gia hạn khi bid trong 30 giây cuối")
         void testExtensionOnLateBid() throws Exception {
-            // Tạo phiên chỉ 5 giây (< ngưỡng 30s → luôn bị coi là snipe)
             AuctionSession shortSession = new AuctionSession("SP_C", 100.0, 5_000);
             long remainingBefore = shortSession.getRemainingMillis();
 
             shortSession.placeBid("Sniper", 150.0);
 
-            // Sau khi bid → thời gian còn lại phải tăng lên
             assertTrue(shortSession.getRemainingMillis() > remainingBefore);
         }
 
         @Test
         @DisplayName("Phiên tự động đóng sau khi hết giờ")
         void testSessionAutoCloses() throws Exception {
-            // Tạo phiên 2 giây
             AuctionSession shortSession = new AuctionSession("SP_D", 100.0, 2_000);
 
-            // Chờ phiên hết giờ
             Thread.sleep(3_000);
 
             assertThrows(AuctionClosedException.class, () -> {
@@ -115,10 +107,9 @@ class AuctionSessionTest {
         @Test
         @DisplayName("getRemainingFormatted trả về định dạng mm:ss")
         void testFormattedRemainingWithTimer() {
-            AuctionSession timedSession = new AuctionSession("SP_E", 100.0, 90_000); // 1 phút 30 giây
+            AuctionSession timedSession = new AuctionSession("SP_E", 100.0, 90_000);
             String formatted = timedSession.getRemainingFormatted();
 
-            // Phải có định dạng "mm:ss" — đúng pattern 2 số : 2 số
             assertTrue(formatted.matches("\\d{2}:\\d{2}"));
         }
     }

@@ -71,7 +71,6 @@ public class AuctionManager {
                 try {
                     imagePath = rs.getString("image_path");
                 } catch (SQLException ignored) {
-                    // Database cũ chưa có cột image_path thì bỏ qua, app vẫn chạy bình thường.
                 }
 
                 Item item = createItemByType(type, name, description, startingPrice, bidIncrement);
@@ -81,7 +80,7 @@ public class AuctionManager {
                 item.setCurrentWinnerId(currentWinnerId);
                 item.setSellerId(sellerId);
                 item.setStatus(AuctionStatus.valueOf(statusStr));
-                item.setImagePath(imagePath); // Gán imagePath
+                item.setImagePath(imagePath);
 
                 if (endTimeStr != null && !endTimeStr.isEmpty()) {
                     item.setEndTime(LocalDateTime.parse(endTimeStr, DB_TIME_FORMAT));
@@ -121,7 +120,7 @@ public class AuctionManager {
                 pstmt.setNull(8, java.sql.Types.INTEGER);
             }
 
-            pstmt.setString(9, item.getImagePath()); // Gán imagePath
+            pstmt.setString(9, item.getImagePath());
 
             int affectedRows = pstmt.executeUpdate();
 
@@ -163,7 +162,7 @@ public class AuctionManager {
 
             pstmt.setString(3, item.getStatus().name());
             pstmt.setString(4, item.getEndTime() != null ? item.getEndTime().format(DB_TIME_FORMAT) : null);
-            pstmt.setString(5, item.getImagePath()); // Cập nhật imagePath
+            pstmt.setString(5, item.getImagePath());
             pstmt.setInt(6, Integer.parseInt(item.getId()));
             pstmt.executeUpdate();
 
@@ -267,7 +266,6 @@ public class AuctionManager {
 
         targetItem.setCurrentWinnerId(bidderId);
         targetItem.setCurrentPrice(bidAmount);
-        // Gọi AntiSniper trước khi lưu vào DB
         boolean isSnipeDeflected = AntiSniper.applyAntiSniper(targetItem);
         updateItemDB(targetItem);
         insertBidRecord(itemId, bidderId, bidAmount);
@@ -414,10 +412,6 @@ public class AuctionManager {
                 String msg;
 
                 if (item.getCurrentWinnerId() != null && !item.getCurrentWinnerId().isEmpty()) {
-                    /*
-                     * Tiền của người thắng đã được giữ ngay khi đặt giá.
-                     * Khi phiên kết thúc chỉ cần chuyển số tiền đó cho người bán, không trừ người thắng lần nữa.
-                     */
                     UserManager.getInstance().addBalance(item.getSellerId(), item.getCurrentPrice());
                     msg = "ĐẤU GIÁ KẾT THÚC: Sản phẩm [" + item.getItemName() + "] đã có người thắng là user #"
                             + item.getCurrentWinnerId() + " với giá " + item.getCurrentPrice() + " VNĐ.";

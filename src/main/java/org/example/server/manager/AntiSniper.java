@@ -10,9 +10,6 @@ import java.time.temporal.ChronoUnit;
 public class AntiSniper {
     private static final Logger logger = LoggerFactory.getLogger(AntiSniper.class);
 
-    // =========================================================================
-    // PHẦN 1: TÍNH NĂNG MỚI (DÀNH CHO AUCTION MANAGER & DATABASE)
-    // =========================================================================
     private static final int TRIGGER_THRESHOLD_MILLIS = 30_000;
     private static final int EXTENSION_SECONDS = 30;
 
@@ -32,9 +29,6 @@ public class AntiSniper {
         return false;
     }
 
-    // =========================================================================
-    // PHẦN 2: TÍNH NĂNG CŨ (GIỮ LẠI ĐỂ AUCTION SESSION KHÔNG BỊ LỖI)
-    // =========================================================================
     private static final long DEFAULT_EXTENSION_MILLIS = 30_000;
     private static final long DEFAULT_SNIPE_THRESHOLD_MILLIS = 30_000;
 

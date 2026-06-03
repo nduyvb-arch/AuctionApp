@@ -54,7 +54,6 @@ public class UserManager {
                 try {
                     isBanned = rs.getInt("is_banned") == 1;
                 } catch (SQLException ignored) {
-                    // Bỏ qua nếu DB chưa có cột này
                 }
 
                 User user = createUserByRole(id, username, password, role, balance);
@@ -63,7 +62,6 @@ public class UserManager {
                     continue;
                 }
 
-                // Set trạng thái ban
                 user.setBanned(isBanned);
                 users.add(user);
             }
@@ -146,7 +144,6 @@ public class UserManager {
                 try {
                     isBanned = rs.getInt("is_banned") == 1;
                 } catch (SQLException ignored) {
-                    // Bỏ qua nếu DB chưa có cột này
                 }
 
                 if (isBanned) {
@@ -280,10 +277,6 @@ public class UserManager {
             }
         }
 
-        /*
-         * Hỗ trợ tài khoản được nhập trực tiếp trong database với mật khẩu dạng plain text.
-         * Nếu nhập mật khẩu trong DBeaver bị dư khoảng trắng đầu/cuối thì vẫn đăng nhập được.
-         */
         return rawPassword.equals(dbPassword);
     }
 
