@@ -18,7 +18,7 @@ public class DatabaseManager {
     private static String DB_URL;
     private static String USER;
     private static String PASSWORD;
-    private static boolean tablesCreated = false; // Cờ để đảm bảo chỉ tạo bảng một lần
+    private static boolean tablesCreated = false;
 
     static {
         Map<String, String> env = new HashMap<>();
@@ -41,7 +41,6 @@ public class DatabaseManager {
 
     public static Connection getConnection() throws SQLException {
         Connection conn = DriverManager.getConnection(DB_URL, USER, PASSWORD);
-        // Chỉ tạo bảng trong lần kết nối đầu tiên để tối ưu hóa
         if (!tablesCreated) {
             autoCreateTables(conn);
             tablesCreated = true;
@@ -51,7 +50,6 @@ public class DatabaseManager {
 
     private static void autoCreateTables(Connection conn) {
         try (Statement stmt = conn.createStatement()) {
-            // 1. Bảng Users
             String sqlUsers = "CREATE TABLE IF NOT EXISTS users ("
                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
                     + "username VARCHAR(50) NOT NULL UNIQUE, "
@@ -63,7 +61,6 @@ public class DatabaseManager {
             stmt.execute(sqlUsers);
             ensureUsersRequiredColumns(stmt);
 
-            // 2. Bảng Items
             String sqlItems = "CREATE TABLE IF NOT EXISTS items ("
                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
                     + "name VARCHAR(100) NOT NULL, "
@@ -76,14 +73,13 @@ public class DatabaseManager {
                     + "current_winner_id INT, "
                     + "status VARCHAR(20) NOT NULL DEFAULT 'PENDING', "
                     + "end_time DATETIME, "
-                    + "image_path TEXT, " // Thêm cột image_path
+                    + "image_path TEXT, "
                     + "FOREIGN KEY (seller_id) REFERENCES users(id), "
                     + "FOREIGN KEY (current_winner_id) REFERENCES users(id)"
                     + ")";
             stmt.execute(sqlItems);
-            ensureItemsImagePathColumn(stmt); // Đảm bảo cột image_path tồn tại
+            ensureItemsImagePathColumn(stmt);
 
-            // 3. Bảng Bids
             String sqlBids = "CREATE TABLE IF NOT EXISTS bids ("
                     + "id INT AUTO_INCREMENT PRIMARY KEY, "
                     + "item_id INT, "
@@ -113,10 +109,6 @@ public class DatabaseManager {
             stmt.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnDefinition);
             logger.info("Đã thêm cột {} vào bảng {}.", columnName, tableName);
         } catch (SQLException e) {
-            /*
-             * MySQL trả mã lỗi 1060 hoặc SQLState 42S21 khi cột đã tồn tại.
-             * Đây không phải lỗi thật, vì app có thể đang chạy trên database đã đủ cột.
-             */
             if (e.getErrorCode() == 1060 || "42S21".equals(e.getSQLState())) {
                 return;
             }
@@ -130,8 +122,6 @@ public class DatabaseManager {
             stmt.execute("ALTER TABLE items ADD COLUMN image_path TEXT");
             logger.info("Đã thêm cột image_path vào bảng items.");
         } catch (SQLException e) {
-            // MySQL trả mã lỗi 1060 hoặc SQLState 42S21 khi cột đã tồn tại.
-            // Đây không phải lỗi thật, vì app có thể đang chạy trên database đã được nâng cấp.
             if (e.getErrorCode() == 1060 || "42S21".equals(e.getSQLState())) {
                 return;
             }
@@ -139,8 +129,6 @@ public class DatabaseManager {
         }
     }
 
-    // Phương thức này không còn cần thiết vì try-with-resources sẽ tự đóng kết nối
     public static void closeConnection() {
-        // No-op
     }
 }

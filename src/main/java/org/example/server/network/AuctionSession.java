@@ -14,18 +14,15 @@ public class AuctionSession {
     private String winnerName;
     private boolean isFinished;
 
-    // ========== ANTI SNIPER ==========
     private final AntiSniper antiSniper;
 
-    // Constructor không có thời gian
     public AuctionSession(String itemId, double startingPrice) {
         this.itemId = itemId;
         this.currentPrice = startingPrice;
         this.isFinished = false;
-        this.antiSniper = null; // Không dùng anti-sniping
+        this.antiSniper = null;
     }
 
-    // Constructor có thời gian, dùng anti-sniping
     public AuctionSession(String itemId, double startingPrice, long durationMillis) {
         this.itemId = itemId;
         this.currentPrice = startingPrice;
@@ -34,13 +31,11 @@ public class AuctionSession {
         startCountdown();
     }
 
-    // ========== PLACE BID ==========
     public void placeBid(String bidderName, double bidAmount)
             throws InvalidBidException, AuctionClosedException {
 
         lock.lock();
         try {
-            // Kiểm tra phiên đã đóng chưa theo isFinished hoặc antiSniper hết giờ
             if (isFinished || (antiSniper != null && antiSniper.isExpired())) {
                 throw new AuctionClosedException("Phiên đấu giá cho " + itemId + " đã đóng!");
             }
@@ -50,12 +45,10 @@ public class AuctionSession {
                         + " phải cao hơn giá hiện tại " + currentPrice);
             }
 
-            // Cập nhật giá và người dẫn đầu
             this.currentPrice = bidAmount;
             this.winnerName = bidderName;
             System.out.println("Bid thành công: " + bidderName + " đặt " + bidAmount);
 
-            // Anti-sniping: gia hạn nếu bid trong thời gian cuối
             if (antiSniper != null) {
                 antiSniper.checkAndExtend();
             }
@@ -64,7 +57,6 @@ public class AuctionSession {
         }
     }
 
-    // ========== ANTI SNIPER COUNTDOWN ==========
     private void startCountdown() {
         Thread countdown = new Thread(() -> {
             while (!isFinished) {
@@ -85,7 +77,6 @@ public class AuctionSession {
         countdown.start();
     }
 
-    // ========== GETTERS ==========
     public double getCurrentPrice() {
         return currentPrice;
     }
@@ -102,7 +93,6 @@ public class AuctionSession {
         return isFinished;
     }
 
-    // Thời gian còn lại, trả về -1 nếu không dùng anti-sniping
     public long getRemainingMillis() {
         if (antiSniper == null) {
             return -1;
@@ -110,7 +100,6 @@ public class AuctionSession {
         return antiSniper.getRemainingMillis();
     }
 
-    // Thời gian còn lại dạng "mm:ss" để hiển thị trên UI
     public String getRemainingFormatted() {
         if (antiSniper == null) {
             return "∞";
@@ -118,7 +107,6 @@ public class AuctionSession {
         return antiSniper.getRemainingFormatted();
     }
 
-    // ========== FINISH ==========
     public void finishAuction() {
         this.isFinished = true;
     }

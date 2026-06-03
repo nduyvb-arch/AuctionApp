@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ClientHandler implements Runnable, Observer {
 
     private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
-    private static final String IMAGE_DIR = "images"; // Thư mục lưu ảnh trong repo
+    private static final String IMAGE_DIR = "images";
     private static final int MAX_CHAT_HISTORY_PER_ROOM = 100;
     private static final Map<String, List<AuctionChatMessage>> AUCTION_CHAT_HISTORY = new ConcurrentHashMap<>();
 
@@ -38,9 +38,8 @@ public class ClientHandler implements Runnable, Observer {
     private User currentUser;
 
     public ClientHandler(Socket clientSocket, AuctionNotifier notifier) {
-        this.clientSocket = clientSocket;
+         this.clientSocket = clientSocket;
         this.notifier = notifier;
-        // Đảm bảo thư mục lưu ảnh tồn tại
         File imageFolder = new File(IMAGE_DIR);
         if (!imageFolder.exists()) {
             imageFolder.mkdirs();
@@ -126,12 +125,6 @@ public class ClientHandler implements Runnable, Observer {
                                 sendMessage(new Message("ACCOUNT_INFO_RESPONSE", refreshedBidder));
                             }
 
-                            /*
-                             * Khi có người đặt giá cao hơn, server đã hoàn tiền cho người đang dẫn trước.
-                             * Nếu chỉ cập nhật tài khoản cho người vừa đặt, client của người bị vượt sẽ vẫn
-                             * hiển thị số dư cũ cho đến khi bấm refresh/đăng nhập lại. Vì vậy broadcast lại
-                             * thông tin tài khoản; hàm update() bên dưới sẽ lọc để mỗi client chỉ nhận user của chính nó.
-                             */
                             notifyAllAccountInfo();
 
                             Item updatedItem = AuctionManager.getInstance().getAllItems().stream()
@@ -260,7 +253,6 @@ public class ClientHandler implements Runnable, Observer {
                         String sellerId = String.valueOf(itemData[5]);
                         byte[] imageBytes = null;
                         if (itemData.length >= 8 && itemData[7] instanceof byte[]) {
-                            // Tương thích với client cũ: [6] từng là thời gian mặc định.
                             imageBytes = (byte[]) itemData[7];
                         } else if (itemData.length >= 7 && itemData[6] instanceof byte[]) {
                             imageBytes = (byte[]) itemData[6];
@@ -269,12 +261,12 @@ public class ClientHandler implements Runnable, Observer {
                         String savedImagePath = null;
                         if (imageBytes != null && imageBytes.length > 0) {
                             try {
-                                String fileName = UUID.randomUUID().toString() + ".png"; // Tạo tên file duy nhất
+                                String fileName = UUID.randomUUID().toString() + ".png";
                                 File imageFile = new File(IMAGE_DIR, fileName);
                                 try (FileOutputStream fos = new FileOutputStream(imageFile)) {
                                     fos.write(imageBytes);
                                 }
-                                savedImagePath = IMAGE_DIR + "/" + fileName; // Đường dẫn tương đối
+                                savedImagePath = IMAGE_DIR + "/" + fileName;
                                 logger.info("Đã lưu ảnh sản phẩm vào: {}", savedImagePath);
                             } catch (IOException e) {
                                 logger.error("Lỗi khi lưu ảnh sản phẩm: {}", e.getMessage(), e);
@@ -295,10 +287,8 @@ public class ClientHandler implements Runnable, Observer {
                         }
 
                         newItem.setSellerId(sellerId);
-                        // Không đặt thời gian kết thúc khi đăng sản phẩm.
-                        // Thời gian chỉ được thiết lập khi người bán bấm "Bắt đầu đấu giá".
                         newItem.setEndTime(null);
-                        newItem.setImagePath(savedImagePath); // Gán đường dẫn ảnh đã lưu
+                        newItem.setImagePath(savedImagePath);
 
                         AuctionManager.getInstance().addItem(newItem);
                         sendMessage(new Message("ADD_ITEM_RESPONSE", "Đăng sản phẩm thành công! Mã SP: " + newItem.getId()));
