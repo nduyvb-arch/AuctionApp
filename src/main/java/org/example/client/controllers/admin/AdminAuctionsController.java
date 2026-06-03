@@ -1,5 +1,4 @@
 package org.example.client.controllers.admin;
-
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -43,7 +42,7 @@ public class AdminAuctionsController implements AdminChildController {
     public void setup(AdminDashboardController dashboardController) {
         this.dashboardController = dashboardController;
         setupTable();
-        requestAuctions();
+        requestAuctions(); // Yêu cầu server gửi danh sách phiên đấu giá
     }
 
     private void setupTable() {

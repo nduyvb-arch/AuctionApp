@@ -8,7 +8,6 @@ class BidderTest {
 
     @Test
     void testBidderCreation() {
-        // Test constructor và các getter kế thừa từ User
         Bidder bidder = new Bidder("U1", "luong_bidder", "password123", 1000.0);
 
         assertEquals("U1", bidder.getId());
@@ -26,7 +25,6 @@ class BidderTest {
 
     @Test
     void testDisplayRoleAndPlaceBid() {
-        // Test các phương thức void để đảm bảo dòng code được thực thi (tăng coverage)
         Bidder bidder = new Bidder("U1", "luong_test", "pass", 1000.0);
 
         assertDoesNotThrow(() -> {

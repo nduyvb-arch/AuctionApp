@@ -26,7 +26,6 @@ public class AuctionServer {
     }
 
     public void startServer() {
-        // load item từ Database lên ram
         AuctionManager.getInstance();
         logger.info("Dữ liệu Database được tải lên RAM thành công");
 
@@ -54,12 +53,10 @@ public class AuctionServer {
         {
             try
             {
-                //Manager sẽ kiểm tra các phiên đấu giá đã hết hạn và thông báo cho các ClientHandler
                 List<String> notifications = AuctionManager.getInstance().checkAndCloseExpiredAuctions();
                 for (String msg : notifications)
                 {
                     logger.info("[THÔNG BÁO HỆ THỐNG] {}", msg);
-                    // gửi thông báo về cho Client
                     notifier.notifyObservers(new Message("SYSTEM_NOTIFICATION", msg));
                 }
             }
@@ -67,6 +64,6 @@ public class AuctionServer {
             {
                 logger.error("Lỗi trong quá trình kiểm tra đấu giá hết hạn: {}", e.getMessage(), e);
             }
-        }, 0, 10, TimeUnit.SECONDS); // Kiểm tra mỗi 10 giây
+        }, 0, 10, TimeUnit.SECONDS);
     }
 }

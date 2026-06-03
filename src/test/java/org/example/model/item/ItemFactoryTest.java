@@ -31,14 +31,12 @@ class ItemFactoryTest {
 
     @Test
     void testCreateWithTrimAndUpperCase() {
-        // Kiểm tra xem Factory có xử lý được khoảng trắng và chữ hoa không
         Item item = ItemFactory.createItem("  ART  ", "Tượng", "Art", "Đẹp", 200.0, 20.0);
         assertTrue(item instanceof Art);
     }
 
     @Test
     void testCreateItemNullCategory() {
-        // Kiểm tra trường hợp category bị null
         Exception exception = assertThrows(IllegalArgumentException.class, () -> {
             ItemFactory.createItem(null, "Name", "Type", "Desc", 0, 0);
         });
@@ -47,7 +45,6 @@ class ItemFactoryTest {
 
     @Test
     void testCreateItemInvalidCategory() {
-        // Kiểm tra trường hợp loại sản phẩm không tồn tại
         Exception exception = assertThrows(IllegalArgumentException.class, () -> {
             ItemFactory.createItem("unknown", "Name", "Type", "Desc", 0, 0);
         });

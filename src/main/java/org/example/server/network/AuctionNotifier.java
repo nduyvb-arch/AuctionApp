@@ -4,7 +4,6 @@ import org.example.common.Message;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class AuctionNotifier implements Subject {
-    // Danh sách lưu trữ những ai đang theo dõi phiên đấu giá
     private final CopyOnWriteArrayList<Observer> observers = new CopyOnWriteArrayList<>();
 
     @Override
@@ -21,7 +20,6 @@ public class AuctionNotifier implements Subject {
 
     @Override
     public void notifyObservers(Message message) {
-        // Gửi Message đến toàn bộ những người trong danh sách
         for (Observer o : observers) {
             o.update(message);
         }
