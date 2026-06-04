@@ -121,7 +121,7 @@ class AuctionManagerTest {
         return item;
     }
 
-    // ================== CÁC TEST CASE CŨ ==================
+    // ================== CÁC TEST CASE CŨ (BẠN ĐÃ CÓ) ==================
 
     @Test
     @DisplayName("Kiểm tra thiết kế Singleton")
@@ -213,8 +213,6 @@ class AuctionManagerTest {
         assertEquals(AuctionStatus.CLOSED, item.getStatus());
         verify(mockUserMgrInstance, times(1)).addBalance("10", 1500.0);
     }
-
-    // ================== CÁC TEST CASE MỚI (TĂNG COVERAGE) ==================
 
     @Test
     @DisplayName("Lấy toàn bộ sản phẩm")
@@ -334,5 +332,145 @@ class AuctionManagerTest {
         assertEquals("Đã xóa sản phẩm thành công.", result);
         verify(mockUserMgrInstance, times(1)).addBalance("20", 2000.0); // Đảm bảo hoàn tiền cho Winner trước khi xóa
         assertTrue(auctionManager.getAllItems().isEmpty()); // Item đã bay khỏi RAM
+    }
+
+    // ================== CÁC TEST CASE BỔ SUNG ĐỂ TĂNG COVERAGE LÊN >= 60% ==================
+
+    @Test
+    @DisplayName("Thêm sản phẩm mới (addItem)")
+    void testAddItem() {
+        Item item = new org.example.common.model.item.Art("Tranh Monalisa", "art", "Đẹp", 500, 50);
+        auctionManager.addItem(item);
+        // Do id được giả lập (mock) trả về 99 trong hàm setUp bằng getGeneratedKeys
+        assertEquals("99", item.getId());
+    }
+
+    @Test
+    @DisplayName("Bắt lỗi Place Bid: Đặt giá khi phiên đã quá hạn (Edge case thời gian)")
+    void testPlaceBid_ExpiredTime() throws Exception {
+        Item item = createDummyItem("1", "10", AuctionStatus.ACTIVE);
+        // Cố tình setup thời gian kết thúc ở trong quá khứ (đã hết hạn)
+        item.setEndTime(LocalDateTime.now().minusMinutes(1));
+        injectItemToManager(item);
+
+        String result = auctionManager.placeBid("1", 1200.0, "20");
+        assertTrue(result.contains("Phiên đấu giá đã kết thúc"));
+        assertEquals(AuctionStatus.CLOSED, item.getStatus()); // Đảm bảo trạng thái bị đổi thành CLOSED ngay lập tức
+    }
+
+    @Test
+    @DisplayName("Bắt lỗi Place Bid: Người dùng đang dẫn đầu cố tình tự bid đè lên chính mình")
+    void testPlaceBid_BidderIsAlreadyWinner() throws Exception {
+        Item item = createDummyItem("1", "10", AuctionStatus.ACTIVE);
+        item.setEndTime(LocalDateTime.now().plusMinutes(10));
+        item.setCurrentWinnerId("20"); // Người thắng hiện tại chính là User 20
+        injectItemToManager(item);
+
+        User mockBidder = mock(User.class);
+        when(mockBidder.getRole()).thenReturn("bidder");
+        when(mockUserMgrInstance.findUserById("20")).thenReturn(mockBidder);
+
+        String result = auctionManager.placeBid("1", 1500.0, "20");
+        assertTrue(result.contains("Bạn đang là người đặt giá gần nhất"));
+    }
+
+    @Test
+    @DisplayName("Bắt lỗi Place Bid: Hệ thống trừ tiền thất bại")
+    void testPlaceBid_DeductBalanceFails() throws Exception {
+        Item item = createDummyItem("1", "10", AuctionStatus.ACTIVE);
+        item.setEndTime(LocalDateTime.now().plusMinutes(10));
+        injectItemToManager(item);
+
+        User mockBidder = mock(User.class);
+        when(mockBidder.getRole()).thenReturn("bidder");
+        when(mockBidder.getBalance()).thenReturn(5000.0);
+        when(mockUserMgrInstance.findUserById("20")).thenReturn(mockBidder);
+
+        // Giả lập hàm trừ tiền của UserManager trả về false
+        when(mockUserMgrInstance.subtractBalance("20", 1200.0)).thenReturn(false);
+
+        String result = auctionManager.placeBid("1", 1200.0, "20");
+        assertTrue(result.contains("Số dư của bạn không đủ hoặc không thể giữ tiền"));
+    }
+
+    @Test
+    @DisplayName("Bắt lỗi Place Bid: Không thể hoàn tiền cho người thắng cũ (Rollback giao dịch)")
+    void testPlaceBid_RefundPreviousWinnerFails() throws Exception {
+        Item item = createDummyItem("1", "10", AuctionStatus.ACTIVE);
+        item.setEndTime(LocalDateTime.now().plusMinutes(10));
+        item.setCurrentWinnerId("30"); // Người thắng cũ là 30
+        item.setCurrentPrice(1000.0);
+        injectItemToManager(item);
+
+        User mockBidder = mock(User.class);
+        when(mockBidder.getRole()).thenReturn("bidder");
+        when(mockBidder.getBalance()).thenReturn(5000.0);
+        when(mockUserMgrInstance.findUserById("20")).thenReturn(mockBidder);
+
+        when(mockUserMgrInstance.subtractBalance("20", 1200.0)).thenReturn(true); // Trừ tiền người mới thành công
+        // Giả lập lỗi hoàn tiền cho người cũ thất bại
+        when(mockUserMgrInstance.addBalance("30", 1000.0)).thenReturn(false);
+
+        String result = auctionManager.placeBid("1", 1200.0, "20");
+        assertTrue(result.contains("Không thể hoàn tiền cho người đặt giá trước đó"));
+        // Xác minh xem hàm có gọi addBalance để "rollback" trả lại tiền cho User 20 hay không
+        verify(mockUserMgrInstance, times(1)).addBalance("20", 1200.0);
+    }
+
+    @Test
+    @DisplayName("Luồng chuẩn: Đặt giá thành công (Không kích hoạt Anti-Sniper)")
+    void testPlaceBid_Success_NoAntiSniper() throws Exception {
+        Item item = createDummyItem("1", "10", AuctionStatus.ACTIVE);
+        item.setEndTime(LocalDateTime.now().plusMinutes(10));
+        injectItemToManager(item);
+
+        User mockBidder = mock(User.class);
+        when(mockBidder.getRole()).thenReturn("bidder");
+        when(mockBidder.getBalance()).thenReturn(5000.0);
+
+        when(mockUserMgrInstance.findUserById("20")).thenReturn(mockBidder);
+        when(mockUserMgrInstance.subtractBalance("20", 1200.0)).thenReturn(true);
+        // Anti-Sniper đã được mock mặc định trả về false ở hàm setUp()
+
+        String result = auctionManager.placeBid("1", 1200.0, "20");
+
+        assertTrue(result.contains("Đặt giá thành công! Hệ thống đã giữ"));
+        assertEquals("20", item.getCurrentWinnerId());
+    }
+
+    @Test
+    @DisplayName("Bắt lỗi Admin Cancel/End/Delete: Sản phẩm không tồn tại hoặc sai trạng thái")
+    void testAdminActions_Errors() throws Exception {
+        // 1. Không tìm thấy ID 999
+        assertEquals("Không tìm thấy sản phẩm này!", auctionManager.cancelAuctionByAdmin("999"));
+        assertEquals("Không tìm thấy sản phẩm này!", auctionManager.endAuctionByAdmin("999"));
+        assertEquals("Không tìm thấy sản phẩm này!", auctionManager.deleteItemByAdmin("999"));
+
+        // 2. Sai trạng thái (Cố tình thao tác trên sản phẩm đã CLOSED)
+        Item item = createDummyItem("1", "10", AuctionStatus.CLOSED);
+        injectItemToManager(item);
+
+        assertTrue(auctionManager.cancelAuctionByAdmin("1").contains("chưa bắt đầu hoặc đã kết thúc"));
+        assertTrue(auctionManager.endAuctionByAdmin("1").contains("Chỉ có thể kết thúc phiên đang diễn ra"));
+    }
+
+    @Test
+    @DisplayName("Admin Kết thúc phiên đấu giá nhưng chưa có ai đặt giá")
+    void testEndAuctionByAdmin_NoWinner() throws Exception {
+        Item item = createDummyItem("1", "10", AuctionStatus.ACTIVE);
+        // Không set currentWinnerId (coi như chưa ai đặt giá)
+        injectItemToManager(item);
+
+        String result = auctionManager.endAuctionByAdmin("1");
+        assertTrue(result.contains("Sản phẩm chưa có người đặt giá"));
+        assertEquals(AuctionStatus.CLOSED, item.getStatus());
+    }
+
+    @Test
+    @DisplayName("Lấy lịch sử đấu giá cho User và Item (Bao phủ SQL Exception handling)")
+    void testGetBidHistories() {
+        // Test tính ổn định khi database trống, giúp bao phủ các khối try-with-resources của ResultSet
+        assertNotNull(auctionManager.getBidHistoryForUser("20"));
+        assertNotNull(auctionManager.getBidHistoryForItem("1"));
     }
 }
